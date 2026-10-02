@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "LootBot"
+description = "A SaaS platform that helps digital sellers turn Telegram into a complete online store, with product, order, customer, and loyalty management in one dashboard."
+version = "1.0.0"
+id = "artifacts/lootbot"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21408
+
+[services.development]
+run = "pnpm --filter @workspace/lootbot run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/lootbot", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/lootbot/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21408"
+BASE_PATH = "/"

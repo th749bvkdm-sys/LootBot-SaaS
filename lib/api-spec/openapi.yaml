@@ -1,22 +1,25 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
+  # Do not change the title; generated import paths depend on it.
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 0.2.0
+  description: LootBot multi-tenant store management API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: stores
+  - name: catalog
+  - name: telegram
+  - name: dashboard
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
-      summary: Health check
-      description: Returns server health status
+      summary: Check API health
       responses:
         "200":
           description: Healthy
@@ -24,13 +27,968 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/csrf:
+    get:
+      operationId: getCsrfToken
+      tags: [auth]
+      summary: Issue a CSRF token for browser forms
+      responses:
+        "200":
+          description: CSRF token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CsrfResponse"
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Create an owner account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags: [auth]
+      summary: Start an owner session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      tags: [auth]
+      summary: End the current owner session
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Signed out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Read the current account
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Current account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /stores:
+    get:
+      operationId: listStores
+      tags: [stores]
+      summary: List stores owned by the current account
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Owned stores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Store"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createStore
+      tags: [stores]
+      summary: Create a store
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoreInput"
+      responses:
+        "201":
+          description: Store created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Store"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /stores/{storeId}:
+    parameters:
+      - $ref: "#/components/parameters/StoreId"
+    get:
+      operationId: getStore
+      tags: [stores]
+      summary: Read an owned store
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Store"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateStore
+      tags: [stores]
+      summary: Update an owned store
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoreUpdate"
+      responses:
+        "200":
+          description: Updated store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Store"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteStore
+      tags: [stores]
+      summary: Soft-delete an owned store and stop its bot
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Store archived
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [catalog]
+      summary: List categories for a store
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: storeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Categories and pagination details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /stores/{storeId}/categories:
+    post:
+      operationId: createCategory
+      tags: [catalog]
+      summary: Add a category to a store
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/StoreId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "201":
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /categories/{categoryId}:
+    parameters:
+      - $ref: "#/components/parameters/CategoryId"
+    patch:
+      operationId: updateCategory
+      tags: [catalog]
+      summary: Update an owned category
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryUpdate"
+      responses:
+        "200":
+          description: Updated category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteCategory
+      tags: [catalog]
+      summary: Soft-delete an owned category
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Category archived
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /products:
+    get:
+      operationId: listProducts
+      tags: [catalog]
+      summary: Search and paginate store products
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: storeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 120
+        - name: categoryId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Products and pagination details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /stores/{storeId}/products:
+    post:
+      operationId: createProduct
+      tags: [catalog]
+      summary: Add a product to a store
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/StoreId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /products/{productId}:
+    parameters:
+      - $ref: "#/components/parameters/ProductId"
+    patch:
+      operationId: updateProduct
+      tags: [catalog]
+      summary: Update an owned product
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdate"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteProduct
+      tags: [catalog]
+      summary: Soft-delete an owned product
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Product archived
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /stores/{storeId}/bot:
+    parameters:
+      - $ref: "#/components/parameters/StoreId"
+    get:
+      operationId: getStoreBot
+      tags: [telegram]
+      summary: Read bot connection status without its token
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Bot status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      operationId: connectStoreBot
+      tags: [telegram]
+      summary: Validate and connect a Telegram bot
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BotTokenInput"
+      responses:
+        "200":
+          description: Bot connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "502":
+          $ref: "#/components/responses/UpstreamError"
+    delete:
+      operationId: disconnectStoreBot
+      tags: [telegram]
+      summary: Disconnect and stop a store bot
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Bot disconnected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get real store counts and recent sales summary
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: storeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Store summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /dashboard/activity:
+    get:
+      operationId: getDashboardActivity
+      tags: [dashboard]
+      summary: Get recent store activity
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: storeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 25
+      responses:
+        "200":
+          description: Recent activity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEvent"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: lootbot_session
+  parameters:
+    StoreId:
+      name: storeId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CategoryId:
+      name: categoryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        enum: [10, 25, 50, 100]
+        default: 25
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Sign in required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Resource conflicts with existing data
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    RateLimited:
+      description: Too many attempts
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UpstreamError:
+      description: Telegram could not be reached or rejected the token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
-
+      required: [status]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+    CsrfResponse:
+      type: object
+      properties:
+        token:
+          type: string
+      required: [token]
+    RegisterInput:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required: [name, email, password]
+    LoginInput:
+      type: object
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required: [email, password]
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [OWNER, SUPERADMIN]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, email, role, createdAt]
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        csrfToken:
+          type: string
+      required: [user, csrfToken]
+    StoreInput:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+      required: [name, currency]
+    StoreUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+    Store:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        currency:
+          type: string
+        botStatus:
+          type: string
+          enum: [disconnected, connected, error]
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, ownerId, name, slug, currency, botStatus, createdAt]
+    CategoryInput:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        description:
+          type: string
+          maxLength: 500
+      required: [name]
+    CategoryUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        description:
+          type: string
+          maxLength: 500
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        storeId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        productCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, storeId, name, description, productCount, createdAt]
+    CategoryPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Category"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+      required: [items, page, pageSize, total]
+    ProductInput:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        description:
+          type: string
+          maxLength: 5000
+        price:
+          type: number
+          minimum: 0
+          maximum: 999999999
+        stock:
+          type: integer
+          minimum: 0
+          maximum: 100000000
+        categoryId:
+          type: ["string", "null"]
+          format: uuid
+        sku:
+          type: ["string", "null"]
+          maxLength: 80
+        imageUrl:
+          type: ["string", "null"]
+          format: uri
+          maxLength: 2000
+        isPublished:
+          type: boolean
+      required: [name, description, price, stock, isPublished]
+    ProductUpdate:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        description:
+          type: string
+          maxLength: 5000
+        price:
+          type: number
+          minimum: 0
+          maximum: 999999999
+        stock:
+          type: integer
+          minimum: 0
+          maximum: 100000000
+        categoryId:
+          type: ["string", "null"]
+          format: uuid
+        sku:
+          type: ["string", "null"]
+          maxLength: 80
+        imageUrl:
+          type: ["string", "null"]
+          format: uri
+          maxLength: 2000
+        isPublished:
+          type: boolean
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        storeId:
+          type: string
+          format: uuid
+        categoryId:
+          type: ["string", "null"]
+          format: uuid
+        categoryName:
+          type: ["string", "null"]
+        sku:
+          type: ["string", "null"]
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        stock:
+          type: integer
+        imageUrl:
+          type: ["string", "null"]
+        isPublished:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, storeId, categoryId, categoryName, sku, name, description, price, stock, imageUrl, isPublished, createdAt]
+    ProductPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+      required: [items, page, pageSize, total]
+    BotTokenInput:
+      type: object
+      additionalProperties: false
+      properties:
+        token:
+          type: string
+          minLength: 20
+          maxLength: 256
+      required: [token]
+    BotStatus:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        username:
+          type: ["string", "null"]
+        firstName:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [disconnected, connected, error]
+        lastError:
+          type: ["string", "null"]
+      required: [connected, username, firstName, status, lastError]
+    DashboardSummary:
+      type: object
+      properties:
+        storeId:
+          type: string
+          format: uuid
+        productCount:
+          type: integer
+        categoryCount:
+          type: integer
+        publishedProductCount:
+          type: integer
+        orderCount:
+          type: integer
+        revenue:
+          type: number
+        botStatus:
+          type: string
+          enum: [disconnected, connected, error]
+      required: [storeId, productCount, categoryCount, publishedProductCount, orderCount, revenue, botStatus]
+    ActivityEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        action:
+          type: string
+        summary:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, action, summary, createdAt]
