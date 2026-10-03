@@ -1,10 +1,10 @@
 import { cloneElement, type FormEvent, type ReactElement, type ReactNode, useEffect, useState } from 'react';
-import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Activity, ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, CircleDollarSign,
   ChevronDown, CircleHelp, Command, Eye, EyeOff, LayoutDashboard,
   LogOut, Menu, MessageCircle, Package, Plus, Search, Settings2, ShieldCheck,
-  ShoppingBag, Store as StoreIcon, Tag, Trash2, X, Zap,
+  ShoppingBag, Store as StoreIcon, Tag, Trash2, Users, X, Zap,
 } from 'lucide-react';
 import {
   getGetCurrentUserQueryKey, getGetCsrfTokenQueryKey, getGetDashboardActivityQueryKey, getGetDashboardSummaryQueryKey,
@@ -223,6 +223,7 @@ function App() {
       <Route path="/register"><AuthPage mode="register" /></Route>
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/dashboard"><Dashboard /></Route>
+      <Route path="/admin"><SuperAdminDashboard /></Route>
       <Route path="/dashboard/stores"><Dashboard><StoresPage locale="ar" t={copy.ar} /></Dashboard></Route>
       <Route path="/dashboard/products"><Dashboard><ProductsPage locale="ar" t={copy.ar} /></Dashboard></Route>
       <Route path="/dashboard/categories"><Dashboard><CategoriesPage locale="ar" t={copy.ar} /></Dashboard></Route>
@@ -310,7 +311,7 @@ function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const login=useLoginUser({request:{headers:csrfHeader}}); const register=useRegisterUser({request:{headers:csrfHeader}});
   const [error,setError]=useState(''); const [showPassword,setShowPassword]=useState(false);
   const submit=(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();setError('');const fd=new FormData(e.currentTarget);const email=String(fd.get('email'));const password=String(fd.get('password'));
-    if(mode==='login') login.mutate({data:{email,password}},{onSuccess:(data)=>{qc.setQueryData(getGetCsrfTokenQueryKey(),{token:data.csrfToken});void qc.invalidateQueries({queryKey:getGetCurrentUserQueryKey()});navigate('/dashboard');},onError:(err)=>setError(err.message)});
+    if(mode==='login') login.mutate({data:{email,password}},{onSuccess:(data)=>{qc.setQueryData(getGetCsrfTokenQueryKey(),{token:data.csrfToken});qc.setQueryData(getGetCurrentUserQueryKey(),data.user);navigate(data.user.role==='SUPERADMIN'?'/admin':'/dashboard');},onError:(err)=>setError(err.message)});
     else register.mutate({data:{name:String(fd.get('name')),email,password}},{onSuccess:(data)=>{qc.setQueryData(getGetCsrfTokenQueryKey(),{token:data.csrfToken});void qc.invalidateQueries({queryKey:getGetCurrentUserQueryKey()});navigate('/onboarding');},onError:(err)=>setError(err.message)});
   };
   const pending=login.isPending||register.isPending;
@@ -337,9 +338,53 @@ function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   </main>;
 }
 
+type AdminOverview = {
+  stats: { users: number; stores: number; orders: number; products: number };
+  users: Array<{ id: string; name: string; email: string; role: string; createdAt: string }>;
+  stores: Array<{ id: string; name: string; slug: string; currency: string; botStatus: string; createdAt: string; ownerName: string; ownerEmail: string }>;
+  events: Array<{ id: string; action: string; summary: string; createdAt: string }>;
+};
+
+function SuperAdminDashboard() {
+  const [locale, toggleLocale] = useLocale();
+  const rtl = locale === 'ar';
+  const user = useGetCurrentUser();
+  const csrf = useGetCsrfToken();
+  const logout = useLogoutUser({ request: { headers: csrf.data?.token ? { 'x-csrf-token': csrf.data.token } : undefined } });
+  const qc = useQueryClient();
+  const [, navigate] = useLocation();
+  const overview = useQuery({
+    queryKey: ['/api/admin/overview'],
+    enabled: user.data?.role === 'SUPERADMIN',
+    queryFn: async (): Promise<AdminOverview> => {
+      const response = await fetch('/api/admin/overview', { credentials: 'include' });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(payload?.error || `HTTP ${response.status}`);
+      }
+      return response.json() as Promise<AdminOverview>;
+    },
+  });
+  const signOut = () => { if (!csrf.data?.token) return; logout.mutate(undefined, { onSuccess: () => { qc.clear(); navigate('/login'); } }); };
+  if (user.isLoading) return <LoadingScreen />;
+  if (user.isError || !user.data) return <AuthRequired locale={locale} />;
+  if (user.data.role !== 'SUPERADMIN') return <div className="grid min-h-[100dvh] place-items-center bg-[#11171c] text-[#e8efee]"><div className="text-center"><p>{rtl ? 'هذه الصفحة للمشرف العام فقط.' : 'This page is only available to super admins.'}</p><Link href="/dashboard" className="mt-4 inline-flex rounded-xl bg-[#62d6aa] px-5 py-3 text-sm font-bold text-[#10231d]">{rtl ? 'لوحة المتجر' : 'Store dashboard'}</Link></div></div>;
+  const stats = overview.data?.stats;
+  const labels = rtl ? [['المستخدمون', stats?.users], ['المتاجر', stats?.stores], ['الطلبات', stats?.orders], ['المنتجات', stats?.products]] : [['Users', stats?.users], ['Stores', stats?.stores], ['Orders', stats?.orders], ['Products', stats?.products]];
+  return <main dir={rtl ? 'rtl' : 'ltr'} className="min-h-[100dvh] bg-[#11171c] p-5 text-[#e8efee] md:p-9">
+    <header className="mx-auto flex max-w-7xl items-center gap-4 border-b border-[#293638] pb-5"><BrandMark/><div className="min-w-0 flex-1"><p className="text-xs text-[#6dd9b1]">LootBot</p><h1 className="mt-1 text-xl font-semibold">{rtl ? 'لوحة المشرف العام' : 'Super Admin'}</h1></div><button onClick={toggleLocale} className="rounded-lg px-3 py-2 text-xs text-[#aab6b5] hover:bg-[#1b2527]">{rtl ? 'EN' : 'العربية'}</button><button onClick={signOut} disabled={logout.isPending || !csrf.data?.token} className="rounded-lg border border-[#354344] px-3 py-2 text-xs text-[#c4cecd] hover:bg-[#1b2527] disabled:opacity-50">{rtl ? 'تسجيل الخروج' : 'Sign out'}</button></header>
+    <div className="mx-auto max-w-7xl">
+      <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4">{labels.map(([label, value]) => <article key={String(label)} className="rounded-2xl border border-[#293638] bg-[#171f22] p-5"><p className="text-xs text-[#94a2a2]">{label}</p><p className="mt-3 font-mono text-3xl font-bold">{overview.isLoading ? '—' : value ?? '—'}</p></article>)}</div>
+      {overview.isError && <ErrorPanel message={rtl ? 'تعذر تحميل بيانات الإدارة.' : 'Could not load admin data.'} onRetry={() => void overview.refetch()} />}
+      <section className="mt-8"><h2 className="mb-3 flex items-center gap-2 text-lg font-semibold"><Users className="h-5 w-5 text-[#70dcb5]"/>{rtl ? 'المستخدمون' : 'Recent users'}</h2><div className="overflow-x-auto rounded-2xl border border-[#293638]"><table className="w-full min-w-[600px] text-start text-sm"><thead className="bg-[#1b2527] text-xs text-[#899898]"><tr>{(rtl ? ['الاسم', 'البريد الإلكتروني', 'الدور', 'تاريخ التسجيل'] : ['Name', 'Email', 'Role', 'Joined']).map(x => <th key={x} className="px-4 py-3 text-start font-medium">{x}</th>)}</tr></thead><tbody className="divide-y divide-[#293638]">{overview.data?.users.map(item => <tr key={item.id} className="bg-[#171f22]"><td className="px-4 py-3 font-medium">{item.name}</td><td className="px-4 py-3 text-[#9aa8a7]">{item.email}</td><td className="px-4 py-3"><StatusPill value={item.role}/></td><td className="px-4 py-3 text-xs text-[#899898]">{new Date(item.createdAt).toLocaleDateString(rtl ? 'ar' : 'en')}</td></tr>)}{!overview.isLoading && !overview.data?.users.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-[#899898]">{rtl ? 'لا يوجد مستخدمون.' : 'No users yet.'}</td></tr>}</tbody></table></div></section>
+      <section className="mt-8"><h2 className="mb-3 text-lg font-semibold">{rtl ? 'المتاجر' : 'Stores'}</h2><div className="overflow-x-auto rounded-2xl border border-[#293638]"><table className="w-full min-w-[700px] text-start text-sm"><thead className="bg-[#1b2527] text-xs text-[#899898]"><tr>{(rtl ? ['المتجر', 'المالك', 'العملة', 'البوت'] : ['Store', 'Owner', 'Currency', 'Bot']).map(x => <th key={x} className="px-4 py-3 text-start font-medium">{x}</th>)}</tr></thead><tbody className="divide-y divide-[#293638]">{overview.data?.stores.map(item => <tr key={item.id} className="bg-[#171f22]"><td className="px-4 py-3"><p className="font-medium">{item.name}</p><p className="mt-1 text-xs text-[#829091]">{item.slug}</p></td><td className="px-4 py-3"><p>{item.ownerName}</p><p className="mt-1 text-xs text-[#829091]">{item.ownerEmail}</p></td><td className="px-4 py-3">{item.currency}</td><td className="px-4 py-3"><StatusPill value={item.botStatus}/></td></tr>)}{!overview.isLoading && !overview.data?.stores.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-[#899898]">{rtl ? 'لا توجد متاجر.' : 'No stores yet.'}</td></tr>}</tbody></table></div></section>
+    </div>
+  </main>;
+}
+
 function Dashboard({ children }: { children?: ReactNode }) {
   const [locale,toggleLocale]=useLocale(); const t=copy[locale]; const rtl=locale==='ar';
-  const user=useGetCurrentUser(); const stores=useListStores(); const logout=useLogoutUser(); const qc=useQueryClient();
+  const user=useGetCurrentUser(); const stores=useListStores(); const csrf=useGetCsrfToken(); const logout=useLogoutUser({request:{headers:csrf.data?.token?{'x-csrf-token':csrf.data.token}:undefined}}); const qc=useQueryClient();
   const [location,navigate]=useLocation(); const [mobileOpen,setMobileOpen]=useState(false);
   const [activeStore,setActiveStore]=useState('');
   const storeList=stores.data||[];
@@ -348,7 +393,7 @@ function Dashboard({ children }: { children?: ReactNode }) {
   const nav=[['/dashboard',t.overview,LayoutDashboard],['/dashboard/stores',t.stores,StoreIcon],['/dashboard/products',t.products,Package],['/dashboard/categories',t.categories,Tag],['/dashboard/orders',t.orders,ShoppingBag],['/dashboard/telegram',t.telegram,MessageCircle],['/dashboard/settings',t.settings,Settings2]] as const;
   if(user.isLoading) return <LoadingScreen />;
   if(user.isError||!user.data) return <AuthRequired locale={locale}/>;
-  const logoutAction=()=>logout.mutate(undefined,{onSuccess:()=>{qc.clear();navigate('/login');}});
+  const logoutAction=()=>{if(!csrf.data?.token)return;logout.mutate(undefined,{onSuccess:()=>{qc.clear();navigate('/login');}});};
   return <div dir={rtl?'rtl':'ltr'} className="min-h-[100dvh] bg-[#11171c] text-[#e6edec]">
     {mobileOpen&&<button aria-label="Close navigation" className="fixed inset-0 z-30 bg-black/60 md:hidden" onClick={()=>setMobileOpen(false)} />}
     <aside className={`fixed inset-y-0 z-40 flex w-[258px] flex-col border-e border-[#253134] bg-[#131b1e] px-4 py-5 transition-transform md:translate-x-0 ${rtl?'right-0':'left-0'} ${mobileOpen?'translate-x-0':rtl?'translate-x-full':'-translate-x-full'} md:!translate-x-0`}>
@@ -357,7 +402,7 @@ function Dashboard({ children }: { children?: ReactNode }) {
       <div className="relative mt-3"><select value={store?.id||''} onChange={(e)=>setActiveStore(e.target.value)} className="h-11 w-full appearance-none rounded-xl border border-[#303d3f] bg-[#1a2426] px-3 pe-9 text-sm font-medium outline-none focus:border-[#61d5a9]" aria-label={t.store} data-testid="select-store"><option value="" disabled>{t.noStores}</option>{storeList.map(s=><option value={s.id} key={s.id}>{s.name}</option>)}</select><ChevronDown className="pointer-events-none absolute end-3 top-3 h-4 w-4 text-[#829293]"/></div>
       <nav className="mt-7 space-y-1">{nav.map(([href,label,Icon])=><Link key={href} href={href} onClick={()=>setMobileOpen(false)} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${location===href?'bg-[#20362f] font-semibold text-[#7ce1bb]':'text-[#a1afae] hover:bg-[#1b2527] hover:text-white'}`}><Icon className="h-[18px] w-[18px]"/>{label}{location===href&&<span className="ms-auto h-1.5 w-1.5 rounded-full bg-[#6bd9b0]"/>}</Link>)}</nav>
       <div className="mt-auto rounded-2xl border border-[#2b3938] bg-[#182321] p-4"><div className="flex items-center gap-2 text-xs font-semibold text-[#c6d2cf]"><CircleHelp className="h-4 w-4 text-[#65d7ad]"/>{rtl?'تحتاج مساعدة؟':'Need a hand?'}</div><p className="mt-2 text-[11px] leading-5 text-[#859492]">{rtl?'إدارة متجرك أسهل مع دليل البداية.':'Your store setup, one clear step at a time.'}</p><Link href="/onboarding" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#70dcb5]">{rtl?'دليل الإعداد':'Setup guide'}<ArrowLeft className="h-3.5 w-3.5"/></Link></div>
-      <div className="mt-4 flex items-center gap-3 border-t border-[#283436] px-2 pt-4"><div className="grid h-9 w-9 place-items-center rounded-full bg-[#29483d] text-sm font-semibold text-[#8ce4c3]">{user.data.name.slice(0,1)}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">{user.data.name}</p><p className="truncate text-[10px] text-[#7e8d8e]">{user.data.email}</p></div><button aria-label={t.signOut} onClick={logoutAction} className="rounded-lg p-2 text-[#889697] hover:bg-[#263335] hover:text-white" data-testid="button-logout"><LogOut className="h-4 w-4"/></button></div>
+      <div className="mt-4 flex items-center gap-3 border-t border-[#283436] px-2 pt-4"><div className="grid h-9 w-9 place-items-center rounded-full bg-[#29483d] text-sm font-semibold text-[#8ce4c3]">{user.data.name.slice(0,1)}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">{user.data.name}</p><p className="truncate text-[10px] text-[#7e8d8e]">{user.data.email}</p></div><button aria-label={t.signOut} onClick={logoutAction} disabled={logout.isPending||!csrf.data?.token} className="rounded-lg p-2 text-[#889697] hover:bg-[#263335] hover:text-white disabled:opacity-50" data-testid="button-logout"><LogOut className="h-4 w-4"/></button></div>
     </aside>
     <main className={`${rtl?'md:mr-[258px]':'md:ml-[258px]'} min-h-[100dvh]`}>
       <header className="sticky top-0 z-20 flex h-[70px] items-center justify-between border-b border-[#263235] bg-[#11171c]/95 px-4 backdrop-blur md:px-9">

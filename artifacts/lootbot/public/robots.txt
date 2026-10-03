@@ -4,3 +4,4 @@ Disallow: /dashboard
 Disallow: /onboarding
 Disallow: /login
 Disallow: /register
+Disallow: /admin

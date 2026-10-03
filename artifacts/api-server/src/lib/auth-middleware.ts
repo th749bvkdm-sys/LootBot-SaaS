@@ -64,6 +64,18 @@ export const requireAuth: RequestHandler = async (
   }
 };
 
+export const requireSuperAdmin: RequestHandler = (req, res, next): void => {
+  if (!req.auth) {
+    res.status(401).json({ error: "يجب تسجيل الدخول للمتابعة." });
+    return;
+  }
+  if (req.auth.role !== "SUPERADMIN") {
+    res.status(403).json({ error: "لا تملك صلاحية الوصول إلى هذه الصفحة." });
+    return;
+  }
+  next();
+};
+
 export const requireCsrf: RequestHandler = (
   req: Request,
   res: Response,

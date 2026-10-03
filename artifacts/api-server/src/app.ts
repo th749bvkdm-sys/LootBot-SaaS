@@ -1,4 +1,6 @@
 import express, { type Express } from "express";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import cookieParser from "cookie-parser";
 import type { ErrorRequestHandler } from "express";
 import pinoHttp from "pino-http";
@@ -6,6 +8,10 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+const publicDirectory = process.env.STATIC_DIR ?? path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../lootbot/dist/public",
+);
 
 app.use(
   pinoHttp({
@@ -39,6 +45,16 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api", router);
 app.use("/api", (_req, res) => {
   res.status(404).json({ error: "لم يتم العثور على هذا المسار." });
+});
+app.use(express.static(publicDirectory, { index: false, maxAge: "1h" }));
+app.get("/{*path}", (req, res, next) => {
+  if (!req.accepts("html")) {
+    next();
+    return;
+  }
+  res.sendFile(path.join(publicDirectory, "index.html"), (error) => {
+    if (error) next(error);
+  });
 });
 const apiErrorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   const errorType = error instanceof Error ? error.name : "UnknownError";
