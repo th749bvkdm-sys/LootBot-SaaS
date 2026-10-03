@@ -1,4 +1,4 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, sum } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   GetDashboardActivityQueryParams,
@@ -33,7 +33,7 @@ router.get(
       return;
     }
 
-    const [products, categories, published, orders] = await Promise.all([
+    const [products, categories, published, orders, revenue] = await Promise.all([
       db
         .select({ value: count() })
         .from(productsTable)
@@ -66,6 +66,15 @@ router.get(
         .select({ value: count() })
         .from(ordersTable)
         .where(eq(ordersTable.storeId, store.id)),
+      db
+        .select({ value: sum(ordersTable.total) })
+        .from(ordersTable)
+        .where(
+          and(
+            eq(ordersTable.storeId, store.id),
+            eq(ordersTable.paymentStatus, "paid"),
+          ),
+        ),
     ]);
 
     const [record] = await db
@@ -86,8 +95,7 @@ router.get(
         categoryCount: Number(categories[0]?.value ?? 0),
         publishedProductCount: Number(published[0]?.value ?? 0),
         orderCount: Number(orders[0]?.value ?? 0),
-        // Payment collection is not implemented, so no amount is counted as revenue.
-        revenue: 0,
+        revenue: Number(revenue[0]?.value ?? 0),
         botStatus: record?.botStatus ?? "disconnected",
       }),
     );

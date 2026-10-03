@@ -110,6 +110,7 @@ export const ListStoresResponseItem = zod.object({
   "name": zod.string(),
   "slug": zod.string(),
   "currency": zod.string(),
+  "manualPaymentInstructions": zod.string().nullable(),
   "botStatus": zod.enum(['disconnected', 'connected', 'error']),
   "createdAt": zod.coerce.date()
 })
@@ -124,11 +125,14 @@ export const createStoreBodyNameMax = 80;
 export const createStoreBodyCurrencyMin = 3;
 export const createStoreBodyCurrencyMax = 3;
 
+export const createStoreBodyManualPaymentInstructionsMax = 1000;
+
 
 
 export const CreateStoreBody = zod.object({
   "name": zod.string().min(1).max(createStoreBodyNameMax),
-  "currency": zod.string().min(createStoreBodyCurrencyMin).max(createStoreBodyCurrencyMax)
+  "currency": zod.string().min(createStoreBodyCurrencyMin).max(createStoreBodyCurrencyMax),
+  "manualPaymentInstructions": zod.string().max(createStoreBodyManualPaymentInstructionsMax).nullish()
 })
 
 export const CreateStoreResponse = zod.object({
@@ -137,6 +141,7 @@ export const CreateStoreResponse = zod.object({
   "name": zod.string(),
   "slug": zod.string(),
   "currency": zod.string(),
+  "manualPaymentInstructions": zod.string().nullable(),
   "botStatus": zod.enum(['disconnected', 'connected', 'error']),
   "createdAt": zod.coerce.date()
 })
@@ -155,6 +160,7 @@ export const GetStoreResponse = zod.object({
   "name": zod.string(),
   "slug": zod.string(),
   "currency": zod.string(),
+  "manualPaymentInstructions": zod.string().nullable(),
   "botStatus": zod.enum(['disconnected', 'connected', 'error']),
   "createdAt": zod.coerce.date()
 })
@@ -172,11 +178,14 @@ export const updateStoreBodyNameMax = 80;
 export const updateStoreBodyCurrencyMin = 3;
 export const updateStoreBodyCurrencyMax = 3;
 
+export const updateStoreBodyManualPaymentInstructionsMax = 1000;
+
 
 
 export const UpdateStoreBody = zod.object({
   "name": zod.string().min(1).max(updateStoreBodyNameMax).optional(),
-  "currency": zod.string().min(updateStoreBodyCurrencyMin).max(updateStoreBodyCurrencyMax).optional()
+  "currency": zod.string().min(updateStoreBodyCurrencyMin).max(updateStoreBodyCurrencyMax).optional(),
+  "manualPaymentInstructions": zod.string().max(updateStoreBodyManualPaymentInstructionsMax).nullish()
 })
 
 export const UpdateStoreResponse = zod.object({
@@ -185,6 +194,7 @@ export const UpdateStoreResponse = zod.object({
   "name": zod.string(),
   "slug": zod.string(),
   "currency": zod.string(),
+  "manualPaymentInstructions": zod.string().nullable(),
   "botStatus": zod.enum(['disconnected', 'connected', 'error']),
   "createdAt": zod.coerce.date()
 })
@@ -541,6 +551,8 @@ export const ListOrdersResponse = zod.object({
   "customerName": zod.string(),
   "telegramUsername": zod.string().nullable(),
   "status": zod.enum(['pending', 'confirmed', 'fulfilled', 'cancelled']),
+  "paymentStatus": zod.enum(['unpaid', 'paid', 'refunded']),
+  "paymentUpdatedAt": zod.coerce.date().nullable(),
   "currency": zod.string(),
   "total": zod.number(),
   "createdAt": zod.coerce.date(),
@@ -574,6 +586,39 @@ export const UpdateOrderStatusResponse = zod.object({
   "customerName": zod.string(),
   "telegramUsername": zod.string().nullable(),
   "status": zod.enum(['pending', 'confirmed', 'fulfilled', 'cancelled']),
+  "paymentStatus": zod.enum(['unpaid', 'paid', 'refunded']),
+  "paymentUpdatedAt": zod.coerce.date().nullable(),
+  "currency": zod.string(),
+  "total": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "items": zod.array(zod.object({
+  "productName": zod.string(),
+  "quantity": zod.number().int(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+}))
+})
+
+
+/**
+ * @summary Record an offline payment or refund for an owned order
+ */
+export const UpdateOrderPaymentParams = zod.object({
+  "orderId": zod.coerce.string().uuid()
+})
+
+export const UpdateOrderPaymentBody = zod.object({
+  "status": zod.enum(['paid', 'refunded'])
+})
+
+export const UpdateOrderPaymentResponse = zod.object({
+  "id": zod.string().uuid(),
+  "storeId": zod.string().uuid(),
+  "customerName": zod.string(),
+  "telegramUsername": zod.string().nullable(),
+  "status": zod.enum(['pending', 'confirmed', 'fulfilled', 'cancelled']),
+  "paymentStatus": zod.enum(['unpaid', 'paid', 'refunded']),
+  "paymentUpdatedAt": zod.coerce.date().nullable(),
   "currency": zod.string(),
   "total": zod.number(),
   "createdAt": zod.coerce.date(),

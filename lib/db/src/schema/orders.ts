@@ -24,6 +24,8 @@ export const ordersTable = pgTable(
     telegramUsername: text("telegram_username"),
     customerName: text("customer_name").notNull(),
     status: text("status").notNull().default("pending"),
+    paymentStatus: text("payment_status").notNull().default("unpaid"),
+    paymentUpdatedAt: timestamp("payment_updated_at", { withTimezone: true }),
     currency: text("currency").notNull(),
     total: numeric("total", { precision: 12, scale: 2 }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

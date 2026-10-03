@@ -17,4 +17,9 @@ export interface StoreInput {
      * @maxLength 3
      */
   currency: string;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  manualPaymentInstructions?: string | null;
 }

@@ -1,8 +1,11 @@
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   ListOrdersQueryParams,
   ListOrdersResponse,
+  UpdateOrderPaymentBody,
+  UpdateOrderPaymentParams,
+  UpdateOrderPaymentResponse,
   UpdateOrderStatusBody,
   UpdateOrderStatusParams,
   UpdateOrderStatusResponse,
@@ -48,6 +51,8 @@ router.get("/orders", requireAuth, async (req, res): Promise<void> => {
         customerName: ordersTable.customerName,
         telegramUsername: ordersTable.telegramUsername,
         status: ordersTable.status,
+        paymentStatus: ordersTable.paymentStatus,
+        paymentUpdatedAt: ordersTable.paymentUpdatedAt,
         currency: ordersTable.currency,
         total: ordersTable.total,
         createdAt: ordersTable.createdAt,
@@ -120,6 +125,8 @@ router.patch(
         telegramUsername: ordersTable.telegramUsername,
         telegramChatId: ordersTable.telegramChatId,
         status: ordersTable.status,
+        paymentStatus: ordersTable.paymentStatus,
+        paymentUpdatedAt: ordersTable.paymentUpdatedAt,
         currency: ordersTable.currency,
         total: ordersTable.total,
         createdAt: ordersTable.createdAt,
@@ -149,6 +156,12 @@ router.patch(
       res.status(409).json({ error: "لا يمكن تغيير حالة الطلب من هذه المرحلة." });
       return;
     }
+    if (target === "cancelled" && order.paymentStatus === "paid") {
+      res.status(409).json({
+        error: "سجّل إعادة المبلغ يدويًا قبل إلغاء الطلب المدفوع.",
+      });
+      return;
+    }
 
     const lineRows = await db
       .select({
@@ -170,6 +183,7 @@ router.patch(
             eq(ordersTable.id, order.id),
             eq(ordersTable.storeId, order.storeId),
             eq(ordersTable.status, order.status),
+            ne(ordersTable.paymentStatus, "paid"),
           ),
         )
         .returning();
@@ -223,12 +237,145 @@ router.patch(
         customerName: updated.customerName,
         telegramUsername: order.telegramUsername,
         status: updated.status,
+        paymentStatus: updated.paymentStatus,
+        paymentUpdatedAt: updated.paymentUpdatedAt,
         currency: updated.currency,
         total: Number(updated.total),
         createdAt: updated.createdAt,
         items: lineRows.map((item) => ({
           productName: item.productName,
           quantity: item.quantity,
+          unitPrice: Number(item.unitPrice),
+          lineTotal: Number(item.lineTotal),
+        })),
+      }),
+    );
+  },
+);
+
+router.patch(
+  "/orders/:orderId/payment",
+  requireAuth,
+  requireCsrf,
+  async (req, res): Promise<void> => {
+    const params = UpdateOrderPaymentParams.safeParse(req.params);
+    const parsed = UpdateOrderPaymentBody.safeParse(req.body);
+    if (!params.success || !parsed.success) {
+      res.status(400).json({ error: "تحقق من بيانات الدفع." });
+      return;
+    }
+
+    const [order] = await db
+      .select({
+        id: ordersTable.id,
+        storeId: ordersTable.storeId,
+        customerName: ordersTable.customerName,
+        telegramUsername: ordersTable.telegramUsername,
+        telegramChatId: ordersTable.telegramChatId,
+        status: ordersTable.status,
+        paymentStatus: ordersTable.paymentStatus,
+        paymentUpdatedAt: ordersTable.paymentUpdatedAt,
+        currency: ordersTable.currency,
+        total: ordersTable.total,
+        createdAt: ordersTable.createdAt,
+      })
+      .from(ordersTable)
+      .innerJoin(storesTable, eq(storesTable.id, ordersTable.storeId))
+      .where(
+        and(
+          eq(ordersTable.id, params.data.orderId),
+          eq(storesTable.ownerId, req.auth!.userId),
+          eq(storesTable.isDeleted, false),
+        ),
+      )
+      .limit(1);
+
+    if (!order) {
+      res.status(404).json({ error: "لم يتم العثور على الطلب." });
+      return;
+    }
+
+    const target = parsed.data.status;
+    const activeOrder = order.status === "confirmed" || order.status === "fulfilled";
+    const allowed =
+      activeOrder &&
+      ((target === "paid" && order.paymentStatus === "unpaid") ||
+        (target === "refunded" && order.paymentStatus === "paid"));
+    if (!allowed) {
+      res.status(409).json({
+        error:
+          target === "paid"
+            ? "يمكن تسجيل استلام الدفع بعد تأكيد الطلب فقط."
+            : "يمكن تسجيل الاسترداد بعد تسجيل الدفع فقط.",
+      });
+      return;
+    }
+
+    const now = new Date();
+    const [updated] = await db
+      .update(ordersTable)
+      .set({
+        paymentStatus: target,
+        paymentUpdatedAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(ordersTable.id, order.id),
+          eq(ordersTable.storeId, order.storeId),
+          eq(ordersTable.status, order.status),
+          eq(ordersTable.paymentStatus, order.paymentStatus),
+        ),
+      )
+      .returning();
+
+    if (!updated) {
+      res.status(409).json({ error: "تم تحديث الطلب من جلسة أخرى. أعد تحميل القائمة." });
+      return;
+    }
+
+    await writeAuditEvent({
+      userId: req.auth!.userId,
+      storeId: order.storeId,
+      action: `order.payment.${target}`,
+      summary:
+        target === "paid"
+          ? `تم تسجيل استلام الدفع للطلب ${order.id.slice(0, 8)}`
+          : `تم تسجيل استرداد المبلغ للطلب ${order.id.slice(0, 8)}`,
+      details: { orderId: order.id, paymentStatus: target },
+    });
+
+    void notifyTelegramOrderStatus({
+      storeId: order.storeId,
+      chatId: order.telegramChatId,
+      orderId: order.id,
+      status: target,
+    });
+
+    const lineRows = await db
+      .select({
+        productName: orderItemsTable.productName,
+        quantity: orderItemsTable.quantity,
+        unitPrice: orderItemsTable.unitPrice,
+        lineTotal: orderItemsTable.lineTotal,
+      })
+      .from(orderItemsTable)
+      .where(eq(orderItemsTable.orderId, order.id));
+
+    res.json(
+      UpdateOrderPaymentResponse.parse({
+        id: updated.id,
+        storeId: updated.storeId,
+        customerName: updated.customerName,
+        telegramUsername: updated.telegramUsername,
+        status: updated.status,
+        paymentStatus: updated.paymentStatus,
+        paymentUpdatedAt: updated.paymentUpdatedAt,
+        currency: updated.currency,
+        total: Number(updated.total),
+        createdAt: updated.createdAt,
+        items: lineRows.map((item) => ({
+          ...item,
           unitPrice: Number(item.unitPrice),
           lineTotal: Number(item.lineTotal),
         })),

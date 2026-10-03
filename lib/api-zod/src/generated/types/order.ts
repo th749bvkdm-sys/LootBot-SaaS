@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { OrderItem } from './orderItem';
+import type { OrderPaymentStatus } from './orderPaymentStatus';
 import type { OrderStatus } from './orderStatus';
 
 export interface Order {
@@ -15,6 +16,9 @@ export interface Order {
   /** @nullable */
   telegramUsername: string | null;
   status: OrderStatus;
+  paymentStatus: OrderPaymentStatus;
+  /** @nullable */
+  paymentUpdatedAt: Date | null;
   currency: string;
   total: number;
   createdAt: Date;

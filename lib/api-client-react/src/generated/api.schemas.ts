@@ -78,6 +78,11 @@ export interface StoreInput {
      * @maxLength 3
      */
   currency: string;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  manualPaymentInstructions?: string | null;
 }
 
 export interface StoreUpdate {
@@ -91,6 +96,11 @@ export interface StoreUpdate {
      * @maxLength 3
      */
   currency?: string;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  manualPaymentInstructions?: string | null;
 }
 
 export type StoreBotStatus = typeof StoreBotStatus[keyof typeof StoreBotStatus];
@@ -108,6 +118,8 @@ export interface Store {
   name: string;
   slug: string;
   currency: string;
+  /** @nullable */
+  manualPaymentInstructions: string | null;
   botStatus: StoreBotStatus;
   createdAt: string;
 }
@@ -255,6 +267,27 @@ export interface OrderStatusInput {
   status: OrderStatus;
 }
 
+export type OrderPaymentStatus = typeof OrderPaymentStatus[keyof typeof OrderPaymentStatus];
+
+
+export const OrderPaymentStatus = {
+  unpaid: 'unpaid',
+  paid: 'paid',
+  refunded: 'refunded',
+} as const;
+
+export type OrderPaymentUpdateStatus = typeof OrderPaymentUpdateStatus[keyof typeof OrderPaymentUpdateStatus];
+
+
+export const OrderPaymentUpdateStatus = {
+  paid: 'paid',
+  refunded: 'refunded',
+} as const;
+
+export interface OrderPaymentUpdate {
+  status: OrderPaymentUpdateStatus;
+}
+
 export interface OrderItem {
   productName: string;
   quantity: number;
@@ -269,6 +302,9 @@ export interface Order {
   /** @nullable */
   telegramUsername: string | null;
   status: OrderStatus;
+  paymentStatus: OrderPaymentStatus;
+  /** @nullable */
+  paymentUpdatedAt: string | null;
   currency: string;
   total: number;
   createdAt: string;

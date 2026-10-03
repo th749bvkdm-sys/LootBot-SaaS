@@ -42,6 +42,7 @@ import type {
   NotFoundResponse,
   Order,
   OrderPage,
+  OrderPaymentUpdate,
   OrderStatusInput,
   Product,
   ProductInput,
@@ -2138,6 +2139,95 @@ export const useUpdateOrderStatus = <TError = ErrorType<BadRequestResponse | Una
         TContext
       > => {
       return useMutation(getUpdateOrderStatusMutationOptions(options));
+    }
+
+export const getUpdateOrderPaymentUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/orders/${orderId}/payment`
+}
+
+/**
+ * @summary Record an offline payment or refund for an owned order
+ */
+export const updateOrderPayment = async (orderId: string,
+    orderPaymentUpdate: OrderPaymentUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Order> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Order>(getUpdateOrderPaymentUrl(orderId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(orderPaymentUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateOrderPaymentMutationKey = () => ['updateOrderPayment'] as const;
+
+export const getUpdateOrderPaymentMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrderPayment>>, TError,UpdateOrderPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOrderPayment>>, TError,UpdateOrderPaymentMutationVariables, TContext> => {
+
+const mutationKey = getUpdateOrderPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOrderPayment>>, UpdateOrderPaymentMutationVariables> = (props) => {
+          const {orderId,data} = props ?? {};
+
+          return  updateOrderPayment(orderId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOrderPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof updateOrderPayment>>>
+    export type UpdateOrderPaymentMutationBody = BodyType<OrderPaymentUpdate>
+    export type UpdateOrderPaymentMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+    export type UpdateOrderPaymentMutationVariables = {orderId: string;data: BodyType<OrderPaymentUpdate>}
+
+    /**
+ * @summary Record an offline payment or refund for an owned order
+ */
+export const useUpdateOrderPayment = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrderPayment>>, TError,UpdateOrderPaymentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOrderPayment>>,
+        TError,
+        UpdateOrderPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateOrderPaymentMutationOptions(options));
     }
 
 export const getGetDashboardActivityUrl = (params: GetDashboardActivityParams,) => {

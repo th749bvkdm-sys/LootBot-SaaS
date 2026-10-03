@@ -13,6 +13,8 @@ export interface Store {
   name: string;
   slug: string;
   currency: string;
+  /** @nullable */
+  manualPaymentInstructions: string | null;
   botStatus: StoreBotStatus;
   createdAt: Date;
 }

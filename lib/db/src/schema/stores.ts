@@ -11,6 +11,7 @@ export const storesTable = pgTable("stores", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   currency: text("currency").notNull().default("USD"),
+  manualPaymentInstructions: text("manual_payment_instructions"),
   botStatus: text("bot_status").notNull().default("disconnected"),
   isDemo: boolean("is_demo").notNull().default(false),
   isDeleted: boolean("is_deleted").notNull().default(false),

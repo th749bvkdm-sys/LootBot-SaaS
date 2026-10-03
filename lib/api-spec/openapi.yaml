@@ -593,6 +593,41 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+  /orders/{orderId}/payment:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateOrderPayment
+      tags: [orders]
+      summary: Record an offline payment or refund for an owned order
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderPaymentUpdate"
+      responses:
+        "200":
+          description: Updated order payment status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /dashboard/activity:
     get:
       operationId: getDashboardActivity
@@ -801,6 +836,9 @@ components:
           type: string
           minLength: 3
           maxLength: 3
+        manualPaymentInstructions:
+          type: ["string", "null"]
+          maxLength: 1000
       required: [name, currency]
     StoreUpdate:
       type: object
@@ -815,6 +853,9 @@ components:
           type: string
           minLength: 3
           maxLength: 3
+        manualPaymentInstructions:
+          type: ["string", "null"]
+          maxLength: 1000
     Store:
       type: object
       properties:
@@ -830,13 +871,15 @@ components:
           type: string
         currency:
           type: string
+        manualPaymentInstructions:
+          type: ["string", "null"]
         botStatus:
           type: string
           enum: [disconnected, connected, error]
         createdAt:
           type: string
           format: date-time
-      required: [id, ownerId, name, slug, currency, botStatus, createdAt]
+      required: [id, ownerId, name, slug, currency, manualPaymentInstructions, botStatus, createdAt]
     CategoryInput:
       type: object
       additionalProperties: false
@@ -1014,6 +1057,17 @@ components:
         status:
           $ref: "#/components/schemas/OrderStatus"
       required: [status]
+    OrderPaymentStatus:
+      type: string
+      enum: [unpaid, paid, refunded]
+    OrderPaymentUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [paid, refunded]
+      required: [status]
     OrderItem:
       type: object
       properties:
@@ -1041,6 +1095,11 @@ components:
           type: ["string", "null"]
         status:
           $ref: "#/components/schemas/OrderStatus"
+        paymentStatus:
+          $ref: "#/components/schemas/OrderPaymentStatus"
+        paymentUpdatedAt:
+          type: ["string", "null"]
+          format: date-time
         currency:
           type: string
         total:
@@ -1052,7 +1111,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/OrderItem"
-      required: [id, storeId, customerName, telegramUsername, status, currency, total, createdAt, items]
+      required: [id, storeId, customerName, telegramUsername, status, paymentStatus, paymentUpdatedAt, currency, total, createdAt, items]
     OrderPage:
       type: object
       properties:

@@ -144,6 +144,7 @@ async function handleUpdate(
       ownerId: storesTable.ownerId,
       name: storesTable.name,
       currency: storesTable.currency,
+      manualPaymentInstructions: storesTable.manualPaymentInstructions,
     })
     .from(storesTable)
     .where(and(eq(storesTable.id, storeId), eq(storesTable.isDeleted, false)))
@@ -317,7 +318,7 @@ async function handleUpdate(
     await sendText(
       bot,
       message.chat.id,
-      `تم تسجيل طلبك رقم ${orderId.slice(0, 8)} بانتظار تأكيد المتجر.\nالإجمالي: ${created.total} ${store.currency}\nلا يتم الدفع داخل البوت.`,
+      `تم تسجيل طلبك رقم ${orderId.slice(0, 8)} بانتظار تأكيد المتجر.\nالإجمالي: ${created.total} ${store.currency}\nلم يتم استلام الدفع عبر LootBot.${store.manualPaymentInstructions?.trim() ? `\n\nتعليمات الدفع خارج التطبيق:\n${store.manualPaymentInstructions.trim()}` : "\n\nرتّب الدفع خارج التطبيق بالتواصل مع المتجر."}`,
     );
     return;
   }
@@ -339,6 +340,8 @@ export async function notifyTelegramOrderStatus(input: {
     confirmed: "تم تأكيد طلبك من المتجر.",
     fulfilled: "تم تجهيز طلبك.",
     cancelled: "أُلغي طلبك وأُعيدت الكمية إلى المخزون.",
+    paid: "سجّل المتجر استلام دفعتك يدويًا.",
+    refunded: "سجّل المتجر إعادة المبلغ إليك يدويًا.",
   };
   const message = messages[input.status];
   if (!message) return;

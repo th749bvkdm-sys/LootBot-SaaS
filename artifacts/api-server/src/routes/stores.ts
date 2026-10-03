@@ -157,6 +157,10 @@ router.patch(
     if (parsed.data.currency !== undefined) {
       updates.currency = parsed.data.currency.toUpperCase();
     }
+    if (parsed.data.manualPaymentInstructions !== undefined) {
+      updates.manualPaymentInstructions =
+        parsed.data.manualPaymentInstructions?.trim() || null;
+    }
 
     const [store] = await db
       .update(storesTable)

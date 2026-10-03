@@ -1,7 +1,7 @@
 import { cloneElement, type FormEvent, type ReactElement, type ReactNode, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import {
-  Activity, ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check,
+  Activity, ArrowLeft, ArrowRight, ArrowUpRight, Boxes, Check, CircleDollarSign,
   ChevronDown, CircleHelp, Command, Eye, EyeOff, LayoutDashboard,
   LogOut, Menu, MessageCircle, Package, Plus, Search, Settings2, ShieldCheck,
   ShoppingBag, Store as StoreIcon, Tag, Trash2, X, Zap,
@@ -16,6 +16,7 @@ import {
   useListOrders, useListProducts, useListStores, useLoginUser, useLogoutUser, useRegisterUser,
   useUpdateCategory, useUpdateProduct, useUpdateStore,
   useUpdateOrderStatus,
+  useUpdateOrderPayment,
 } from '@workspace/api-client-react';
 import type { Order, ProductInput, Store } from '@workspace/api-client-react';
 import { Link, Route, Switch, useLocation } from 'wouter';
@@ -71,7 +72,14 @@ const copy = {
     allOrders: 'كل الحالات', orderCustomer: 'العميل', orderItems: 'المنتجات', orderTotal: 'الإجمالي',
     confirmOrder: 'تأكيد الطلب', fulfillOrder: 'تم التجهيز', cancelOrder: 'إلغاء الطلب',
     cancelOrderConfirm: 'سيتم إلغاء الطلب وإعادة الكمية إلى المخزون. هل تريد المتابعة؟',
-    noOrders: 'لا توجد طلبات بعد.', orderFlowNote: 'الطلبات الواردة من البوت غير مدفوعة. التأكيد لا يخصم رسومًا، والإلغاء يعيد الكمية للمخزون.',
+    noOrders: 'لا توجد طلبات بعد.', orderFlowNote: 'يتم الدفع خارج LootBot. سجّل استلام المبلغ أو إعادته يدويًا؛ يلزم تسجيل الاسترداد قبل إلغاء طلب مدفوع.',
+    paidRevenue: 'مبالغ مدفوعة مسجلة', manualPaymentInstructions: 'تعليمات الدفع اليدوي',
+    manualPaymentInstructionsHint: 'ستُرسل هذه التعليمات للعميل بعد تسجيل الطلب. الدفع يتم خارج LootBot.',
+    paymentUnpaid: 'غير مدفوع', paymentPaid: 'مدفوع يدويًا', paymentRefunded: 'مسترد يدويًا',
+    markPaid: 'تسجيل استلام الدفع', markRefunded: 'تسجيل إعادة المبلغ',
+    markPaidConfirm: 'هل استلمت المبلغ خارج LootBot؟',
+    markRefundedConfirm: 'هل أعدت المبلغ للعميل خارج LootBot؟',
+    paymentUpdatedAt: 'تحديث الدفع',
   },
   en: {
     overview: 'Overview', stores: 'My stores', products: 'Products', categories: 'Categories', orders: 'Orders',
@@ -118,7 +126,14 @@ const copy = {
     allOrders: 'All statuses', orderCustomer: 'Customer', orderItems: 'Items', orderTotal: 'Total',
     confirmOrder: 'Confirm order', fulfillOrder: 'Mark fulfilled', cancelOrder: 'Cancel order',
     cancelOrderConfirm: 'This cancels the order and returns its quantity to stock. Continue?',
-    noOrders: 'No orders yet.', orderFlowNote: 'Orders placed through the bot are unpaid. Confirmation does not charge the customer; cancellation returns stock.',
+    noOrders: 'No orders yet.', orderFlowNote: 'Payment happens outside LootBot. Record payment or refunds manually; record a refund before cancelling a paid order.',
+    paidRevenue: 'Payments marked received', manualPaymentInstructions: 'Manual payment instructions',
+    manualPaymentInstructionsHint: 'These instructions are sent to customers after they place an order. Payment happens outside LootBot.',
+    paymentUnpaid: 'Unpaid', paymentPaid: 'Marked paid manually', paymentRefunded: 'Marked refunded manually',
+    markPaid: 'Record payment received', markRefunded: 'Record refund issued',
+    markPaidConfirm: 'Did you receive the payment outside LootBot?',
+    markRefundedConfirm: 'Did you refund the customer outside LootBot?',
+    paymentUpdatedAt: 'Payment updated',
   },
 };
 function useLocale() {
@@ -361,11 +376,11 @@ function DashboardHome({store,locale,t}:{store?:Store;locale:Locale;t:typeof cop
   const bot=useGetStoreBot(storeId,{query:{enabled:!!storeId,queryKey:getGetStoreBotQueryKey(storeId)}});
   const data=summary.data;
   if(!store)return <EmptyPanel title={t.noStores} detail={t.storesSub} action={t.createStore} onAction={()=>navigate('/dashboard/stores')}/>;
-  const numbers=[[t.productsTotal,data?.productCount,'#64d6a9',Package],[t.published,data?.publishedProductCount,'#e5a35e',Eye],[t.categoriesTotal,data?.categoryCount,'#88a7db',Tag],[t.sales,data?.orderCount,'#d28dc4',ShoppingBag]] as const;
+  const numbers=[[t.productsTotal,data?.productCount,'#64d6a9',Package],[t.published,data?.publishedProductCount,'#e5a35e',Eye],[t.categoriesTotal,data?.categoryCount,'#88a7db',Tag],[t.sales,data?.orderCount,'#d28dc4',ShoppingBag],[t.paidRevenue,new Intl.NumberFormat(rtl?'ar-SA':'en-US',{style:'currency',currency:store.currency}).format(data?.revenue??0),'#72c7bd',CircleDollarSign]] as const;
   return <div className="fade-up">
     <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs text-[#879696]">{t.hello}، {useGetCurrentUserName()}</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">{store.name}</h1><p className="mt-2 text-sm text-[#889797]">{t.tagline}</p></div><div className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs ${bot.data?.connected?'border-[#32614e] bg-[#1b342a] text-[#7fddb8]':'border-[#594b37] bg-[#30291f] text-[#e0b87d]'}`}><span className={`h-2 w-2 rounded-full ${bot.data?.connected?'bg-[#69d9ae]':'bg-[#d6a65e]'}`}/>{bot.data?.connected?t.connected:t.disconnected}<button onClick={()=>navigate('/dashboard/telegram')} className="ms-1 underline decoration-[#617069] underline-offset-2">{rtl?'إدارة':'Manage'}</button></div></div>
     {summary.isError&&<ErrorPanel message={t.serverError} onRetry={()=>void summary.refetch()}/>}
-    {summary.isLoading?<SkeletonCards/>:<div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{numbers.map(([label,value,color,Icon])=><div key={label} className="rounded-2xl border border-[#293638] bg-[#171f22] p-4 md:p-5"><div className="flex items-center justify-between"><span className="text-xs text-[#94a2a2]">{label}</span><span className="grid h-8 w-8 place-items-center rounded-lg bg-[#263133]"><Icon className="h-4 w-4" style={{color}}/></span></div><p className="mt-4 font-mono text-2xl font-bold tracking-tight">{value??'—'}</p><p className="mt-1 text-[10px] text-[#758485]">{rtl?'حسب بيانات المتجر':'Live store data'}</p></div>)}</div>}
+     {summary.isLoading?<SkeletonCards/>:<div className="grid grid-cols-2 gap-3 xl:grid-cols-5">{numbers.map(([label,value,color,Icon])=><div key={label} className="rounded-2xl border border-[#293638] bg-[#171f22] p-4 md:p-5"><div className="flex items-center justify-between"><span className="text-xs text-[#94a2a2]">{label}</span><span className="grid h-8 w-8 place-items-center rounded-lg bg-[#263133]"><Icon className="h-4 w-4" style={{color}}/></span></div><p className="mt-4 font-mono text-2xl font-bold tracking-tight">{value??'—'}</p><p className="mt-1 text-[10px] text-[#758485]">{rtl?'حسب بيانات المتجر':'Live store data'}</p></div>)}</div>}
     <div className="mt-5 grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
       <section className="rounded-2xl border border-[#293638] bg-[#171f22] p-5 md:p-6"><div className="flex items-center justify-between"><div><h2 className="text-sm font-semibold">{t.activity}</h2><p className="mt-1 text-xs text-[#7f8e8f]">{rtl?'ما يحدث في متجرك':'What’s happening in your shop'}</p></div><Activity className="h-4 w-4 text-[#67d7ae]"/></div>
         {events.isLoading?<div className="mt-6 space-y-4"><SkeletonLine/><SkeletonLine/><SkeletonLine/></div>:events.isError?<ErrorPanel message={t.serverError} onRetry={()=>void events.refetch()}/>:events.data?.length?<div className="mt-5 divide-y divide-[#283437]">{events.data.map((event)=> <div key={event.id} className="flex gap-3 py-4 first:pt-0 last:pb-0"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[#63d5a8]"/><div className="min-w-0 flex-1"><p className="text-sm text-[#d6dfdd]">{event.summary}</p><p className="mt-1 text-[10px] text-[#7e8d8e]">{event.action} · {new Date(event.createdAt).toLocaleString(rtl?'ar':'en',{dateStyle:'medium',timeStyle:'short'})}</p></div><ArrowUpRight className="h-4 w-4 shrink-0 text-[#657574]"/></div>)}</div>:<p className="mt-8 rounded-xl bg-[#1b2527] px-4 py-6 text-center text-xs text-[#859394]">{t.noActivity}</p>}
@@ -374,7 +389,7 @@ function DashboardHome({store,locale,t}:{store?:Store;locale:Locale;t:typeof cop
         <ActionTile icon={Plus} title={t.addProduct} subtitle={rtl?'أضف عنصراً إلى كتالوجك':'Add an item to your catalog'} onClick={()=>navigate('/dashboard/products?new=1')}/>
         <ActionTile icon={MessageCircle} title={t.connect} subtitle={rtl?'انشر الكتالوج عبر Telegram':'Publish your catalog through Telegram'} onClick={()=>navigate('/dashboard/telegram')}/>
         <ActionTile icon={Boxes} title={t.manage} subtitle={rtl?'راجع المنتجات والمخزون':'Review inventory and details'} onClick={()=>navigate('/dashboard/products')}/>
-      </div><div className="mt-5 rounded-xl border border-[#303d3d] bg-[#1b2526] p-4"><p className="text-[10px] uppercase tracking-wider text-[#8a9999]">{rtl?'تكامل البوت':'Bot integration'}</p><p className="mt-2 text-sm font-semibold">{bot.data?.connected?t.connected:t.disconnected}</p><p className="mt-1 text-[10px] text-[#758485]">{rtl?'إجمالي الطلب ليس مبلغًا محصّلًا؛ الدفع داخل البوت غير متاح بعد.':'Order totals are not collected revenue; in-bot payments are not available yet.'}</p></div></section>
+      </div><div className="mt-5 rounded-xl border border-[#303d3d] bg-[#1b2526] p-4"><p className="text-[10px] uppercase tracking-wider text-[#8a9999]">{rtl?'تكامل البوت':'Bot integration'}</p><p className="mt-2 text-sm font-semibold">{bot.data?.connected?t.connected:t.disconnected}</p><p className="mt-1 text-[10px] text-[#758485]">{rtl?'لا يستقبل LootBot الدفعات؛ المبلغ المعروض هو ما سجّل المتجر استلامه يدويًا.':'LootBot does not collect payments; this is the amount the store marked as received manually.'}</p></div></section>
     </div>
   </div>;
 }
@@ -390,17 +405,26 @@ function OrdersPage({store,locale='ar',t=copy.ar}:{store?:Store;locale?:Locale;t
   const csrf=useGetCsrfToken();
   const request={request:{headers:csrf.data?.token?{'x-csrf-token':csrf.data.token}:undefined}};
   const update=useUpdateOrderStatus(request);
+  const paymentUpdate=useUpdateOrderPayment(request);
+  const updating=update.isPending||paymentUpdate.isPending;
   const params={storeId,page,pageSize:25 as const,status:status||undefined};
   const orders=useListOrders(params,{query:{enabled:!!storeId,queryKey:getListOrdersQueryKey(params)}});
+  const refreshOrders=()=>{
+    void qc.invalidateQueries({queryKey:getListOrdersQueryKey()});
+    void qc.invalidateQueries({queryKey:getGetDashboardSummaryQueryKey({storeId})});
+    void qc.invalidateQueries({queryKey:getGetDashboardActivityQueryKey({storeId,limit:8})});
+    void qc.invalidateQueries({queryKey:getListProductsQueryKey()});
+  };
   const changeStatus=(orderId:string,nextStatus:Order['status'])=>{
     if(nextStatus==='cancelled'&&!window.confirm(t.cancelOrderConfirm))return;
     setError('');
-    update.mutate({orderId,data:{status:nextStatus}},{onSuccess:()=>{
-      void qc.invalidateQueries({queryKey:getListOrdersQueryKey()});
-      void qc.invalidateQueries({queryKey:getGetDashboardSummaryQueryKey({storeId})});
-      void qc.invalidateQueries({queryKey:getGetDashboardActivityQueryKey({storeId,limit:8})});
-      void qc.invalidateQueries({queryKey:getListProductsQueryKey()});
-    },onError:(e)=>setError(e.message)});
+    update.mutate({orderId,data:{status:nextStatus}},{onSuccess:refreshOrders,onError:(e)=>setError(e.message)});
+  };
+  const changePayment=(orderId:string,nextStatus:'paid'|'refunded')=>{
+    const confirmation=nextStatus==='paid'?t.markPaidConfirm:t.markRefundedConfirm;
+    if(!window.confirm(confirmation))return;
+    setError('');
+    paymentUpdate.mutate({orderId,data:{status:nextStatus}},{onSuccess:refreshOrders,onError:(e)=>setError(e.message)});
   };
   return <section className="fade-up">
     <PageHeading eyebrow={store?.name||t.store} title={t.orders} subtitle={t.orderFlowNote}/>
@@ -422,16 +446,18 @@ function OrdersPage({store,locale='ar',t=copy.ar}:{store?:Store;locale?:Locale;t
             <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[#20382f] text-[#71dcb4]"><ShoppingBag className="h-5 w-5"/></div>
               <div><p className="font-mono text-xs text-[#92a2a1]">#{order.id.slice(0,8)}</p><p className="mt-1 text-sm font-semibold">{order.telegramUsername?`@${order.telegramUsername}`:order.customerName}</p></div>
             </div>
-            <div className="flex items-center gap-3"><span className="font-semibold">{new Intl.NumberFormat(rtl?'ar-SA':'en',{style:'currency',currency:order.currency}).format(order.total)}</span><OrderStatusPill status={order.status} locale={locale}/></div>
+            <div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{new Intl.NumberFormat(rtl?'ar-SA':'en',{style:'currency',currency:order.currency}).format(order.total)}</span><OrderStatusPill status={order.status} locale={locale}/><PaymentStatusPill status={order.paymentStatus} locale={locale} t={t}/></div>
           </div>
           <div className="mt-4 grid gap-3 border-t border-[#2a3738] pt-4 sm:grid-cols-[1fr_auto]">
             <div className="space-y-1">{order.items.map((item,index)=><p key={`${order.id}-${index}`} className="text-xs text-[#9eacab]">{item.productName} × {item.quantity}</p>)}
-              <p className="pt-1 text-[10px] text-[#738283]">{new Date(order.createdAt).toLocaleString(rtl?'ar-SA':'en',{dateStyle:'medium',timeStyle:'short'})}</p>
+              <p className="pt-1 text-[10px] text-[#738283]">{new Date(order.createdAt).toLocaleString(rtl?'ar-SA':'en',{dateStyle:'medium',timeStyle:'short'})}{order.paymentUpdatedAt&&<> · {t.paymentUpdatedAt}: {new Date(order.paymentUpdatedAt).toLocaleString(rtl?'ar-SA':'en',{dateStyle:'medium',timeStyle:'short'})}</>}</p>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
-              {order.status==='pending'&&<button disabled={update.isPending} onClick={()=>changeStatus(order.id,'confirmed')} className="rounded-lg bg-[#244235] px-3 py-2 text-xs font-semibold text-[#85e1bd] disabled:opacity-50">{t.confirmOrder}</button>}
-              {order.status==='confirmed'&&<button disabled={update.isPending} onClick={()=>changeStatus(order.id,'fulfilled')} className="rounded-lg bg-[#244235] px-3 py-2 text-xs font-semibold text-[#85e1bd] disabled:opacity-50">{t.fulfillOrder}</button>}
-              {(order.status==='pending'||order.status==='confirmed')&&<button disabled={update.isPending} onClick={()=>changeStatus(order.id,'cancelled')} className="rounded-lg border border-[#593b3c] px-3 py-2 text-xs text-[#e39b96] disabled:opacity-50">{t.cancelOrder}</button>}
+              {order.status==='pending'&&<button disabled={updating} onClick={()=>changeStatus(order.id,'confirmed')} className="rounded-lg bg-[#244235] px-3 py-2 text-xs font-semibold text-[#85e1bd] disabled:opacity-50">{t.confirmOrder}</button>}
+              {order.status==='confirmed'&&<button disabled={updating} onClick={()=>changeStatus(order.id,'fulfilled')} className="rounded-lg bg-[#244235] px-3 py-2 text-xs font-semibold text-[#85e1bd] disabled:opacity-50">{t.fulfillOrder}</button>}
+              {(order.status==='confirmed'||order.status==='fulfilled')&&order.paymentStatus==='unpaid'&&<button disabled={updating} onClick={()=>changePayment(order.id,'paid')} className="rounded-lg border border-[#2e5a49] px-3 py-2 text-xs text-[#85e1bd] disabled:opacity-50">{t.markPaid}</button>}
+              {(order.status==='confirmed'||order.status==='fulfilled')&&order.paymentStatus==='paid'&&<button disabled={updating} onClick={()=>changePayment(order.id,'refunded')} className="rounded-lg border border-[#594b37] px-3 py-2 text-xs text-[#e0b87d] disabled:opacity-50">{t.markRefunded}</button>}
+              {(order.status==='pending'||order.status==='confirmed')&&order.paymentStatus!=='paid'&&<button disabled={updating} onClick={()=>changeStatus(order.id,'cancelled')} className="rounded-lg border border-[#593b3c] px-3 py-2 text-xs text-[#e39b96] disabled:opacity-50">{t.cancelOrder}</button>}
             </div>
           </div>
         </article>)}
@@ -573,6 +599,15 @@ function OrderStatusPill({status,locale}:{status:Order['status'];locale:Locale})
     cancelled:'bg-[#3d2928] text-[#e29b94]',
   };
   return <span className={`rounded-full px-2.5 py-1 text-[10px] font-medium ${colors[status]}`}>{labels[status]}</span>;
+}
+function PaymentStatusPill({status,locale,t}:{status:Order['paymentStatus'];locale:Locale;t:typeof copy.ar}) {
+  const label=status==='paid'?t.paymentPaid:status==='refunded'?t.paymentRefunded:t.paymentUnpaid;
+  const color=status==='paid'
+    ?'bg-[#203a32] text-[#81dbb6]'
+    :status==='refunded'
+      ?'bg-[#233449] text-[#9ec2e8]'
+      :'bg-[#292f30] text-[#a3adac]';
+  return <span className={`rounded-full px-2.5 py-1 text-[10px] font-medium ${color}`}>{label}</span>;
 }
 function ActionTile({icon:Icon,title,subtitle,onClick}:{icon:typeof Plus;title:string;subtitle:string;onClick:()=>void}) {
   return <button onClick={onClick} className="flex w-full items-center gap-3 rounded-xl border border-[#2a3739] bg-[#1b2527] p-3 text-start transition hover:border-[#416457] hover:bg-[#202d2c]"><span className="grid h-9 w-9 place-items-center rounded-lg bg-[#263a33] text-[#70d9b2]"><Icon className="h-4 w-4"/></span><span className="min-w-0 flex-1"><span className="block text-xs font-semibold">{title}</span><span className="mt-1 block text-[10px] text-[#829091]">{subtitle}</span></span><ArrowLeft className="h-4 w-4 text-[#758485]"/></button>;
