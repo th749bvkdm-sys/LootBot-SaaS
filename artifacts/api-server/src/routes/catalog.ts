@@ -113,7 +113,12 @@ function publicProduct(
 }
 
 router.get("/categories", requireAuth, async (req, res): Promise<void> => {
-  const parsed = ListCategoriesQueryParams.safeParse(req.query);
+  const parsed = ListCategoriesQueryParams.safeParse({
+    ...req.query,
+    ...(req.query.pageSize !== undefined
+      ? { pageSize: Number(req.query.pageSize) }
+      : {}),
+  });
   if (!parsed.success || !PAGE_SIZES.has(parsed.data.pageSize)) {
     res.status(400).json({ error: "خيارات الصفحات غير صالحة." });
     return;
@@ -322,7 +327,12 @@ router.delete(
 );
 
 router.get("/products", requireAuth, async (req, res): Promise<void> => {
-  const parsed = ListProductsQueryParams.safeParse(req.query);
+  const parsed = ListProductsQueryParams.safeParse({
+    ...req.query,
+    ...(req.query.pageSize !== undefined
+      ? { pageSize: Number(req.query.pageSize) }
+      : {}),
+  });
   if (!parsed.success || !PAGE_SIZES.has(parsed.data.pageSize)) {
     res.status(400).json({ error: "خيارات الصفحات غير صالحة." });
     return;
