@@ -1,4 +1,4 @@
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq, gt, lt } from "drizzle-orm";
 import { Router, type IRouter, type RequestHandler } from "express";
 import {
   GetCurrentUserResponse,
@@ -19,6 +19,7 @@ import {
   createId,
   newOpaqueToken,
   passwordHash,
+  safeStringEqual,
   sha256,
   verifyPassword,
 } from "../lib/security";
@@ -82,7 +83,47 @@ const rateLimitLogin: RequestHandler = (req, res, next): void => {
   next();
 };
 
-router.get("/auth/csrf", (_req, res): void => {
+router.get("/auth/csrf", async (req, res): Promise<void> => {
+  const sessionToken = req.cookies?.[SESSION_COOKIE];
+  const cookieToken = req.cookies?.[CSRF_COOKIE];
+
+  if (typeof sessionToken === "string" && sessionToken.length >= 32) {
+    const [session] = await db
+      .select({
+        id: sessionsTable.id,
+        csrfHash: sessionsTable.csrfHash,
+        expiresAt: sessionsTable.expiresAt,
+      })
+      .from(sessionsTable)
+      .where(
+        and(
+          eq(sessionsTable.tokenHash, sha256(sessionToken)),
+          gt(sessionsTable.expiresAt, new Date()),
+        ),
+      )
+      .limit(1);
+
+    if (session) {
+      if (
+        typeof cookieToken === "string" &&
+        safeStringEqual(sha256(cookieToken), session.csrfHash)
+      ) {
+        res.json(GetCsrfTokenResponse.parse({ token: cookieToken }));
+        return;
+      }
+
+      const token = newOpaqueToken();
+      await db
+        .update(sessionsTable)
+        .set({ csrfHash: sha256(token) })
+        .where(eq(sessionsTable.id, session.id));
+      const maxAge = Math.max(0, session.expiresAt.getTime() - Date.now());
+      res.cookie(CSRF_COOKIE, token, cookieOptions(false, maxAge));
+      res.json(GetCsrfTokenResponse.parse({ token }));
+      return;
+    }
+  }
+
   const token = newOpaqueToken();
   res.cookie(CSRF_COOKIE, token, cookieOptions(false, 30 * 60_000));
   res.json(GetCsrfTokenResponse.parse({ token }));
