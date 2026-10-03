@@ -36,9 +36,13 @@ import type {
   GetDashboardSummaryParams,
   HealthStatus,
   ListCategoriesParams,
+  ListOrdersParams,
   ListProductsParams,
   LoginInput,
   NotFoundResponse,
+  Order,
+  OrderPage,
+  OrderStatusInput,
   Product,
   ProductInput,
   ProductPage,
@@ -1895,7 +1899,7 @@ export const getGetDashboardSummaryUrl = (params: GetDashboardSummaryParams,) =>
 }
 
 /**
- * @summary Get real store counts and recent sales summary
+ * @summary Get actual store and order counts; payment revenue is not collected yet
  */
 export const getDashboardSummary = async (params: GetDashboardSummaryParams, options?: Parameters<typeof customFetch>[1]): Promise<DashboardSummary> => {
 
@@ -1942,7 +1946,7 @@ export type GetDashboardSummaryQueryError = ErrorType<UnauthorizedResponse | Not
 
 
 /**
- * @summary Get real store counts and recent sales summary
+ * @summary Get actual store and order counts; payment revenue is not collected yet
  */
 
 export function useGetDashboardSummary<TData = Awaited<ReturnType<typeof getDashboardSummary>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
@@ -1962,6 +1966,179 @@ export function useGetDashboardSummary<TData = Awaited<ReturnType<typeof getDash
 
 
 
+
+export const getListOrdersUrl = (params: ListOrdersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/orders?${stringifiedParams}` : `/api/orders`
+}
+
+/**
+ * @summary List orders for an owned store
+ */
+export const listOrders = async (params: ListOrdersParams, options?: Parameters<typeof customFetch>[1]): Promise<OrderPage> => {
+
+  return customFetch<OrderPage>(getListOrdersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOrdersQueryKey = (params?: ListOrdersParams,) => {
+    return [
+    `/api/orders`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListOrdersQueryOptions = <TData = Awaited<ReturnType<typeof listOrders>>, TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>>(params: ListOrdersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOrdersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOrders>>> = ({ signal }) => listOrders(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOrders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOrdersQueryResult = NonNullable<Awaited<ReturnType<typeof listOrders>>>
+export type ListOrdersQueryError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary List orders for an owned store
+ */
+
+export function useListOrders<TData = Awaited<ReturnType<typeof listOrders>>, TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>>(
+ params: ListOrdersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOrdersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateOrderStatusUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/orders/${orderId}`
+}
+
+/**
+ * @summary Advance or cancel an owned order
+ */
+export const updateOrderStatus = async (orderId: string,
+    orderStatusInput: OrderStatusInput, options?: Parameters<typeof customFetch>[1]): Promise<Order> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Order>(getUpdateOrderStatusUrl(orderId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(orderStatusInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateOrderStatusMutationKey = () => ['updateOrderStatus'] as const;
+
+export const getUpdateOrderStatusMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrderStatus>>, TError,UpdateOrderStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOrderStatus>>, TError,UpdateOrderStatusMutationVariables, TContext> => {
+
+const mutationKey = getUpdateOrderStatusMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOrderStatus>>, UpdateOrderStatusMutationVariables> = (props) => {
+          const {orderId,data} = props ?? {};
+
+          return  updateOrderStatus(orderId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOrderStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateOrderStatus>>>
+    export type UpdateOrderStatusMutationBody = BodyType<OrderStatusInput>
+    export type UpdateOrderStatusMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>
+    export type UpdateOrderStatusMutationVariables = {orderId: string;data: BodyType<OrderStatusInput>}
+
+    /**
+ * @summary Advance or cancel an owned order
+ */
+export const useUpdateOrderStatus = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrderStatus>>, TError,UpdateOrderStatusMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOrderStatus>>,
+        TError,
+        UpdateOrderStatusMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateOrderStatusMutationOptions(options));
+    }
 
 export const getGetDashboardActivityUrl = (params: GetDashboardActivityParams,) => {
   const normalizedParams = new URLSearchParams();

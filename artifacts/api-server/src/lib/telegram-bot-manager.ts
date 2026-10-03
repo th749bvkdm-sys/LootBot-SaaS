@@ -1,7 +1,15 @@
-import { and, eq } from "drizzle-orm";
-import { db, productsTable, storesTable, telegramBotsTable } from "@workspace/db";
+import { and, asc, eq, gte, sql } from "drizzle-orm";
+import {
+  db,
+  orderItemsTable,
+  ordersTable,
+  productsTable,
+  storesTable,
+  telegramBotsTable,
+} from "@workspace/db";
+import { writeAuditEvent } from "./audit";
 import { logger } from "./logger";
-import { decryptBotToken, sha256 } from "./security";
+import { createId, decryptBotToken, sha256 } from "./security";
 
 interface TelegramBotUser {
   id: number;
@@ -21,7 +29,8 @@ interface TelegramUpdate {
   update_id: number;
   message?: {
     text?: string;
-    chat: { id: number };
+    chat: { id: number; type?: string };
+    from?: { id: number; first_name: string; username?: string; is_bot?: boolean };
   };
 }
 
@@ -128,10 +137,14 @@ async function handleUpdate(
   const message = update.message;
   if (!message?.text) return;
   const command = message.text.trim().split(/\s+/, 1)[0]?.split("@", 1)[0];
-  if (!command || !["/start", "/help", "/catalog"].includes(command)) return;
+  if (!command || !["/start", "/help", "/catalog", "/order"].includes(command)) return;
 
   const [store] = await db
-    .select({ name: storesTable.name, currency: storesTable.currency })
+    .select({
+      ownerId: storesTable.ownerId,
+      name: storesTable.name,
+      currency: storesTable.currency,
+    })
     .from(storesTable)
     .where(and(eq(storesTable.id, storeId), eq(storesTable.isDeleted, false)))
     .limit(1);
@@ -140,9 +153,10 @@ async function handleUpdate(
   if (command === "/catalog") {
     const products = await db
       .select({
+        id: productsTable.id,
         name: productsTable.name,
         price: productsTable.price,
-        description: productsTable.description,
+        stock: productsTable.stock,
       })
       .from(productsTable)
       .where(
@@ -152,25 +166,209 @@ async function handleUpdate(
           eq(productsTable.isDeleted, false),
         ),
       )
-      .limit(10);
+      .orderBy(asc(productsTable.createdAt), asc(productsTable.id))
+      .limit(20);
     const content =
       products.length === 0
-        ? "المتجر يجهّز منتجاته الآن. تفضل بزيارتنا قريبًا."
+        ? "لا توجد منتجات متاحة للطلب الآن."
         : products
-            .map(
-              (product) =>
-                `• ${product.name} — ${Number(product.price).toFixed(2)} ${store.currency}`,
+            .map((product, index) =>
+              `[${product.id.replaceAll("-", "").slice(0, 12)}] ${product.name} — ${Number(product.price).toFixed(2)} ${store.currency}${product.stock < 1 ? " (نفد المخزون)" : ""}`,
             )
             .join("\n");
-    await sendText(bot, message.chat.id, `${store.name}\n\n${content}`);
+    const orderInstructions =
+      products.length > 0
+        ? "\n\nلطلب منتج أرسل:\n/order رمز_المنتج الكمية\nانسخ الرمز بين الأقواس من قائمة المنتجات.\nلا يتم الدفع داخل البوت."
+        : "";
+    await sendText(bot, message.chat.id, `${store.name}\n\n${content}${orderInstructions}`);
+    return;
+  }
+
+  if (command === "/order") {
+    if (message.chat.type !== "private") {
+      await sendText(bot, message.chat.id, "للطلب، ابدأ محادثة خاصة مع البوت ثم أرسل /catalog.");
+      return;
+    }
+    if (!message.from || message.from.is_bot) {
+      await sendText(bot, message.chat.id, "تعذر التحقق من حساب Telegram.");
+      return;
+    }
+    const match = /^\/order(?:@\w+)?\s+([a-f0-9]{12})(?:\s+(\d+))?\s*$/i.exec(message.text.trim());
+    const productCode = match?.[1]?.toLowerCase();
+    const quantity = Number(match?.[2] ?? 1);
+    if (!match || !productCode ||
+        !Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
+      await sendText(bot, message.chat.id, "صيغة الطلب: /order رمز_المنتج الكمية\nانسخ رمز المنتج من /catalog.");
+      return;
+    }
+
+    const prior = await db
+      .select({ id: ordersTable.id })
+      .from(ordersTable)
+      .where(
+        and(
+          eq(ordersTable.storeId, storeId),
+          eq(ordersTable.telegramUpdateId, String(update.update_id)),
+        ),
+      )
+      .limit(1);
+    if (prior[0]) {
+      await sendText(bot, message.chat.id, `تم تسجيل هذا الطلب مسبقًا. رقم الطلب: ${prior[0].id.slice(0, 8)}.`);
+      return;
+    }
+
+    const listedProducts = await db
+      .select({
+        id: productsTable.id,
+        name: productsTable.name,
+        price: productsTable.price,
+        stock: productsTable.stock,
+      })
+      .from(productsTable)
+      .where(
+        and(
+          eq(productsTable.storeId, storeId),
+          eq(productsTable.isPublished, true),
+          eq(productsTable.isDeleted, false),
+        ),
+      )
+      .orderBy(asc(productsTable.createdAt), asc(productsTable.id))
+      .limit(20);
+    const selected = listedProducts.find(
+      (product) => product.id.replaceAll("-", "").slice(0, 12).toLowerCase() === productCode,
+    );
+    if (!selected) {
+      await sendText(bot, message.chat.id, "رمز المنتج غير متاح. أرسل /catalog لعرض المنتجات.");
+      return;
+    }
+    if (selected.stock < quantity) {
+      await sendText(bot, message.chat.id, "الكمية المطلوبة غير متوفرة. أرسل /catalog للتحقق من المخزون.");
+      return;
+    }
+
+    const orderId = createId();
+    const created = await db.transaction(async (tx) => {
+      const [reserved] = await tx
+        .update(productsTable)
+        .set({
+          stock: sql`${productsTable.stock} - ${quantity}`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(productsTable.id, selected.id),
+            eq(productsTable.storeId, storeId),
+            eq(productsTable.isPublished, true),
+            eq(productsTable.isDeleted, false),
+            gte(productsTable.stock, quantity),
+          ),
+        )
+        .returning({
+          id: productsTable.id,
+          name: productsTable.name,
+          price: productsTable.price,
+        });
+      if (!reserved) return undefined;
+
+      const unitPriceCents = Math.round(Number(reserved.price) * 100);
+      const lineTotal = ((unitPriceCents * quantity) / 100).toFixed(2);
+      await tx.insert(ordersTable).values({
+        id: orderId,
+        storeId,
+        telegramUpdateId: String(update.update_id),
+        telegramChatId: String(message.chat.id),
+        telegramUserId: String(message.from!.id),
+        telegramUsername: message.from!.username ?? null,
+        customerName: message.from!.first_name.slice(0, 80) || "Telegram customer",
+        status: "pending",
+        currency: store.currency,
+        total: lineTotal,
+      });
+      await tx.insert(orderItemsTable).values({
+        id: createId(),
+        orderId,
+        productId: reserved.id,
+        productName: reserved.name,
+        unitPrice: (unitPriceCents / 100).toFixed(2),
+        quantity,
+        lineTotal,
+      });
+      return { total: lineTotal };
+    });
+
+    if (!created) {
+      await sendText(bot, message.chat.id, "الكمية المطلوبة غير متوفرة. أرسل /catalog للتحقق من المخزون.");
+      return;
+    }
+    try {
+      await writeAuditEvent({
+        userId: store.ownerId,
+        storeId,
+        action: "order.created",
+        summary: `تم تسجيل طلب جديد #${orderId.slice(0, 8)}`,
+        details: { orderId },
+      });
+    } catch (error) {
+      logger.warn(
+        { storeId, errorType: error instanceof Error ? error.name : "UnknownError" },
+        "Could not add an audit entry for a Telegram order.",
+      );
+    }
+    await sendText(
+      bot,
+      message.chat.id,
+      `تم تسجيل طلبك رقم ${orderId.slice(0, 8)} بانتظار تأكيد المتجر.\nالإجمالي: ${created.total} ${store.currency}\nلا يتم الدفع داخل البوت.`,
+    );
     return;
   }
 
   const helpText =
     command === "/start"
       ? `أهلًا بك في ${store.name}.\nاستخدم /catalog لاستعراض المنتجات أو /help للمساعدة.`
-      : `أوامر ${store.name}:\n/start — بدء المحادثة\n/catalog — استعراض المنتجات\n/help — عرض المساعدة`;
+      : `أوامر ${store.name}:\n/start — بدء المحادثة\n/catalog — استعراض المنتجات\n/order رمز_المنتج الكمية — تسجيل طلب\n/help — عرض المساعدة`;
   await sendText(bot, message.chat.id, helpText);
+}
+
+export async function notifyTelegramOrderStatus(input: {
+  storeId: string;
+  chatId: string;
+  orderId: string;
+  status: string;
+}): Promise<void> {
+  const messages: Record<string, string> = {
+    confirmed: "تم تأكيد طلبك من المتجر.",
+    fulfilled: "تم تجهيز طلبك.",
+    cancelled: "أُلغي طلبك وأُعيدت الكمية إلى المخزون.",
+  };
+  const message = messages[input.status];
+  if (!message) return;
+  try {
+    const [bot] = await db
+      .select({ encryptedToken: telegramBotsTable.encryptedToken })
+      .from(telegramBotsTable)
+      .where(
+        and(
+          eq(telegramBotsTable.storeId, input.storeId),
+          eq(telegramBotsTable.status, "connected"),
+        ),
+      )
+      .limit(1);
+    if (!bot) return;
+    await telegramCall(decryptBotToken(bot.encryptedToken), "sendMessage", {
+      chat_id: input.chatId,
+      text: `${message}\nرقم الطلب: ${input.orderId.slice(0, 8)}.`,
+      disable_web_page_preview: true,
+    });
+  } catch (error) {
+    logger.warn(
+      {
+        storeId: input.storeId,
+        telegramCode: error instanceof TelegramFailure ? error.telegramCode : undefined,
+        errorType: error instanceof Error ? error.name : "UnknownError",
+      },
+      "Could not send the order status notification to the Telegram customer.",
+    );
+  }
 }
 
 async function recordBotError(
@@ -210,13 +408,6 @@ async function poll(storeId: string, bot: ActiveBot): Promise<void> {
       );
       for (const update of updates) {
         bot.nextOffset = Math.max(bot.nextOffset, update.update_id + 1);
-        await db
-          .update(telegramBotsTable)
-          .set({
-            lastUpdateId: String(bot.nextOffset),
-            updatedAt: new Date(),
-          })
-          .where(eq(telegramBotsTable.storeId, storeId));
         try {
           await handleUpdate(storeId, bot, update);
         } catch (error) {
@@ -231,6 +422,13 @@ async function poll(storeId: string, bot: ActiveBot): Promise<void> {
             "Telegram bot could not respond to a customer.",
           );
         }
+        await db
+          .update(telegramBotsTable)
+          .set({
+            lastUpdateId: String(bot.nextOffset),
+            updatedAt: new Date(),
+          })
+          .where(eq(telegramBotsTable.storeId, storeId));
       }
     } catch (error) {
       if (bot.controller.signal.aborted) return;

@@ -3,6 +3,7 @@ import authRouter from "./auth";
 import catalogRouter from "./catalog";
 import dashboardRouter from "./dashboard";
 import healthRouter from "./health";
+import ordersRouter from "./orders";
 import storesRouter from "./stores";
 import telegramRouter from "./telegram";
 
@@ -13,6 +14,7 @@ router.use(authRouter);
 router.use(storesRouter);
 router.use(catalogRouter);
 router.use(telegramRouter);
+router.use(ordersRouter);
 router.use(dashboardRouter);
 
 export default router;

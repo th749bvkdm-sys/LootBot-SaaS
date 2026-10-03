@@ -8,14 +8,16 @@ import {
 } from 'lucide-react';
 import {
   getGetCurrentUserQueryKey, getGetDashboardActivityQueryKey, getGetDashboardSummaryQueryKey,
+  getListOrdersQueryKey,
   getGetStoreBotQueryKey, getListCategoriesQueryKey, getListProductsQueryKey, getListStoresQueryKey,
   useConnectStoreBot, useCreateCategory, useCreateProduct, useCreateStore, useDeleteCategory,
   useDeleteProduct, useDeleteStore, useDisconnectStoreBot, useGetCsrfToken, useGetCurrentUser,
   useGetDashboardActivity, useGetDashboardSummary, useGetStoreBot, useListCategories,
-  useListProducts, useListStores, useLoginUser, useLogoutUser, useRegisterUser,
+  useListOrders, useListProducts, useListStores, useLoginUser, useLogoutUser, useRegisterUser,
   useUpdateCategory, useUpdateProduct, useUpdateStore,
+  useUpdateOrderStatus,
 } from '@workspace/api-client-react';
-import type { ProductInput, Store } from '@workspace/api-client-react';
+import type { Order, ProductInput, Store } from '@workspace/api-client-react';
 import { Link, Route, Switch, useLocation } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -25,7 +27,7 @@ const queryClient = new QueryClient();
 type Locale = 'ar' | 'en';
 const copy = {
   ar: {
-    overview: 'نظرة عامة', stores: 'متاجري', products: 'المنتجات', categories: 'التصنيفات',
+    overview: 'نظرة عامة', stores: 'متاجري', products: 'المنتجات', categories: 'التصنيفات', orders: 'الطلبات',
     telegram: 'Telegram', settings: 'الإعدادات', hello: 'مساء الخير', dashboard: 'لوحة المتجر',
     tagline: 'متجرك، من مكان واحد.', welcome: 'أهلاً', productsTotal: 'كل المنتجات',
     published: 'منشور في المتجر', categoriesTotal: 'التصنيفات', sales: 'الطلبات',
@@ -64,10 +66,15 @@ const copy = {
     faq3q: 'هل أحتاج إلى خدمة مدفوعة للبدء؟',
     faq3a: 'لا تحتاج إلى مزوّد دفع أو منصة متجر خارجية لإضافة المنتجات وربط البوت.',
     faq4q: 'ما الذي يستطيع العملاء فعله مع البوت الآن؟',
-    faq4a: 'يمكنهم بدء المحادثة واستعراض المنتجات المنشورة. يجري تطوير إتمام الطلبات ومتابعتها ضمن المراحل التالية.',
+    faq4a: 'يمكنهم استعراض المنتجات وتسجيل طلب عبر البوت. يدير المتجر حالة الطلب، ويرسل البوت تحديثاتها عند توفر الاتصال؛ الدفع داخل البوت غير متاح بعد.',
+    orderPending: 'قيد الانتظار', orderConfirmed: 'مؤكد', orderFulfilled: 'مكتمل', orderCancelled: 'ملغي',
+    allOrders: 'كل الحالات', orderCustomer: 'العميل', orderItems: 'المنتجات', orderTotal: 'الإجمالي',
+    confirmOrder: 'تأكيد الطلب', fulfillOrder: 'تم التجهيز', cancelOrder: 'إلغاء الطلب',
+    cancelOrderConfirm: 'سيتم إلغاء الطلب وإعادة الكمية إلى المخزون. هل تريد المتابعة؟',
+    noOrders: 'لا توجد طلبات بعد.', orderFlowNote: 'الطلبات الواردة من البوت غير مدفوعة. التأكيد لا يخصم رسومًا، والإلغاء يعيد الكمية للمخزون.',
   },
   en: {
-    overview: 'Overview', stores: 'My stores', products: 'Products', categories: 'Categories',
+    overview: 'Overview', stores: 'My stores', products: 'Products', categories: 'Categories', orders: 'Orders',
     telegram: 'Telegram', settings: 'Settings', hello: 'Good evening', dashboard: 'Store dashboard',
     tagline: 'Your store, in one place.', welcome: 'Welcome', productsTotal: 'All products',
     published: 'Published products', categoriesTotal: 'Categories', sales: 'Orders',
@@ -106,7 +113,12 @@ const copy = {
     faq3q: 'Do I need a paid service to get started?',
     faq3a: 'You do not need an external payment provider or storefront platform to add products and connect your bot.',
     faq4q: 'What can customers do with the bot today?',
-    faq4a: 'They can start a conversation and browse published products. Checkout and order tracking are planned for the next stages.',
+    faq4a: 'Customers can browse products and submit orders through the bot. Store owners manage order status, and the bot sends updates when connected; in-bot payment is not available yet.',
+    orderPending: 'Pending', orderConfirmed: 'Confirmed', orderFulfilled: 'Fulfilled', orderCancelled: 'Cancelled',
+    allOrders: 'All statuses', orderCustomer: 'Customer', orderItems: 'Items', orderTotal: 'Total',
+    confirmOrder: 'Confirm order', fulfillOrder: 'Mark fulfilled', cancelOrder: 'Cancel order',
+    cancelOrderConfirm: 'This cancels the order and returns its quantity to stock. Continue?',
+    noOrders: 'No orders yet.', orderFlowNote: 'Orders placed through the bot are unpaid. Confirmation does not charge the customer; cancellation returns stock.',
   },
 };
 function useLocale() {
@@ -199,6 +211,7 @@ function App() {
       <Route path="/dashboard/stores"><Dashboard><StoresPage locale="ar" t={copy.ar} /></Dashboard></Route>
       <Route path="/dashboard/products"><Dashboard><ProductsPage locale="ar" t={copy.ar} /></Dashboard></Route>
       <Route path="/dashboard/categories"><Dashboard><CategoriesPage locale="ar" t={copy.ar} /></Dashboard></Route>
+      <Route path="/dashboard/orders"><Dashboard><OrdersPage locale="ar" t={copy.ar} /></Dashboard></Route>
       <Route path="/dashboard/telegram"><Dashboard><TelegramPage locale="ar" t={copy.ar} /></Dashboard></Route>
       <Route path="/dashboard/settings"><Dashboard><SettingsPage locale="ar" t={copy.ar} /></Dashboard></Route>
       <Route><NotFound /></Route>
@@ -317,7 +330,7 @@ function Dashboard({ children }: { children?: ReactNode }) {
   const storeList=stores.data||[];
   useEffect(()=>{if(storeList[0]&&(!activeStore||!storeList.some(item=>item.id===activeStore)))setActiveStore(storeList[0].id);},[storeList,activeStore]);
   const store=storeList.find((s)=>s.id===activeStore)||storeList[0];
-  const nav=[['/dashboard',t.overview,LayoutDashboard],['/dashboard/stores',t.stores,StoreIcon],['/dashboard/products',t.products,Package],['/dashboard/categories',t.categories,Tag],['/dashboard/telegram',t.telegram,MessageCircle],['/dashboard/settings',t.settings,Settings2]] as const;
+  const nav=[['/dashboard',t.overview,LayoutDashboard],['/dashboard/stores',t.stores,StoreIcon],['/dashboard/products',t.products,Package],['/dashboard/categories',t.categories,Tag],['/dashboard/orders',t.orders,ShoppingBag],['/dashboard/telegram',t.telegram,MessageCircle],['/dashboard/settings',t.settings,Settings2]] as const;
   if(user.isLoading) return <LoadingScreen />;
   if(user.isError||!user.data) return <AuthRequired locale={locale}/>;
   const logoutAction=()=>logout.mutate(undefined,{onSuccess:()=>{qc.clear();navigate('/login');}});
@@ -348,7 +361,7 @@ function DashboardHome({store,locale,t}:{store?:Store;locale:Locale;t:typeof cop
   const bot=useGetStoreBot(storeId,{query:{enabled:!!storeId,queryKey:getGetStoreBotQueryKey(storeId)}});
   const data=summary.data;
   if(!store)return <EmptyPanel title={t.noStores} detail={t.storesSub} action={t.createStore} onAction={()=>navigate('/dashboard/stores')}/>;
-  const numbers=[[t.productsTotal,data?.productCount,'#64d6a9',Package],[t.published,data?.publishedProductCount,'#e5a35e',Eye],[t.categoriesTotal,data?.categoryCount,'#88a7db',Tag]] as const;
+  const numbers=[[t.productsTotal,data?.productCount,'#64d6a9',Package],[t.published,data?.publishedProductCount,'#e5a35e',Eye],[t.categoriesTotal,data?.categoryCount,'#88a7db',Tag],[t.sales,data?.orderCount,'#d28dc4',ShoppingBag]] as const;
   return <div className="fade-up">
     <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs text-[#879696]">{t.hello}، {useGetCurrentUserName()}</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">{store.name}</h1><p className="mt-2 text-sm text-[#889797]">{t.tagline}</p></div><div className={`flex items-center gap-2 rounded-full border px-3 py-2 text-xs ${bot.data?.connected?'border-[#32614e] bg-[#1b342a] text-[#7fddb8]':'border-[#594b37] bg-[#30291f] text-[#e0b87d]'}`}><span className={`h-2 w-2 rounded-full ${bot.data?.connected?'bg-[#69d9ae]':'bg-[#d6a65e]'}`}/>{bot.data?.connected?t.connected:t.disconnected}<button onClick={()=>navigate('/dashboard/telegram')} className="ms-1 underline decoration-[#617069] underline-offset-2">{rtl?'إدارة':'Manage'}</button></div></div>
     {summary.isError&&<ErrorPanel message={t.serverError} onRetry={()=>void summary.refetch()}/>}
@@ -361,11 +374,75 @@ function DashboardHome({store,locale,t}:{store?:Store;locale:Locale;t:typeof cop
         <ActionTile icon={Plus} title={t.addProduct} subtitle={rtl?'أضف عنصراً إلى كتالوجك':'Add an item to your catalog'} onClick={()=>navigate('/dashboard/products?new=1')}/>
         <ActionTile icon={MessageCircle} title={t.connect} subtitle={rtl?'انشر الكتالوج عبر Telegram':'Publish your catalog through Telegram'} onClick={()=>navigate('/dashboard/telegram')}/>
         <ActionTile icon={Boxes} title={t.manage} subtitle={rtl?'راجع المنتجات والمخزون':'Review inventory and details'} onClick={()=>navigate('/dashboard/products')}/>
-      </div><div className="mt-5 rounded-xl border border-[#303d3d] bg-[#1b2526] p-4"><p className="text-[10px] uppercase tracking-wider text-[#8a9999]">{rtl?'تكامل البوت':'Bot integration'}</p><p className="mt-2 text-sm font-semibold">{bot.data?.connected?t.connected:t.disconnected}</p><p className="mt-1 text-[10px] text-[#758485]">{rtl?'ستظهر مؤشرات الطلبات بعد تفعيل إتمام الشراء.':'Order metrics will appear when checkout is available.'}</p></div></section>
+      </div><div className="mt-5 rounded-xl border border-[#303d3d] bg-[#1b2526] p-4"><p className="text-[10px] uppercase tracking-wider text-[#8a9999]">{rtl?'تكامل البوت':'Bot integration'}</p><p className="mt-2 text-sm font-semibold">{bot.data?.connected?t.connected:t.disconnected}</p><p className="mt-1 text-[10px] text-[#758485]">{rtl?'إجمالي الطلب ليس مبلغًا محصّلًا؛ الدفع داخل البوت غير متاح بعد.':'Order totals are not collected revenue; in-bot payments are not available yet.'}</p></div></section>
     </div>
   </div>;
 }
 function useGetCurrentUserName(){const {data}=useGetCurrentUser();return data?.name||'';}
+
+function OrdersPage({store,locale='ar',t=copy.ar}:{store?:Store;locale?:Locale;t?:typeof copy.ar}) {
+  const rtl=locale==='ar';
+  const storeId=store?.id||'';
+  const [page,setPage]=useState(1);
+  const [status,setStatus]=useState<Order['status']|''>('');
+  const [error,setError]=useState('');
+  const qc=useQueryClient();
+  const csrf=useGetCsrfToken();
+  const request={request:{headers:csrf.data?.token?{'x-csrf-token':csrf.data.token}:undefined}};
+  const update=useUpdateOrderStatus(request);
+  const params={storeId,page,pageSize:25 as const,status:status||undefined};
+  const orders=useListOrders(params,{query:{enabled:!!storeId,queryKey:getListOrdersQueryKey(params)}});
+  const changeStatus=(orderId:string,nextStatus:Order['status'])=>{
+    if(nextStatus==='cancelled'&&!window.confirm(t.cancelOrderConfirm))return;
+    setError('');
+    update.mutate({orderId,data:{status:nextStatus}},{onSuccess:()=>{
+      void qc.invalidateQueries({queryKey:getListOrdersQueryKey()});
+      void qc.invalidateQueries({queryKey:getGetDashboardSummaryQueryKey({storeId})});
+      void qc.invalidateQueries({queryKey:getGetDashboardActivityQueryKey({storeId,limit:8})});
+      void qc.invalidateQueries({queryKey:getListProductsQueryKey()});
+    },onError:(e)=>setError(e.message)});
+  };
+  return <section className="fade-up">
+    <PageHeading eyebrow={store?.name||t.store} title={t.orders} subtitle={t.orderFlowNote}/>
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <label className="text-xs text-[#91a09f]">{rtl?'تصفية الطلبات':'Filter orders'}
+        <select value={status} onChange={e=>{setStatus(e.target.value as Order['status']|'');setPage(1);}} className="ms-3 h-10 rounded-xl border border-[#2f3c3e] bg-[#171f22] px-3 text-sm text-[#e6edec]">
+          <option value="">{t.allOrders}</option>
+          <option value="pending">{t.orderPending}</option><option value="confirmed">{t.orderConfirmed}</option>
+          <option value="fulfilled">{t.orderFulfilled}</option><option value="cancelled">{t.orderCancelled}</option>
+        </select>
+      </label>
+      <p className="text-xs text-[#829091]">{orders.data?`${orders.data.total} ${rtl?'طلب':'orders'}`:''}</p>
+    </div>
+    {error&&<InlineError message={error}/>}
+    {orders.isLoading?<SkeletonRows/>:orders.isError?<ErrorPanel message={t.serverError} onRetry={()=>void orders.refetch()}/>:
+      orders.data?.items.length ? <div className="space-y-3">
+        {orders.data.items.map(order=><article key={order.id} className="rounded-2xl border border-[#293638] bg-[#171f22] p-4 md:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[#20382f] text-[#71dcb4]"><ShoppingBag className="h-5 w-5"/></div>
+              <div><p className="font-mono text-xs text-[#92a2a1]">#{order.id.slice(0,8)}</p><p className="mt-1 text-sm font-semibold">{order.telegramUsername?`@${order.telegramUsername}`:order.customerName}</p></div>
+            </div>
+            <div className="flex items-center gap-3"><span className="font-semibold">{new Intl.NumberFormat(rtl?'ar-SA':'en',{style:'currency',currency:order.currency}).format(order.total)}</span><OrderStatusPill status={order.status} locale={locale}/></div>
+          </div>
+          <div className="mt-4 grid gap-3 border-t border-[#2a3738] pt-4 sm:grid-cols-[1fr_auto]">
+            <div className="space-y-1">{order.items.map((item,index)=><p key={`${order.id}-${index}`} className="text-xs text-[#9eacab]">{item.productName} × {item.quantity}</p>)}
+              <p className="pt-1 text-[10px] text-[#738283]">{new Date(order.createdAt).toLocaleString(rtl?'ar-SA':'en',{dateStyle:'medium',timeStyle:'short'})}</p>
+            </div>
+            <div className="flex flex-wrap gap-2 sm:justify-end">
+              {order.status==='pending'&&<button disabled={update.isPending} onClick={()=>changeStatus(order.id,'confirmed')} className="rounded-lg bg-[#244235] px-3 py-2 text-xs font-semibold text-[#85e1bd] disabled:opacity-50">{t.confirmOrder}</button>}
+              {order.status==='confirmed'&&<button disabled={update.isPending} onClick={()=>changeStatus(order.id,'fulfilled')} className="rounded-lg bg-[#244235] px-3 py-2 text-xs font-semibold text-[#85e1bd] disabled:opacity-50">{t.fulfillOrder}</button>}
+              {(order.status==='pending'||order.status==='confirmed')&&<button disabled={update.isPending} onClick={()=>changeStatus(order.id,'cancelled')} className="rounded-lg border border-[#593b3c] px-3 py-2 text-xs text-[#e39b96] disabled:opacity-50">{t.cancelOrder}</button>}
+            </div>
+          </div>
+        </article>)}
+        <div className="flex items-center justify-between pt-2">
+          <button disabled={page<=1} onClick={()=>setPage(p=>p-1)} className="rounded-lg border border-[#303d3f] px-3 py-2 text-xs disabled:opacity-40">{t.previous}</button>
+          <span className="text-xs text-[#829091]">{page}</span>
+          <button disabled={!orders.data||page*25>=orders.data.total} onClick={()=>setPage(p=>p+1)} className="rounded-lg border border-[#303d3f] px-3 py-2 text-xs disabled:opacity-40">{t.next}</button>
+        </div>
+      </div>:<EmptyPanel title={t.noOrders} detail={t.orderFlowNote}/>}
+  </section>;
+}
 
 function StoresPage({locale='ar',t=copy.ar}:{locale?:Locale;t?:typeof copy.ar}) {
   const rtl=locale==='ar'; const query=useListStores(); const csrf=useGetCsrfToken(); const request={request:{headers:csrf.data?.token?{'x-csrf-token':csrf.data.token}:undefined}}; const create=useCreateStore(request); const update=useUpdateStore(request); const remove=useDeleteStore(request); const qc=useQueryClient();
@@ -484,6 +561,18 @@ function StatusPill({value}:{value:string}) {
   const connected=['connected','published'].includes(value);
   const error=value==='error';
   return <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium ${connected?'bg-[#1e392f] text-[#7edcb7]':error?'bg-[#3d2928] text-[#e29b94]':'bg-[#292f30] text-[#a3adac]'}`}><span className={`h-1.5 w-1.5 rounded-full ${connected?'bg-[#69d9ae]':error?'bg-[#dc847c]':'bg-[#879191]'}`}/>{value==='published'?'Published':value==='draft'?'Draft':value}</span>;
+}
+function OrderStatusPill({status,locale}:{status:Order['status'];locale:Locale}) {
+  const labels=locale==='ar'
+    ?{pending:'قيد الانتظار',confirmed:'مؤكد',fulfilled:'مكتمل',cancelled:'ملغي'}
+    :{pending:'Pending',confirmed:'Confirmed',fulfilled:'Fulfilled',cancelled:'Cancelled'};
+  const colors={
+    pending:'bg-[#3a3021] text-[#e2bd7d]',
+    confirmed:'bg-[#203a32] text-[#81dbb6]',
+    fulfilled:'bg-[#233449] text-[#9ec2e8]',
+    cancelled:'bg-[#3d2928] text-[#e29b94]',
+  };
+  return <span className={`rounded-full px-2.5 py-1 text-[10px] font-medium ${colors[status]}`}>{labels[status]}</span>;
 }
 function ActionTile({icon:Icon,title,subtitle,onClick}:{icon:typeof Plus;title:string;subtitle:string;onClick:()=>void}) {
   return <button onClick={onClick} className="flex w-full items-center gap-3 rounded-xl border border-[#2a3739] bg-[#1b2527] p-3 text-start transition hover:border-[#416457] hover:bg-[#202d2c]"><span className="grid h-9 w-9 place-items-center rounded-lg bg-[#263a33] text-[#70d9b2]"><Icon className="h-4 w-4"/></span><span className="min-w-0 flex-1"><span className="block text-xs font-semibold">{title}</span><span className="mt-1 block text-[10px] text-[#829091]">{subtitle}</span></span><ArrowLeft className="h-4 w-4 text-[#758485]"/></button>;

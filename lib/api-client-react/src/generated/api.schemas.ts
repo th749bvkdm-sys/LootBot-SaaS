@@ -241,6 +241,47 @@ export interface ProductPage {
   total: number;
 }
 
+export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
+
+
+export const OrderStatus = {
+  pending: 'pending',
+  confirmed: 'confirmed',
+  fulfilled: 'fulfilled',
+  cancelled: 'cancelled',
+} as const;
+
+export interface OrderStatusInput {
+  status: OrderStatus;
+}
+
+export interface OrderItem {
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface Order {
+  id: string;
+  storeId: string;
+  customerName: string;
+  /** @nullable */
+  telegramUsername: string | null;
+  status: OrderStatus;
+  currency: string;
+  total: number;
+  createdAt: string;
+  items: OrderItem[];
+}
+
+export interface OrderPage {
+  items: Order[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
 export interface BotTokenInput {
   /**
      * @minLength 20
@@ -362,6 +403,16 @@ categoryId?: string;
 
 export type GetDashboardSummaryParams = {
 storeId: string;
+};
+
+export type ListOrdersParams = {
+storeId: string;
+/**
+ * @minimum 1
+ */
+page?: PageParameter;
+pageSize?: PageSizeParameter;
+status?: OrderStatus;
 };
 
 export type GetDashboardActivityParams = {

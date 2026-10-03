@@ -503,7 +503,7 @@ export const DisconnectStoreBotResponse = zod.object({
 
 
 /**
- * @summary Get real store counts and recent sales summary
+ * @summary Get actual store and order counts; payment revenue is not collected yet
  */
 export const GetDashboardSummaryQueryParams = zod.object({
   "storeId": zod.coerce.string().uuid()
@@ -517,6 +517,72 @@ export const GetDashboardSummaryResponse = zod.object({
   "orderCount": zod.number().int(),
   "revenue": zod.number(),
   "botStatus": zod.enum(['disconnected', 'connected', 'error'])
+})
+
+
+/**
+ * @summary List orders for an owned store
+ */
+export const listOrdersQueryPageDefault = 1;
+
+export const listOrdersQueryPageSizeDefault = 25;
+
+export const ListOrdersQueryParams = zod.object({
+  "storeId": zod.coerce.string().uuid(),
+  "page": zod.coerce.number().int().min(1).default(listOrdersQueryPageDefault),
+  "pageSize": zod.union([zod.literal(10),zod.literal(25),zod.literal(50),zod.literal(100)]).default(listOrdersQueryPageSizeDefault),
+  "status": zod.enum(['pending', 'confirmed', 'fulfilled', 'cancelled']).optional()
+})
+
+export const ListOrdersResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "storeId": zod.string().uuid(),
+  "customerName": zod.string(),
+  "telegramUsername": zod.string().nullable(),
+  "status": zod.enum(['pending', 'confirmed', 'fulfilled', 'cancelled']),
+  "currency": zod.string(),
+  "total": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "items": zod.array(zod.object({
+  "productName": zod.string(),
+  "quantity": zod.number().int(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+}))
+})),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "total": zod.number().int()
+})
+
+
+/**
+ * @summary Advance or cancel an owned order
+ */
+export const UpdateOrderStatusParams = zod.object({
+  "orderId": zod.coerce.string().uuid()
+})
+
+export const UpdateOrderStatusBody = zod.object({
+  "status": zod.enum(['pending', 'confirmed', 'fulfilled', 'cancelled'])
+})
+
+export const UpdateOrderStatusResponse = zod.object({
+  "id": zod.string().uuid(),
+  "storeId": zod.string().uuid(),
+  "customerName": zod.string(),
+  "telegramUsername": zod.string().nullable(),
+  "status": zod.enum(['pending', 'confirmed', 'fulfilled', 'cancelled']),
+  "currency": zod.string(),
+  "total": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "items": zod.array(zod.object({
+  "productName": zod.string(),
+  "quantity": zod.number().int(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+}))
 })
 
 

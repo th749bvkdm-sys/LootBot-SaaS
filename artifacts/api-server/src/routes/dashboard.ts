@@ -10,6 +10,7 @@ import {
   auditLogsTable,
   categoriesTable,
   db,
+  ordersTable,
   productsTable,
   storesTable,
 } from "@workspace/db";
@@ -32,7 +33,7 @@ router.get(
       return;
     }
 
-    const [products, categories, published] = await Promise.all([
+    const [products, categories, published, orders] = await Promise.all([
       db
         .select({ value: count() })
         .from(productsTable)
@@ -61,6 +62,10 @@ router.get(
             eq(productsTable.isPublished, true),
           ),
         ),
+      db
+        .select({ value: count() })
+        .from(ordersTable)
+        .where(eq(ordersTable.storeId, store.id)),
     ]);
 
     const [record] = await db
@@ -80,7 +85,8 @@ router.get(
         productCount: Number(products[0]?.value ?? 0),
         categoryCount: Number(categories[0]?.value ?? 0),
         publishedProductCount: Number(published[0]?.value ?? 0),
-        orderCount: 0,
+        orderCount: Number(orders[0]?.value ?? 0),
+        // Payment collection is not implemented, so no amount is counted as revenue.
         revenue: 0,
         botStatus: record?.botStatus ?? "disconnected",
       }),

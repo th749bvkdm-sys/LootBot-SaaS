@@ -14,6 +14,7 @@ tags:
   - name: catalog
   - name: telegram
   - name: dashboard
+  - name: orders
 paths:
   /healthz:
     get:
@@ -502,7 +503,7 @@ paths:
     get:
       operationId: getDashboardSummary
       tags: [dashboard]
-      summary: Get real store counts and recent sales summary
+      summary: Get actual store and order counts; payment revenue is not collected yet
       security:
         - sessionCookie: []
       parameters:
@@ -523,6 +524,75 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List orders for an owned store
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: storeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/OrderStatus"
+      responses:
+        "200":
+          description: Store orders and pagination details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /orders/{orderId}:
+    parameters:
+      - name: orderId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateOrderStatus
+      tags: [orders]
+      summary: Advance or cancel an owned order
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderStatusInput"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /dashboard/activity:
     get:
       operationId: getDashboardActivity
@@ -927,6 +997,69 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Product"
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+      required: [items, page, pageSize, total]
+    OrderStatus:
+      type: string
+      enum: [pending, confirmed, fulfilled, cancelled]
+    OrderStatusInput:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+      required: [status]
+    OrderItem:
+      type: object
+      properties:
+        productName:
+          type: string
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+        lineTotal:
+          type: number
+      required: [productName, quantity, unitPrice, lineTotal]
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        storeId:
+          type: string
+          format: uuid
+        customerName:
+          type: string
+        telegramUsername:
+          type: ["string", "null"]
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        currency:
+          type: string
+        total:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+      required: [id, storeId, customerName, telegramUsername, status, currency, total, createdAt, items]
+    OrderPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
         page:
           type: integer
         pageSize:
