@@ -13,11 +13,13 @@ import {
   UpdateStoreParams,
   UpdateStoreResponse,
 } from "@workspace/api-zod";
-import { db, storeSettingsTable, storesTable } from "@workspace/db";
+import { db, storeSettingsTable, storesTable, usersTable } from "@workspace/db";
 import { requireAuth, requireCsrf, getOwnedStore } from "../lib/auth-middleware";
 import { writeAuditEvent } from "../lib/audit";
 import { createId } from "../lib/security";
 import { stopBotForStore } from "../lib/telegram-bot-manager";
+import { enforcePlanLimit } from "../lib/store-plans";
+import { highestPlan, isPlanLimitReached, readPlanCode } from "../lib/plans";
 
 const router: IRouter = Router();
 function isSupportedCurrency(value: string): boolean {
@@ -72,7 +74,32 @@ router.post(
     }
 
     const id = createId();
-    const store = await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
+      await tx
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.id, req.auth!.userId))
+        .for("update");
+      const existingStores = await tx
+        .select({ settings: storeSettingsTable.settings })
+        .from(storesTable)
+        .leftJoin(
+          storeSettingsTable,
+          eq(storeSettingsTable.storeId, storesTable.id),
+        )
+        .where(
+          and(
+            eq(storesTable.ownerId, req.auth!.userId),
+            eq(storesTable.isDeleted, false),
+          ),
+        );
+      const accountPlan = highestPlan(
+        existingStores.map((row) => readPlanCode(row.settings)),
+      );
+      if (isPlanLimitReached(accountPlan, "stores", existingStores.length)) {
+        return { limit: { plan: accountPlan, usage: existingStores.length } };
+      }
+
       const [created] = await tx
         .insert(storesTable)
         .values({
@@ -83,9 +110,19 @@ router.post(
           currency: parsed.data.currency.toUpperCase(),
         })
         .returning();
-      await tx.insert(storeSettingsTable).values({ storeId: id });
-      return created;
+      await tx.insert(storeSettingsTable).values({
+        storeId: id,
+        settings: {
+          plan: { code: accountPlan, source: "default", assignedAt: new Date().toISOString() },
+        },
+      });
+      return { store: created };
     });
+    if (result.limit) {
+      enforcePlanLimit(res, result.limit.plan, "stores", result.limit.usage);
+      return;
+    }
+    const store = result.store;
 
     await writeAuditEvent({
       userId: req.auth!.userId,

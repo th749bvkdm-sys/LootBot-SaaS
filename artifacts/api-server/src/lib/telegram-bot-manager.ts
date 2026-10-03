@@ -4,12 +4,14 @@ import {
   orderItemsTable,
   ordersTable,
   productsTable,
+  storeSettingsTable,
   storesTable,
   telegramBotsTable,
 } from "@workspace/db";
 import { writeAuditEvent } from "./audit";
 import { logger } from "./logger";
 import { createId, decryptBotToken, sha256 } from "./security";
+import { PLAN_CATALOG, isPlanLimitReached, planLimitMessage, readPlanCode } from "./plans";
 
 interface TelegramBotUser {
   id: number;
@@ -248,7 +250,35 @@ async function handleUpdate(
     }
 
     const orderId = createId();
-    const created = await db.transaction(async (tx) => {
+    const monthStart = new Date(
+      Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1),
+    );
+    const result = await db.transaction(async (tx) => {
+      await tx
+        .select({ id: storesTable.id })
+        .from(storesTable)
+        .where(eq(storesTable.id, storeId))
+        .for("update");
+      const [settings] = await tx
+        .select({ settings: storeSettingsTable.settings })
+        .from(storeSettingsTable)
+        .where(eq(storeSettingsTable.storeId, storeId))
+        .limit(1);
+      const plan = readPlanCode(settings?.settings);
+      const [monthlyOrderCount] = await tx
+        .select({ value: sql<number>`count(*)` })
+        .from(ordersTable)
+        .where(
+          and(
+            eq(ordersTable.storeId, storeId),
+            gte(ordersTable.createdAt, monthStart),
+          ),
+        );
+      const monthlyUsage = Number(monthlyOrderCount?.value ?? 0);
+      if (isPlanLimitReached(plan, "ordersPerMonth", monthlyUsage)) {
+        return { planLimit: plan };
+      }
+
       const [reserved] = await tx
         .update(productsTable)
         .set({
@@ -269,7 +299,7 @@ async function handleUpdate(
           name: productsTable.name,
           price: productsTable.price,
         });
-      if (!reserved) return undefined;
+      if (!reserved) return { order: undefined };
 
       const unitPriceCents = Math.round(Number(reserved.price) * 100);
       const lineTotal = ((unitPriceCents * quantity) / 100).toFixed(2);
@@ -294,10 +324,18 @@ async function handleUpdate(
         quantity,
         lineTotal,
       });
-      return { total: lineTotal };
+      return { order: { total: lineTotal } };
     });
 
-    if (!created) {
+    if (result.planLimit) {
+      await sendText(
+        bot,
+        message.chat.id,
+        planLimitMessage(result.planLimit, "ordersPerMonth"),
+      );
+      return;
+    }
+    if (!result.order) {
       await sendText(bot, message.chat.id, "الكمية المطلوبة غير متوفرة. أرسل /catalog للتحقق من المخزون.");
       return;
     }
@@ -318,7 +356,7 @@ async function handleUpdate(
     await sendText(
       bot,
       message.chat.id,
-      `تم تسجيل طلبك رقم ${orderId.slice(0, 8)} بانتظار تأكيد المتجر.\nالإجمالي: ${created.total} ${store.currency}\nلم يتم استلام الدفع عبر LootBot.${store.manualPaymentInstructions?.trim() ? `\n\nتعليمات الدفع خارج التطبيق:\n${store.manualPaymentInstructions.trim()}` : "\n\nرتّب الدفع خارج التطبيق بالتواصل مع المتجر."}`,
+      `تم تسجيل طلبك رقم ${orderId.slice(0, 8)} بانتظار تأكيد المتجر.\nالإجمالي: ${result.order.total} ${store.currency}\nلم يتم استلام الدفع عبر LootBot.${store.manualPaymentInstructions?.trim() ? `\n\nتعليمات الدفع خارج التطبيق:\n${store.manualPaymentInstructions.trim()}` : "\n\nرتّب الدفع خارج التطبيق بالتواصل مع المتجر."}`,
     );
     return;
   }

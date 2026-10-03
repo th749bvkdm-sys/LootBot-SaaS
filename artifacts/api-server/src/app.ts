@@ -6,6 +6,7 @@ import type { ErrorRequestHandler } from "express";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { recordSystemError } from "./lib/system-health";
 
 const app: Express = express();
 const publicDirectory = process.env.STATIC_DIR ?? path.resolve(
@@ -58,6 +59,12 @@ app.get("/{*path}", (req, res, next) => {
 });
 const apiErrorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   const errorType = error instanceof Error ? error.name : "UnknownError";
+  recordSystemError({
+    occurredAt: new Date().toISOString(),
+    method: req.method,
+    path: req.path,
+    errorType,
+  });
   req.log.error({ errorType }, "Unhandled API request error.");
   if (!res.headersSent) {
     res.status(500).json({ error: "حدث خطأ غير متوقع." });
