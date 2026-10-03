@@ -1,0 +1,1 @@
+- [LootBot continuation constraints](lootbot-continuity.md) — continue the existing project; preserve its files and keep credentials out of source.
