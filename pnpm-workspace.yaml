@@ -34,6 +34,10 @@ minimumReleaseAgeExclude:
   - '@replit/*'
   - stripe-replit-sync
 
+# esbuild needs its postinstall script to prepare the platform-specific binary.
+allowBuilds:
+  esbuild: true
+
 packages:
   - artifacts/*
   - lib/*
