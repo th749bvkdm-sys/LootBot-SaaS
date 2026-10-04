@@ -46,7 +46,7 @@ export const FEATURE_METADATA: Record<PlanFeature, { requiredPlan: PlanCode; des
   "staff.basic": { requiredPlan: "BUSINESS", description: "إدارة أعضاء الفريق" },
   "branding.removeLootBot": { requiredPlan: "BUSINESS", description: "تحكم إضافي بعلامة المتجر (لا يزيل علامة Telegram)" },
 };
-export const CONFIGURABLE_FEATURES = new Set<PlanFeature>(["catalog.bulkTools", "analytics.reports", "telegram.advanced"]);
+export const CONFIGURABLE_FEATURES = new Set<PlanFeature>(["catalog.bulkTools", "analytics.reports", "telegram.advanced", "catalog.multipleImages"]);
 
 export type PlanDefinition = {
   name: string;
@@ -95,7 +95,7 @@ export const PLAN_CATALOG: Record<PlanCode, PlanDefinition> = {
       "telegram.basic": true,
       "telegram.advanced": true,
       "catalog.bulkTools": true,
-      "catalog.multipleImages": false,
+      "catalog.multipleImages": true,
       "analytics.advanced": false,
       "analytics.reports": false,
       "coupons.basic": false,
@@ -120,7 +120,7 @@ export const PLAN_CATALOG: Record<PlanCode, PlanDefinition> = {
       "telegram.basic": true,
       "telegram.advanced": true,
       "catalog.bulkTools": true,
-      "catalog.multipleImages": false,
+      "catalog.multipleImages": true,
       "analytics.advanced": false,
       "analytics.reports": true,
       "coupons.basic": false,
@@ -199,4 +199,64 @@ export function validatePlanDefinition(value: unknown): value is PlanDefinition 
     && featureKeys.every((key) => CONFIGURABLE_FEATURES.has(key) || candidate.features?.[key] === PLAN_CATALOG.FREE.features[key])
     && Object.keys(candidate.limits).length === limitKeys.length
     && Object.keys(candidate.features).length === featureKeys.length;
+}
+
+// Add defaults for new keys without discarding an administrator's saved limits.
+export function readPlanDefinition(value: unknown, code: PlanCode): PlanDefinition | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidate = value as Partial<PlanDefinition>;
+  if (!candidate.features || !candidate.limits) return null;
+  const merged = {
+    name: candidate.name,
+    limits: { ...PLAN_CATALOG[code].limits, ...candidate.limits },
+    features: { ...PLAN_CATALOG[code].features, ...candidate.features },
+  };
+  return validatePlanDefinition(merged) ? merged : null;
+}
+
+export class FeatureAccessError extends Error {
+  readonly code = "PLAN_FEATURE_UNAVAILABLE";
+  readonly status = 403;
+  readonly feature: PlanFeature;
+  readonly requiredPlan: PlanCode;
+  constructor(feature: PlanFeature) {
+    super(`هذه الميزة متاحة في باقة ${FEATURE_METADATA[feature].requiredPlan}.`);
+    this.name = "FeatureAccessError";
+    this.feature = feature;
+    this.requiredPlan = FEATURE_METADATA[feature].requiredPlan;
+  }
+}
+
+export class FeatureGateService {
+  private readonly load: (storeId: string) => Promise<{ plan: PlanCode; catalog: PlanCatalog }>;
+  private readonly loadUsage: (storeId: string) => Promise<Record<PlanLimit, number>>;
+  constructor(dependencies: {
+    load: (storeId: string) => Promise<{ plan: PlanCode; catalog: PlanCatalog }>;
+    loadUsage: (storeId: string) => Promise<Record<PlanLimit, number>>;
+  }) {
+    this.load = dependencies.load;
+    this.loadUsage = dependencies.loadUsage;
+  }
+  async can(storeId: string, feature: PlanFeature): Promise<boolean> {
+    const { plan, catalog } = await this.load(storeId);
+    return isFeatureAvailable(plan, feature, catalog);
+  }
+  async require(storeId: string, feature: PlanFeature): Promise<void> {
+    if (!await this.can(storeId, feature)) throw new FeatureAccessError(feature);
+  }
+  async getLimit(storeId: string, limit: PlanLimit): Promise<number> {
+    const { plan, catalog } = await this.load(storeId);
+    return catalog[plan].limits[limit];
+  }
+  async getUsage(storeId: string, limit: PlanLimit): Promise<number> {
+    return (await this.loadUsage(storeId))[limit];
+  }
+  async remaining(storeId: string, limit: PlanLimit): Promise<number> {
+    const [maximum, usage] = await Promise.all([this.getLimit(storeId, limit), this.getUsage(storeId, limit)]);
+    return Math.max(0, maximum - usage);
+  }
+  async isPlanAtLeast(storeId: string, required: PlanCode): Promise<boolean> {
+    const { plan } = await this.load(storeId);
+    return PLAN_RANK[plan] >= PLAN_RANK[required];
+  }
 }

@@ -18,15 +18,17 @@ import {
   isPlanLimitReached,
   planLimitMessage,
   readPlanCode,
-  validatePlanDefinition,
+  readPlanDefinition,
+  FeatureGateService,
 } from "./plans";
 
 export async function getPlanCatalog(): Promise<PlanCatalog> {
   const rows = await db.select().from(planDefinitionsTable);
   const catalog = structuredClone(PLAN_CATALOG) as PlanCatalog;
   for (const row of rows) {
-    if (row.code in catalog && validatePlanDefinition(row.definition)) {
-      catalog[row.code as keyof typeof catalog] = row.definition;
+    if (row.code in catalog) {
+      const definition = readPlanDefinition(row.definition, row.code as PlanCode);
+      if (definition) catalog[row.code as PlanCode] = definition;
     }
   }
   return catalog;
@@ -119,3 +121,16 @@ export function enforcePlanLimit(
   });
   return true;
 }
+
+export const featureGate = new FeatureGateService({
+  load: async storeId => {
+    const [plan, catalog] = await Promise.all([getStorePlan(storeId), getPlanCatalog()]);
+    return { plan, catalog };
+  },
+  loadUsage: async storeId => {
+    const [store] = await db.select({ ownerId: storesTable.ownerId }).from(storesTable)
+      .where(and(eq(storesTable.id, storeId), eq(storesTable.isDeleted, false))).limit(1);
+    if (!store) throw new Error("Store does not exist");
+    return getPlanUsage(storeId, store.ownerId);
+  },
+});

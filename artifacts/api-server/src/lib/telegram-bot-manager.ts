@@ -3,6 +3,7 @@ import {
   db,
   orderItemsTable,
   ordersTable,
+  productImagesTable,
   productsTable,
   storeSettingsTable,
   storesTable,
@@ -14,6 +15,7 @@ import { createId, decryptBotToken, sha256 } from "./security";
 import { isFeatureAvailable, isPlanLimitReached, planLimitMessage, readPlanCode } from "./plans";
 import { getPlanCatalog, getStorePlan } from "./store-plans";
 import { readTelegramDesignerSettings } from "./telegram-designer";
+import { productMediaRequest } from "./telegram-product-media";
 
 interface TelegramBotUser {
   id: number;
@@ -141,7 +143,7 @@ async function handleUpdate(
   const message = update.message;
   if (!message?.text) return;
   const command = message.text.trim().split(/\s+/, 1)[0]?.split("@", 1)[0];
-  if (!command || !["/start", "/help", "/catalog", "/order"].includes(command)) return;
+  if (!command || !["/start", "/help", "/catalog", "/order", "/product"].includes(command)) return;
 
   const [store] = await db
     .select({
@@ -163,6 +165,26 @@ async function handleUpdate(
   const formatMessage = (value: string) => value
     .replaceAll("{{store}}", store.name)
     .replaceAll("{{customer}}", message.from?.first_name?.slice(0, 80) ?? "");
+
+  if (command === "/product") {
+    const code = /^\/product(?:@\w+)?\s+([a-f0-9]{12})\s*$/i.exec(message.text.trim())?.[1]?.toLowerCase();
+    if (!code) { await sendText(bot, message.chat.id, "لعرض تفاصيل المنتج أرسل: /product رمز_المنتج من /catalog"); return; }
+    const [product] = await db.select().from(productsTable).where(and(
+      eq(productsTable.storeId, storeId), eq(productsTable.isDeleted, false), eq(productsTable.isPublished, true),
+      sql`substring(replace(${productsTable.id}, '-', '') from 1 for 12) = ${code}`,
+    )).limit(1);
+    if (!product) { await sendText(bot, message.chat.id, "المنتج غير متاح."); return; }
+    const galleryEnabled = isFeatureAvailable(plan, "catalog.multipleImages", await getPlanCatalog());
+    const storedImages = galleryEnabled ? await db.select({ imageUrl: productImagesTable.imageUrl }).from(productImagesTable)
+      .where(eq(productImagesTable.productId, product.id)).orderBy(productImagesTable.sortOrder).limit(10) : [];
+    const images = storedImages.length ? storedImages : product.imageUrl ? [{ imageUrl: product.imageUrl }] : [];
+    const caption = `${product.name}\n${Number(product.price).toFixed(2)} ${store.currency}`;
+    const media = productMediaRequest(message.chat.id, images, caption);
+    if (media) await telegramCall(bot.token, media.method, media.body)
+      .catch(async () => { await sendText(bot, message.chat.id, "تعذر عرض الصور الآن."); });
+    await sendText(bot, message.chat.id, `${caption}\n\n${product.description.slice(0, 2800)}\n\nللطلب: /order ${code} 1`);
+    return;
+  }
 
   if (command === "/catalog") {
     const products = await db
@@ -192,7 +214,7 @@ async function handleUpdate(
             .join("\n");
     const orderInstructions =
       products.length > 0
-        ? "\n\nلطلب منتج أرسل:\n/order رمز_المنتج الكمية\nانسخ الرمز بين الأقواس من قائمة المنتجات.\nلا يتم الدفع داخل البوت."
+        ? "\n\nللتفاصيل والصور: /product رمز_المنتج\nلطلب منتج أرسل:\n/order رمز_المنتج الكمية\nانسخ الرمز بين الأقواس من قائمة المنتجات.\nلا يتم الدفع داخل البوت."
         : "";
     const intro = designer.catalogIntro ? `${formatMessage(designer.catalogIntro)}\n\n` : "";
     await sendText(bot, message.chat.id, `${intro}${store.name}\n\n${content}${orderInstructions}`);
