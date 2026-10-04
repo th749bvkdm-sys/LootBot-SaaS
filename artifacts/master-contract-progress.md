@@ -1,7 +1,8 @@
 # Master implementation contract progress
 
 Authoritative specification: user attachment `860b70b7-c84d-483f-9dce-66529aa5744b/نص ملصق.txt`.
-Working branch: `codex/master-contract-expansion`. This document tracks remaining work; it is not a completion claim.
+Original checkpoint branch: `codex/master-contract-expansion`, merged as PR #3 and deployed as `b40df5f`.
+Current V2 branch: `codex/v2-telegram-studio`; see `artifacts/v2-implementation-progress.md` for new scope and evidence. This document tracks remaining work; it is not a completion claim.
 
 ## Implemented, with verification limits
 
@@ -46,4 +47,4 @@ Working branch: `codex/master-contract-expansion`. This document tracks remainin
 - Tests: seventeen unit tests passed, covering plans, rate limiter, message parsing, gallery validation/legacy compatibility, old plan definitions, Telegram media request constraints, central feature gate enforcement and password/token primitives.
 - API and frontend production builds passed after gallery wiring; repeat for later changes as needed.
 - Gallery SQL is additive and schema is used by existing `db:push` deploy step. Migration has not been executed locally.
-- Current changes have not been deployed; do not infer live behavior from local tests/builds.
+- PR #3 changes deployed successfully on 2026-10-04. New V2 changes are not deployed; do not infer their live behavior from local tests/builds.

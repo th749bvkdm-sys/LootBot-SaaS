@@ -15,6 +15,9 @@ export const telegramBotsTable = pgTable("telegram_bots", {
   status: text("status").notNull().default("connected"),
   lastError: text("last_error"),
   lastUpdateId: text("last_update_id"),
+  lastSuccessfulPollAt: timestamp("last_successful_poll_at", { withTimezone: true }),
+  lastConnectionTestAt: timestamp("last_connection_test_at", { withTimezone: true }),
+  lastConnectionTestError: text("last_connection_test_error"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

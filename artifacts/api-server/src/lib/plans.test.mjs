@@ -18,6 +18,8 @@ import { parseTelegramDesignerSettings, readTelegramDesignerSettings } from "./t
 import { parseGalleryInput, galleryWithLegacyFallback } from "./product-gallery.ts";
 import { productMediaRequest } from "./telegram-product-media.ts";
 import { passwordHash, verifyPassword, safeStringEqual, newOpaqueToken, sha256 } from "./security.ts";
+import { parseNavigationCallback, defaultHomeKeyboard, navigationFooter, paginationButtons, createSearchContexts } from "./telegram-navigation.ts";
+import { DEFAULT_HOME_CONFIGURATION, parseHomeConfiguration, renderConfiguredHome, readHomeStudio } from "./telegram-home-configuration.ts";
 
 test("new and malformed store settings resolve to the safe FREE plan", () => {
   assert.equal(readPlanCode({}), "FREE");
@@ -177,4 +179,123 @@ test("session and CSRF token primitives are opaque and comparisons reject unequa
   assert.equal(safeStringEqual(first, second), false);
   assert.equal(safeStringEqual(first, first + 'x'), false);
   assert.equal(safeStringEqual(sha256(first), sha256(first)), true);
+});
+
+test("default store home exposes real navigable actions with safe callback payloads", () => {
+  const buttons = defaultHomeKeyboard().flat();
+  assert.equal(buttons.length, 5);
+  assert.ok(buttons.every(button => parseNavigationCallback(button.callback_data)));
+  assert.equal(buttons.some(button => /points|referrals|coupons/.test(button.callback_data)), false);
+  assert.equal(parseNavigationCallback('https://example.com'), null);
+  assert.equal(parseNavigationCallback('lb:products:0'), null);
+  assert.equal(parseNavigationCallback('lb:products:-1'), null);
+  assert.equal(parseNavigationCallback('x'.repeat(65)), null);
+  assert.equal(parseNavigationCallback('lb:category:../../other-store:1'), null);
+});
+
+test("pagination and back preserve the originating category or search page", () => {
+  const categoryId = '12345678-1234-1234-1234-123456789abc';
+  const rows = paginationButtons(`lb:category:${categoryId}`, 2, true);
+  assert.deepEqual(rows[0].map(button => parseNavigationCallback(button.callback_data)), [
+    { kind: 'category', id: categoryId, page: 1 }, { kind: 'category', id: categoryId, page: 3 },
+  ]);
+  assert.equal(navigationFooter('lb:search:2')[0][0].callback_data, 'lb:search:2');
+  assert.deepEqual(paginationButtons('lb:products', 1, false), []);
+  assert.deepEqual(parseNavigationCallback('lb:product:123456789abc:abcdef123456'), { kind: 'product', code: '123456789abc', parentRef: 'abcdef123456' });
+});
+
+test("conversation search context isolates stores, users and chats and expires safely", () => {
+  let now = 0; const contexts = createSearchContexts(() => now);
+  contexts.set('store-a', 1, 10, 'keyboard');
+  assert.equal(contexts.get('store-a', 1, 10), 'keyboard');
+  assert.equal(contexts.get('store-b', 1, 10), null);
+  assert.equal(contexts.get('store-a', 2, 10), null);
+  assert.equal(contexts.get('store-a', 1, 11), null);
+  now += 15 * 60_000;
+  assert.equal(contexts.get('store-a', 1, 10), null);
+  contexts.set('store-a', 1, 10, '');
+  assert.equal(contexts.get('store-a', 1, 10), '');
+  contexts.clear('store-a', 1, 10);
+  assert.equal(contexts.get('store-a', 1, 10), null);
+});
+
+test("home configuration accepts real actions only and rejects empty or duplicate menus", () => {
+  assert.ok(parseHomeConfiguration(DEFAULT_HOME_CONFIGURATION));
+  assert.equal(parseHomeConfiguration({ ...DEFAULT_HOME_CONFIGURATION, columns: 4 }), null);
+  assert.equal(parseHomeConfiguration({ ...DEFAULT_HOME_CONFIGURATION, welcomeMessage: '' }), null);
+  assert.equal(parseHomeConfiguration({ ...DEFAULT_HOME_CONFIGURATION, buttons: DEFAULT_HOME_CONFIGURATION.buttons.map(button => ({ ...button, enabled: false })) }), null);
+  const invalid = structuredClone(DEFAULT_HOME_CONFIGURATION);
+  invalid.buttons[0].action = 'RUN_CODE';
+  assert.equal(parseHomeConfiguration(invalid), null);
+  invalid.buttons[0].action = 'categories';
+  assert.equal(parseHomeConfiguration(invalid), null);
+});
+
+test("server preview and home runtime reflect layout, ordering, visibility and customer greeting", () => {
+  const configuration = structuredClone(DEFAULT_HOME_CONFIGURATION);
+  configuration.columns = 3; configuration.showEmoji = false;
+  configuration.buttons.reverse(); configuration.buttons[0].enabled = false;
+  const rendered = renderConfiguredHome(configuration, 'Store {{customer}}', 'Ali');
+  assert.match(rendered.text, /Store \{\{customer\}\}/);
+  assert.match(rendered.text, /Ali/);
+  assert.equal(rendered.keyboard[0].length, 3);
+  assert.equal(rendered.keyboard[0][0].callback_data, 'lb:orders:1');
+  assert.ok(rendered.keyboard.flat().every(button => parseNavigationCallback(button.callback_data)));
+  assert.equal(rendered.keyboard.flat().some(button => button.callback_data === 'lb:account'), false);
+});
+
+test("draft edits remain independent of published config and published data survives serialization", () => {
+  const draft = structuredClone(DEFAULT_HOME_CONFIGURATION); draft.welcomeMessage = 'DRAFT';
+  const published = structuredClone(DEFAULT_HOME_CONFIGURATION); published.welcomeMessage = 'PUBLISHED';
+  const persisted = JSON.parse(JSON.stringify({ draft, published, revision: 2 }));
+  const studio = readHomeStudio(persisted);
+  assert.equal(renderConfiguredHome(studio.published, 'store', 'customer').text, 'PUBLISHED');
+  assert.equal(studio.draft.welcomeMessage, 'DRAFT');
+  assert.equal(studio.revision, 2);
+  assert.equal(readHomeStudio({ published: { invalid: true } }).published, null);
+  assert.deepEqual(readHomeStudio(null).draft, DEFAULT_HOME_CONFIGURATION);
+});
+
+test("nested navigation preserves the list page and all controls fit Telegram callback limits", () => {
+  const id = '12345678-1234-1234-1234-123456789abc';
+  assert.deepEqual(parseNavigationCallback(`lb:category:${id}:2:3`), { kind: 'category', id, page: 2, parentPage: 3 });
+  assert.deepEqual(parseNavigationCallback(`lb:order:${id}:7`), { kind: 'order', id, parentPage: 7 });
+  assert.equal(parseNavigationCallback(`lb:order:${id}:0`), null);
+  assert.equal(parseNavigationCallback(`lb:category:${id}:1:0`), null);
+  const rows = paginationButtons(`lb:category:${id}`, 99998, true, ':99999');
+  for (const button of rows.flat()) {
+    assert.ok(Buffer.byteLength(button.callback_data) <= 64);
+    assert.equal(parseNavigationCallback(button.callback_data).parentPage, 99999);
+  }
+  assert.equal(paginationButtons('lb:products', 99999, true).flat().length, 1);
+  const footer = navigationFooter('lb:orders:3', `lb:order:${id}:3`).flat();
+  assert.deepEqual(footer.map(button => button.callback_data), ['lb:orders:3', 'lb:home', `lb:order:${id}:3`, 'lb:close']);
+  assert.ok(footer.every(button => parseNavigationCallback(button.callback_data)));
+});
+
+test("home header and footer persist, render identically, and reject invalid values", () => {
+  const input = { ...DEFAULT_HOME_CONFIGURATION, headerTitle: '{{store}}', headerSubtitle: '  Premium games  ', footer: 'Thanks {{customer}}' };
+  const config = parseHomeConfiguration(JSON.parse(JSON.stringify(input)));
+  assert.equal(config.headerSubtitle, 'Premium games');
+  const preview = renderConfiguredHome(config, 'LootBot', 'Ali');
+  const runtime = renderConfiguredHome(readHomeStudio({ published: config }).published, 'LootBot', 'Ali');
+  assert.deepEqual(preview, runtime);
+  assert.ok(preview.text.startsWith('LootBot\n\nPremium games'));
+  assert.ok(preview.text.endsWith('Thanks Ali'));
+  assert.equal(parseHomeConfiguration({ ...input, headerTitle: 'x'.repeat(101) }), null);
+  assert.equal(parseHomeConfiguration({ ...input, footer: { html: '<script>' } }), null);
+});
+
+test("search snapshots and gallery callbacks remain scoped and bounded", () => {
+  assert.deepEqual(parseNavigationCallback('lb:search:3:abcdef123456'), { kind: 'search', page: 3, queryRef: 'abcdef123456' });
+  assert.deepEqual(parseNavigationCallback('lb:search:clear'), { kind: 'searchClear' });
+  assert.deepEqual(parseNavigationCallback('lb:gallery:123456789abc:9:abcdef123456'), { kind: 'gallery', code: '123456789abc', index: 9, parentRef: 'abcdef123456' });
+  for (const invalid of ['lb:gallery:123456789abc:10:abcdef123456', 'lb:gallery:123456789abc:-1:abcdef123456', 'lb:search:0:abcdef123456', 'lb:search:1:invalid']) assert.equal(parseNavigationCallback(invalid), null);
+  const contexts = createSearchContexts();
+  contexts.set('store-a:snapshot-a', 1, 10, 'keyboard');
+  contexts.set('store-a:snapshot-b', 1, 10, 'mouse');
+  assert.equal(contexts.get('store-a:snapshot-a', 1, 10), 'keyboard');
+  assert.equal(contexts.get('store-a:snapshot-b', 1, 10), 'mouse');
+  assert.equal(contexts.get('store-a:snapshot-a', 2, 10), null);
+  assert.equal(contexts.get('store-b:snapshot-a', 1, 10), null);
 });
