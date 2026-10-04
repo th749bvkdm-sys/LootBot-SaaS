@@ -1,10 +1,14 @@
 {
   "name": "workspace",
   "version": "0.0.0",
+  "packageManager": "pnpm@11.19.0",
   "license": "MIT",
   "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
+    "preinstall": "node ./scripts/check-package-manager.mjs",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "dev": "node ./scripts/run-pnpm.mjs --parallel --filter @workspace/api-server --filter @workspace/lootbot run dev",
+    "db:push": "node ./scripts/run-pnpm.mjs --filter @workspace/db run push",
+    "start": "node ./scripts/run-pnpm.mjs --filter @workspace/api-server run start",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },

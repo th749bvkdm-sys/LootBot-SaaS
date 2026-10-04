@@ -25,7 +25,12 @@ const router: IRouter = Router();
 const PAGE_SIZES = new Set([10, 25, 50, 100]);
 
 router.get("/orders", requireAuth, async (req, res): Promise<void> => {
-  const parsed = ListOrdersQueryParams.safeParse(req.query);
+  const parsed = ListOrdersQueryParams.safeParse({
+    ...req.query,
+    ...(req.query.pageSize !== undefined
+      ? { pageSize: Number(req.query.pageSize) }
+      : {}),
+  });
   if (!parsed.success || !PAGE_SIZES.has(parsed.data.pageSize)) {
     res.status(400).json({ error: "خيارات عرض الطلبات غير صالحة." });
     return;

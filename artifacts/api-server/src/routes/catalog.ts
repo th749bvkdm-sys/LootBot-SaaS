@@ -1,4 +1,4 @@
-import { and, count, eq, ilike, or } from "drizzle-orm";
+import { and, count, eq, ilike, inArray, or } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
   CreateCategoryBody,
@@ -26,14 +26,32 @@ import {
   categoriesTable,
   db,
   productsTable,
+  storeSettingsTable,
   storesTable,
 } from "@workspace/db";
 import { requireAuth, requireCsrf, getOwnedStore } from "../lib/auth-middleware";
 import { writeAuditEvent } from "../lib/audit";
 import { createId } from "../lib/security";
+import { PLAN_CATALOG, readPlanCode } from "../lib/plans";
+import { enforcePlanLimit } from "../lib/store-plans";
+import { isFeatureAvailable } from "../lib/plans";
+import { z } from "zod/v4";
 
 const router: IRouter = Router();
 const PAGE_SIZES = new Set([10, 25, 50, 100]);
+
+function isSupportedImageUrl(value: string | null | undefined): boolean {
+  if (!value) return true;
+  try {
+    const url = new URL(value);
+    return (url.protocol === "https:" || url.protocol === "http:") &&
+      url.username === "" &&
+      url.password === "" &&
+      value.length <= 2_048;
+  } catch {
+    return false;
+  }
+}
 
 async function ownedCategory(categoryId: string, ownerId: string) {
   const [category] = await db
@@ -113,7 +131,12 @@ function publicProduct(
 }
 
 router.get("/categories", requireAuth, async (req, res): Promise<void> => {
-  const parsed = ListCategoriesQueryParams.safeParse(req.query);
+  const parsed = ListCategoriesQueryParams.safeParse({
+    ...req.query,
+    ...(req.query.pageSize !== undefined
+      ? { pageSize: Number(req.query.pageSize) }
+      : {}),
+  });
   if (!parsed.success || !PAGE_SIZES.has(parsed.data.pageSize)) {
     res.status(400).json({ error: "خيارات الصفحات غير صالحة." });
     return;
@@ -188,15 +211,46 @@ router.post(
       return;
     }
     const id = createId();
-    const [category] = await db
-      .insert(categoriesTable)
-      .values({
-        id,
-        storeId: store.id,
-        name: parsed.data.name.trim(),
-        description: parsed.data.description?.trim() || null,
-      })
-      .returning();
+    const result = await db.transaction(async (tx) => {
+      await tx
+        .select({ id: storesTable.id })
+        .from(storesTable)
+        .where(eq(storesTable.id, store.id))
+        .for("update");
+      const [settings] = await tx
+        .select({ settings: storeSettingsTable.settings })
+        .from(storeSettingsTable)
+        .where(eq(storeSettingsTable.storeId, store.id))
+        .limit(1);
+      const plan = readPlanCode(settings?.settings);
+      const [usage] = await tx
+        .select({ value: count() })
+        .from(categoriesTable)
+        .where(
+          and(
+            eq(categoriesTable.storeId, store.id),
+            eq(categoriesTable.isDeleted, false),
+          ),
+        );
+      if (Number(usage?.value ?? 0) >= PLAN_CATALOG[plan].limits.categoriesPerStore) {
+        return { limit: { plan, usage: Number(usage?.value ?? 0) } };
+      }
+      const [category] = await tx
+        .insert(categoriesTable)
+        .values({
+          id,
+          storeId: store.id,
+          name: parsed.data.name.trim(),
+          description: parsed.data.description?.trim() || null,
+        })
+        .returning();
+      return { category };
+    });
+    if (result.limit) {
+      enforcePlanLimit(res, result.limit.plan, "categoriesPerStore", result.limit.usage);
+      return;
+    }
+    const category = result.category;
     await writeAuditEvent({
       userId: req.auth!.userId,
       storeId: store.id,
@@ -322,7 +376,12 @@ router.delete(
 );
 
 router.get("/products", requireAuth, async (req, res): Promise<void> => {
-  const parsed = ListProductsQueryParams.safeParse(req.query);
+  const parsed = ListProductsQueryParams.safeParse({
+    ...req.query,
+    ...(req.query.pageSize !== undefined
+      ? { pageSize: Number(req.query.pageSize) }
+      : {}),
+  });
   if (!parsed.success || !PAGE_SIZES.has(parsed.data.pageSize)) {
     res.status(400).json({ error: "خيارات الصفحات غير صالحة." });
     return;
@@ -395,6 +454,10 @@ router.post(
       res.status(400).json({ error: "تحقق من بيانات المنتج." });
       return;
     }
+    if (!isSupportedImageUrl(parsed.data.imageUrl)) {
+      res.status(400).json({ error: "أدخل رابط صورة صالحًا يبدأ بـ HTTP أو HTTPS." });
+      return;
+    }
     const store = await getOwnedStore(params.data.storeId, req.auth!.userId);
     if (!store) {
       res.status(404).json({ error: "لم يتم العثور على المتجر." });
@@ -420,21 +483,52 @@ router.post(
     }
 
     try {
-      const [product] = await db
-        .insert(productsTable)
-        .values({
-          id: createId(),
-          storeId: store.id,
-          categoryId,
-          sku: parsed.data.sku?.trim() || null,
-          name: parsed.data.name.trim(),
-          description: parsed.data.description.trim(),
-          price: parsed.data.price.toFixed(2),
-          stock: parsed.data.stock,
-          imageUrl: parsed.data.imageUrl ?? null,
-          isPublished: parsed.data.isPublished,
-        })
-        .returning();
+      const result = await db.transaction(async (tx) => {
+        await tx
+          .select({ id: storesTable.id })
+          .from(storesTable)
+          .where(eq(storesTable.id, store.id))
+          .for("update");
+        const [settings] = await tx
+          .select({ settings: storeSettingsTable.settings })
+          .from(storeSettingsTable)
+          .where(eq(storeSettingsTable.storeId, store.id))
+          .limit(1);
+        const plan = readPlanCode(settings?.settings);
+        const [usage] = await tx
+          .select({ value: count() })
+          .from(productsTable)
+          .where(
+            and(
+              eq(productsTable.storeId, store.id),
+              eq(productsTable.isDeleted, false),
+            ),
+          );
+        if (Number(usage?.value ?? 0) >= PLAN_CATALOG[plan].limits.productsPerStore) {
+          return { limit: { plan, usage: Number(usage?.value ?? 0) } };
+        }
+        const [product] = await tx
+          .insert(productsTable)
+          .values({
+            id: createId(),
+            storeId: store.id,
+            categoryId,
+            sku: parsed.data.sku?.trim() || null,
+            name: parsed.data.name.trim(),
+            description: parsed.data.description.trim(),
+            price: parsed.data.price.toFixed(2),
+            stock: parsed.data.stock,
+            imageUrl: parsed.data.imageUrl ?? null,
+            isPublished: parsed.data.isPublished,
+          })
+          .returning();
+        return { product };
+      });
+      if (result.limit) {
+        enforcePlanLimit(res, result.limit.plan, "productsPerStore", result.limit.usage);
+        return;
+      }
+      const product = result.product;
       await writeAuditEvent({
         userId: req.auth!.userId,
         storeId: store.id,
@@ -457,6 +551,74 @@ router.post(
 );
 
 router.patch(
+  "/stores/:storeId/products/bulk",
+  requireAuth,
+  requireCsrf,
+  async (req, res): Promise<void> => {
+    const storeId = req.params.storeId;
+    const body = z.object({
+      productIds: z.array(z.string().min(1).max(200)).min(1).max(100),
+      action: z.enum(["publish", "draft"]),
+    }).safeParse(req.body);
+    if (typeof storeId !== "string" || !storeId || !body.success) {
+      res.status(400).json({ error: "تحقق من المنتجات والإجراء المطلوب." });
+      return;
+    }
+    const productIds = [...new Set(body.data.productIds)];
+    const store = await getOwnedStore(storeId, req.auth!.userId);
+    if (!store) {
+      res.status(404).json({ error: "لم يتم العثور على المتجر." });
+      return;
+    }
+    const result = await db.transaction(async (tx) => {
+      await tx
+        .select({ id: storesTable.id })
+        .from(storesTable)
+        .where(eq(storesTable.id, store.id))
+        .for("update");
+      const [settings] = await tx
+        .select({ settings: storeSettingsTable.settings })
+        .from(storeSettingsTable)
+        .where(eq(storeSettingsTable.storeId, store.id))
+        .limit(1);
+      const plan = readPlanCode(settings?.settings);
+      if (!isFeatureAvailable(plan, "catalog.bulkTools")) {
+        return { unavailable: true as const };
+      }
+      const updated = await tx
+        .update(productsTable)
+        .set({ isPublished: body.data.action === "publish", updatedAt: new Date() })
+        .where(
+          and(
+            eq(productsTable.storeId, store.id),
+            eq(productsTable.isDeleted, false),
+            inArray(productsTable.id, productIds),
+          ),
+        )
+        .returning({ id: productsTable.id });
+      return { unavailable: false as const, updated };
+    });
+    if (result.unavailable) {
+      res.status(403).json({
+        code: "PLAN_FEATURE_UNAVAILABLE",
+        feature: "catalog.bulkTools",
+        requiredPlan: "PRO",
+        error: "أدوات المنتجات الجماعية متاحة في باقة Pro أو Business. الترقية ستكون متاحة قريبًا.",
+      });
+      return;
+    }
+    await writeAuditEvent({
+      userId: req.auth!.userId,
+      storeId: store.id,
+      action: `product.bulk_${body.data.action}`,
+      summary: `تم تحديث حالة ${result.updated.length} منتج جماعيًا`,
+      details: { count: result.updated.length, action: body.data.action },
+    });
+    res.json({ updatedCount: result.updated.length, action: body.data.action });
+  },
+);
+
+router.patch(
   "/products/:productId",
   requireAuth,
   requireCsrf,
@@ -469,6 +631,10 @@ router.patch(
       (parsed.data.name !== undefined && !parsed.data.name.trim())
     ) {
       res.status(400).json({ error: "تحقق من بيانات المنتج." });
+      return;
+    }
+    if (!isSupportedImageUrl(parsed.data.imageUrl)) {
+      res.status(400).json({ error: "أدخل رابط صورة صالحًا يبدأ بـ HTTP أو HTTPS." });
       return;
     }
     const product = await ownedProduct(params.data.productId, req.auth!.userId);
