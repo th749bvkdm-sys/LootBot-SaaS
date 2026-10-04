@@ -32,8 +32,8 @@ import {
 import { requireAuth, requireCsrf, getOwnedStore } from "../lib/auth-middleware";
 import { writeAuditEvent } from "../lib/audit";
 import { createId } from "../lib/security";
-import { PLAN_CATALOG, readPlanCode } from "../lib/plans";
-import { enforcePlanLimit } from "../lib/store-plans";
+import { readPlanCode } from "../lib/plans";
+import { enforcePlanLimit, getPlanCatalog } from "../lib/store-plans";
 import { isFeatureAvailable } from "../lib/plans";
 import { z } from "zod/v4";
 
@@ -210,6 +210,7 @@ router.post(
       res.status(404).json({ error: "لم يتم العثور على المتجر." });
       return;
     }
+    const planCatalog = await getPlanCatalog();
     const id = createId();
     const result = await db.transaction(async (tx) => {
       await tx
@@ -232,7 +233,7 @@ router.post(
             eq(categoriesTable.isDeleted, false),
           ),
         );
-      if (Number(usage?.value ?? 0) >= PLAN_CATALOG[plan].limits.categoriesPerStore) {
+      if (Number(usage?.value ?? 0) >= planCatalog[plan].limits.categoriesPerStore) {
         return { limit: { plan, usage: Number(usage?.value ?? 0) } };
       }
       const [category] = await tx
@@ -247,7 +248,7 @@ router.post(
       return { category };
     });
     if (result.limit) {
-      enforcePlanLimit(res, result.limit.plan, "categoriesPerStore", result.limit.usage);
+      enforcePlanLimit(res, result.limit.plan, "categoriesPerStore", result.limit.usage, planCatalog);
       return;
     }
     const category = result.category;
@@ -464,6 +465,7 @@ router.post(
       return;
     }
     const categoryId = parsed.data.categoryId ?? null;
+    const planCatalog = await getPlanCatalog();
     if (categoryId) {
       const [category] = await db
         .select({ id: categoriesTable.id })
@@ -504,7 +506,7 @@ router.post(
               eq(productsTable.isDeleted, false),
             ),
           );
-        if (Number(usage?.value ?? 0) >= PLAN_CATALOG[plan].limits.productsPerStore) {
+        if (Number(usage?.value ?? 0) >= planCatalog[plan].limits.productsPerStore) {
           return { limit: { plan, usage: Number(usage?.value ?? 0) } };
         }
         const [product] = await tx
@@ -525,7 +527,7 @@ router.post(
         return { product };
       });
       if (result.limit) {
-        enforcePlanLimit(res, result.limit.plan, "productsPerStore", result.limit.usage);
+        enforcePlanLimit(res, result.limit.plan, "productsPerStore", result.limit.usage, planCatalog);
         return;
       }
       const product = result.product;
@@ -570,6 +572,7 @@ router.patch(
       res.status(404).json({ error: "لم يتم العثور على المتجر." });
       return;
     }
+    const planCatalog = await getPlanCatalog();
     const result = await db.transaction(async (tx) => {
       await tx
         .select({ id: storesTable.id })
@@ -582,7 +585,7 @@ router.patch(
         .where(eq(storeSettingsTable.storeId, store.id))
         .limit(1);
       const plan = readPlanCode(settings?.settings);
-      if (!isFeatureAvailable(plan, "catalog.bulkTools")) {
+      if (!isFeatureAvailable(plan, "catalog.bulkTools", planCatalog)) {
         return { unavailable: true as const };
       }
       const updated = await tx

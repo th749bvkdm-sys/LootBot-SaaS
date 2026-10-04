@@ -1,7 +1,6 @@
 import { Router, type IRouter } from "express";
-import { PLAN_CATALOG } from "../lib/plans";
 import { requireAuth, getOwnedStore } from "../lib/auth-middleware";
-import { getPlanUsage, getStorePlan } from "../lib/store-plans";
+import { getPlanCatalog, getPlanUsage, getStorePlan } from "../lib/store-plans";
 
 const router: IRouter = Router();
 
@@ -18,12 +17,13 @@ router.get("/stores/:storeId/plan", requireAuth, async (req, res): Promise<void>
   }
 
   const plan = await getStorePlan(store.id);
+  const catalog = await getPlanCatalog();
   res.json({
     plan,
-    planName: PLAN_CATALOG[plan].name,
+    planName: catalog[plan].name,
     billing: "manual_admin_assignment",
-    limits: PLAN_CATALOG[plan].limits,
-    features: PLAN_CATALOG[plan].features,
+    limits: catalog[plan].limits,
+    features: catalog[plan].features,
     usage: await getPlanUsage(store.id, req.auth!.userId),
   });
 });

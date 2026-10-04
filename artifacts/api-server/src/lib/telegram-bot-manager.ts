@@ -11,7 +11,8 @@ import {
 import { writeAuditEvent } from "./audit";
 import { logger } from "./logger";
 import { createId, decryptBotToken, sha256 } from "./security";
-import { PLAN_CATALOG, isPlanLimitReached, planLimitMessage, readPlanCode } from "./plans";
+import { isPlanLimitReached, planLimitMessage, readPlanCode } from "./plans";
+import { getPlanCatalog } from "./store-plans";
 
 interface TelegramBotUser {
   id: number;
@@ -253,6 +254,7 @@ async function handleUpdate(
     const monthStart = new Date(
       Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1),
     );
+    const planCatalog = await getPlanCatalog();
     const result = await db.transaction(async (tx) => {
       await tx
         .select({ id: storesTable.id })
@@ -275,7 +277,7 @@ async function handleUpdate(
           ),
         );
       const monthlyUsage = Number(monthlyOrderCount?.value ?? 0);
-      if (isPlanLimitReached(plan, "ordersPerMonth", monthlyUsage)) {
+      if (isPlanLimitReached(plan, "ordersPerMonth", monthlyUsage, planCatalog)) {
         return { planLimit: plan };
       }
 
