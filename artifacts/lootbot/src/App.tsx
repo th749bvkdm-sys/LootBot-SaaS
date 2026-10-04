@@ -304,6 +304,26 @@ function Landing() {
 function BrandMark({ small = false }: { small?: boolean }) {
   return <span className={`grid place-items-center rounded-xl bg-[#63d7aa] text-[#10231d] ${small?'h-7 w-7 rounded-lg':'h-9 w-9'}`}><Command className={small?'h-4 w-4':'h-5 w-5'} /></span>;
 }
+function authErrorMessage(error: unknown, locale: Locale): string {
+  const candidate = error && typeof error === 'object' ? error as { status?: unknown; data?: unknown } : {};
+  const status = typeof candidate.status === 'number' ? candidate.status : 0;
+  const payload = candidate.data && typeof candidate.data === 'object' ? candidate.data as Record<string, unknown> : {};
+  const detail = typeof payload.error === 'string' ? payload.error : '';
+  if (locale === 'ar') {
+    if (detail) return detail;
+    if (status === 401) return 'بيانات الدخول غير صحيحة. تحقق من البريد وكلمة المرور.';
+    if (status === 403) return 'تعذر التحقق من حماية الطلب. حدّث الصفحة وحاول مجددًا.';
+    if (status === 429) return 'محاولات كثيرة. انتظر قليلًا ثم حاول مجددًا.';
+    if (status >= 500 || status === 0) return 'تعذر الاتصال بالخادم الآن. تحقق من اتصالك وحاول مجددًا.';
+    return 'تعذر إكمال الطلب. راجع البيانات وحاول مجددًا.';
+  }
+  if (status === 401) return 'Email or password is incorrect. Check your sign-in details.';
+  if (status === 403) return 'Security check failed. Reload the page and try again.';
+  if (status === 429) return 'Too many attempts. Wait a moment, then try again.';
+  if (status >= 500 || status === 0) return 'The server is unavailable right now. Check your connection and try again.';
+  if (status === 409) return 'An account with these details could not be created.';
+  return 'Could not complete the request. Check your details and try again.';
+}
 function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const [locale,toggleLocale]=useLocale(); const t=copy[locale]; const rtl=locale==='ar';
   const [,navigate]=useLocation(); const qc=useQueryClient(); const csrf=useGetCsrfToken();
@@ -311,8 +331,8 @@ function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const login=useLoginUser({request:{headers:csrfHeader}}); const register=useRegisterUser({request:{headers:csrfHeader}});
   const [error,setError]=useState(''); const [showPassword,setShowPassword]=useState(false);
   const submit=(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();setError('');const fd=new FormData(e.currentTarget);const email=String(fd.get('email'));const password=String(fd.get('password'));
-    if(mode==='login') login.mutate({data:{email,password}},{onSuccess:(data)=>{qc.setQueryData(getGetCsrfTokenQueryKey(),{token:data.csrfToken});qc.setQueryData(getGetCurrentUserQueryKey(),data.user);navigate(data.user.role==='SUPERADMIN'?'/admin':'/dashboard');},onError:(err)=>setError(err.message)});
-    else register.mutate({data:{name:String(fd.get('name')),email,password}},{onSuccess:(data)=>{qc.setQueryData(getGetCsrfTokenQueryKey(),{token:data.csrfToken});void qc.invalidateQueries({queryKey:getGetCurrentUserQueryKey()});navigate('/onboarding');},onError:(err)=>setError(err.message)});
+    if(mode==='login') login.mutate({data:{email,password}},{onSuccess:(data)=>{qc.setQueryData(getGetCsrfTokenQueryKey(),{token:data.csrfToken});qc.setQueryData(getGetCurrentUserQueryKey(),data.user);void qc.invalidateQueries({queryKey:getGetCurrentUserQueryKey()});navigate(data.user.role==='SUPERADMIN'?'/admin':'/dashboard');},onError:(err)=>setError(authErrorMessage(err,locale))});
+    else register.mutate({data:{name:String(fd.get('name')),email,password}},{onSuccess:(data)=>{qc.setQueryData(getGetCsrfTokenQueryKey(),{token:data.csrfToken});void qc.invalidateQueries({queryKey:getGetCurrentUserQueryKey()});navigate('/onboarding');},onError:(err)=>setError(authErrorMessage(err,locale))});
   };
   const pending=login.isPending||register.isPending;
   return <main dir={rtl?'rtl':'ltr'} className="grid min-h-[100dvh] bg-[#11171c] text-[#e8efee] md:grid-cols-[1fr_.9fr]">
@@ -632,6 +652,10 @@ function TelegramPage({store,locale='ar',t=copy.ar}:{store?:Store;locale?:Locale
   const storeId=store?.id||'';const bot=useGetStoreBot(storeId,{query:{enabled:!!storeId,queryKey:getGetStoreBotQueryKey(storeId)}});const csrf=useGetCsrfToken();const request={request:{headers:csrf.data?.token?{'x-csrf-token':csrf.data.token}:undefined}};const connect=useConnectStoreBot(request);const disconnect=useDisconnectStoreBot(request);const qc=useQueryClient();const [token,setToken]=useState('');const [error,setError]=useState('');
   const invalidate=()=>{void qc.invalidateQueries({queryKey:getGetStoreBotQueryKey(storeId)});void qc.invalidateQueries({queryKey:getListStoresQueryKey()});void qc.invalidateQueries({queryKey:getGetDashboardSummaryQueryKey({storeId})});};
   const submit=(e:FormEvent)=>{e.preventDefault();setError('');connect.mutate({storeId,data:{token}},{onSuccess:()=>{setToken('');invalidate();},onError:e=>setError(e.message)});};
+  const designer=useQuery({queryKey:['telegram-designer',storeId],enabled:!!storeId,queryFn:async()=>{const response=await fetch(`/api/stores/${encodeURIComponent(storeId)}/telegram/designer`,{credentials:'include'});if(!response.ok)throw new Error(`HTTP ${response.status}`);return response.json() as Promise<{enabled:boolean;requiredPlan:'PRO';settings:{welcomeMessage:string;helpMessage:string;catalogIntro:string;showStock:boolean}}>}});
+  const [designerDraft,setDesignerDraft]=useState({welcomeMessage:'',helpMessage:'',catalogIntro:'',showStock:true});const [designerError,setDesignerError]=useState('');const [designerSaved,setDesignerSaved]=useState(false);
+  useEffect(()=>{if(designer.data)setDesignerDraft(designer.data.settings);},[designer.data]);
+  const saveDesigner=async(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();setDesignerError('');setDesignerSaved(false);if(!csrf.data?.token)return;try{const response=await fetch(`/api/stores/${encodeURIComponent(storeId)}/telegram/designer`,{method:'PATCH',credentials:'include',headers:{'content-type':'application/json','x-csrf-token':csrf.data.token},body:JSON.stringify(designerDraft)});const payload=await response.json().catch(()=>null) as {error?:string;settings?:typeof designerDraft}|null;if(!response.ok)throw new Error(payload?.error||(locale==='ar'?'تعذر حفظ تخصيص البوت.':'Could not save bot customization.'));if(payload?.settings)setDesignerDraft(payload.settings);setDesignerSaved(true);await designer.refetch();}catch(cause){setDesignerError(cause instanceof Error?cause.message:(locale==='ar'?'تعذر حفظ تخصيص البوت.':'Could not save bot customization.'));}};
   return <section className="fade-up"><PageHeading eyebrow={store?.name||t.store} title={t.telegram} subtitle={t.botHelp}/><div className="grid gap-5 xl:grid-cols-[1fr_.8fr]">
     <div className="rounded-2xl border border-[#293638] bg-[#171f22] p-5 md:p-7"><div className="flex items-center gap-4"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#1e3c4a] text-[#68bbdc]"><MessageCircle className="h-6 w-6"/></div><div><h2 className="font-semibold">Telegram Bot</h2><p className="mt-1 text-xs text-[#879595]">{locale==='ar'?'إدارة اتصال متجرك':'Manage your store connection'}</p></div><div className="ms-auto">{bot.isLoading?<span className="h-5 w-16 animate-pulse rounded-full bg-[#2b383a]"/>:<StatusPill value={bot.data?.status||'disconnected'}/>}</div></div>
       {bot.isError&&<ErrorPanel message={t.serverError} onRetry={()=>void bot.refetch()}/>}
@@ -639,6 +663,13 @@ function TelegramPage({store,locale='ar',t=copy.ar}:{store?:Store;locale?:Locale
       <form onSubmit={submit} className="mt-7"><label className="mb-2 block text-sm text-[#c4cecd]">{t.botToken}</label><input value={token} onChange={e=>setToken(e.target.value)} minLength={20} maxLength={256} required type="password" autoComplete="off" placeholder="123456789:AA..." className="h-12 w-full rounded-xl border border-[#354344] bg-[#182123] px-4 font-mono text-sm outline-none focus:border-[#62d6aa]" data-testid="input-bot-token"/><p className="mt-2 text-xs leading-5 text-[#819090]">{locale==='ar'?'أنشئ بوتاً عبر @BotFather ثم ألصق الرمز هنا. يتم حفظ الرمز بأمان.':'Create a bot with @BotFather, then paste its token here. Your token is stored securely.'}</p>{error&&<InlineError message={error}/>}<button disabled={connect.isPending} className="mt-5 flex items-center gap-2 rounded-xl bg-[#62d6aa] px-5 py-3 text-sm font-bold text-[#10231d] disabled:opacity-50">{connect.isPending?'…':t.connectBot}<ArrowLeft className="h-4 w-4"/></button></form>}
     </div>
     <aside className="rounded-2xl border border-[#293638] bg-[#171f22] p-5 md:p-7"><h3 className="font-semibold">{locale==='ar'?'قبل الربط':'Before you connect'}</h3><ol className="mt-5 space-y-5">{[locale==='ar'?'افتح @BotFather في Telegram.':'Open @BotFather in Telegram.',locale==='ar'?'أنشئ بوتاً جديداً وانسخ رمز API.':'Create a bot and copy its API token.',locale==='ar'?'ألصق الرمز أعلاه للربط.':'Paste your token above to connect.'].map((s,i)=><li key={s} className="flex gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#263933] font-mono text-[10px] text-[#7ce0b9]">{i+1}</span><span className="pt-1 text-sm leading-6 text-[#a4b0af]">{s}</span></li>)}</ol><p className="mt-7 border-t border-[#2b3839] pt-4 text-[11px] leading-5 text-[#7f8d8d]"><ShieldCheck className="me-1 inline h-3.5 w-3.5 text-[#70d5ad]"/>{locale==='ar'?'لا تشارك رمز البوت مع أي شخص.':'Never share your bot token with anyone.'}</p></aside>
+    <div className="rounded-2xl border border-[#293638] bg-[#171f22] p-5 md:p-7 xl:col-span-2"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold">{locale==='ar'?'تخصيص رسائل البوت':'Bot message designer'}</h2><p className="mt-1 text-xs text-[#879595]">{locale==='ar'?'رسائل مخصصة لبوت Telegram، مع دعم {{store}} و{{customer}}.':'Personalize Telegram replies. Use {{store}} and {{customer}} placeholders.'}</p></div>{designer.data?.enabled&&<span className="rounded-full bg-[#1b3029] px-3 py-1 text-xs text-[#85dabc]">{locale==='ar'?'متاح في Pro وBusiness':'Pro & Business'}</span>}</div>
+      {designer.isLoading?<p className="mt-5 text-sm text-[#9aa8a8]">{locale==='ar'?'جار تحميل الإعدادات…':'Loading settings…'}</p>:designer.isError?<div className="mt-4"><ErrorPanel message={t.serverError} onRetry={()=>void designer.refetch()}/></div>:designer.data?.enabled===false?<p className="mt-5 rounded-xl border border-[#493d2c] bg-[#30271d] p-4 text-sm text-[#e5c996]">{locale==='ar'?'هذه الميزة متاحة في خطتي Pro وBusiness.':'This feature is available on Pro and Business plans.'}</p>:<form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={saveDesigner}>
+        {([['welcomeMessage',locale==='ar'?'رسالة الترحيب':'Welcome message'],['helpMessage',locale==='ar'?'رسالة المساعدة':'Help message'],['catalogIntro',locale==='ar'?'مقدمة الكتالوج':'Catalog introduction']] as const).map(([field,label])=><label key={field} className="block text-sm text-[#c4cecd]">{label}<textarea value={designerDraft[field]} onChange={e=>{setDesignerDraft({...designerDraft,[field]:e.target.value});setDesignerSaved(false);}} maxLength={400} rows={3} placeholder={field==='welcomeMessage'?'مرحباً {{customer}} في {{store}}':field==='helpMessage'?'استخدم /catalog لعرض المنتجات':'كتالوج {{store}}'} className="mt-2 w-full resize-y rounded-xl border border-[#354344] bg-[#182123] p-3 text-sm outline-none focus:border-[#62d6aa]"/><span className="mt-1 block text-[10px] text-[#758485]">{designerDraft[field].length}/400</span></label>)}
+        <label className="flex items-center gap-3 self-start rounded-xl border border-[#2b3839] p-4 text-sm text-[#c4cecd]"><input type="checkbox" checked={designerDraft.showStock} onChange={e=>setDesignerDraft({...designerDraft,showStock:e.target.checked})} className="accent-[#62d6aa]"/>{locale==='ar'?'إظهار المخزون المتاح في الكتالوج':'Show available stock in catalog'}</label>
+        <div className="flex flex-wrap items-center gap-3 md:col-span-2">{designerError&&<InlineError message={designerError} />}{designerSaved&&<span className="text-sm text-[#80d7b5]">{locale==='ar'?'تم حفظ الإعدادات':'Settings saved'}</span>}<button disabled={!csrf.data?.token||designer.isFetching} className="ms-auto rounded-xl bg-[#62d6aa] px-5 py-3 text-sm font-bold text-[#10231d] disabled:opacity-50">{locale==='ar'?'حفظ التخصيص':'Save customization'}</button></div>
+      </form>}
+    </div>
   </div></section>;
 }
 

@@ -9,7 +9,7 @@ import {
   GetStoreBotParams,
   GetStoreBotResponse,
 } from "@workspace/api-zod";
-import { db, storesTable, telegramBotsTable } from "@workspace/db";
+import { db, storeSettingsTable, storesTable, telegramBotsTable } from "@workspace/db";
 import { requireAuth, requireCsrf, getOwnedStore } from "../lib/auth-middleware";
 import { writeAuditEvent } from "../lib/audit";
 import {
@@ -19,8 +19,44 @@ import {
   validateTelegramBotToken,
 } from "../lib/telegram-bot-manager";
 import { encryptBotToken, sha256 } from "../lib/security";
+import { getPlanCatalog, getStorePlan } from "../lib/store-plans";
+import { isFeatureAvailable } from "../lib/plans";
+import { DEFAULT_TELEGRAM_DESIGNER, parseTelegramDesignerSettings } from "../lib/telegram-designer";
 
 const router: IRouter = Router();
+
+router.get("/stores/:storeId/telegram/designer", requireAuth, async (req, res): Promise<void> => {
+  const storeId = req.params.storeId;
+  if (typeof storeId !== "string" || !storeId) { res.status(400).json({ error: "معرّف المتجر غير صالح." }); return; }
+  const store = await getOwnedStore(storeId, req.auth!.userId);
+  if (!store) { res.status(404).json({ error: "لم يتم العثور على المتجر." }); return; }
+  const [row] = await db.select({ settings: storeSettingsTable.settings }).from(storeSettingsTable).where(eq(storeSettingsTable.storeId, store.id)).limit(1);
+  const raw = row?.settings?.telegramDesigner;
+  const settings = parseTelegramDesignerSettings(raw) ?? DEFAULT_TELEGRAM_DESIGNER;
+  const plan = await getStorePlan(store.id);
+  const catalog = await getPlanCatalog();
+  res.json({ settings, enabled: isFeatureAvailable(plan, "telegram.advanced", catalog), requiredPlan: "PRO" });
+});
+
+router.patch("/stores/:storeId/telegram/designer", requireAuth, requireCsrf, async (req, res): Promise<void> => {
+  const storeId = req.params.storeId;
+  if (typeof storeId !== "string" || !storeId) { res.status(400).json({ error: "معرّف المتجر غير صالح." }); return; }
+  const store = await getOwnedStore(storeId, req.auth!.userId);
+  if (!store) { res.status(404).json({ error: "لم يتم العثور على المتجر." }); return; }
+  const settings = parseTelegramDesignerSettings(req.body);
+  if (!settings) { res.status(400).json({ error: "تحقق من الرسائل. الحد الأقصى 400 حرف لكل رسالة." }); return; }
+  const plan = await getStorePlan(store.id);
+  const catalog = await getPlanCatalog();
+  if (!isFeatureAvailable(plan, "telegram.advanced", catalog)) {
+    res.status(403).json({ code: "PLAN_FEATURE_UNAVAILABLE", feature: "telegram.advanced", requiredPlan: "PRO", error: "تخصيص رسائل البوت متاح في باقة Pro أو Business." });
+    return;
+  }
+  const [current] = await db.select({ settings: storeSettingsTable.settings }).from(storeSettingsTable).where(eq(storeSettingsTable.storeId, store.id)).limit(1);
+  const previousSettings = current?.settings ?? {};
+  await db.insert(storeSettingsTable).values({ storeId: store.id, settings: { ...previousSettings, telegramDesigner: settings } }).onConflictDoUpdate({ target: storeSettingsTable.storeId, set: { settings: { ...previousSettings, telegramDesigner: settings }, updatedAt: new Date() } });
+  await writeAuditEvent({ userId: req.auth!.userId, storeId: store.id, action: "telegram.designer.updated", summary: "تم تحديث رسائل بوت Telegram" });
+  res.json({ settings });
+});
 
 router.get(
   "/stores/:storeId/bot",

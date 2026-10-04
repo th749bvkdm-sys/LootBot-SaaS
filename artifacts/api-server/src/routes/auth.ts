@@ -12,6 +12,7 @@ import {
 import { db, sessionsTable, usersTable } from "@workspace/db";
 import { requireAuth, requireCsrf, publicUser } from "../lib/auth-middleware";
 import { writeAuditEvent } from "../lib/audit";
+import { createLoginRateLimiter } from "../lib/login-rate-limit";
 import {
   CSRF_COOKIE,
   SESSION_COOKIE,
@@ -25,10 +26,9 @@ import {
 } from "../lib/security";
 
 const router: IRouter = Router();
-const IP_WINDOW_MS = 60_000;
 const IP_ATTEMPT_LIMIT = 5;
 const ACCOUNT_LOCK_MS = 15 * 60_000;
-const failedAttemptsByIp = new Map<string, number[]>();
+const loginRateLimiter = createLoginRateLimiter({ maxAttempts: IP_ATTEMPT_LIMIT });
 
 function cookieOptions(httpOnly: boolean, maxAge: number) {
   return {
@@ -62,23 +62,10 @@ async function issueSession(
 }
 
 const rateLimitLogin: RequestHandler = (req, res, next): void => {
-  const now = Date.now();
   const key = req.ip || "unknown";
-  const recent = (failedAttemptsByIp.get(key) ?? []).filter(
-    (timestamp) => now - timestamp < IP_WINDOW_MS,
-  );
-  if (recent.length >= IP_ATTEMPT_LIMIT) {
+  if (loginRateLimiter.isLimited(key)) {
     res.status(429).json({ error: "محاولات كثيرة. حاول مجددًا بعد دقيقة." });
     return;
-  }
-  recent.push(now);
-  failedAttemptsByIp.set(key, recent);
-  if (failedAttemptsByIp.size > 10_000) {
-    for (const [ip, attempts] of failedAttemptsByIp) {
-      if (attempts.every((timestamp) => now - timestamp >= IP_WINDOW_MS)) {
-        failedAttemptsByIp.delete(ip);
-      }
-    }
   }
   next();
 };
@@ -216,7 +203,7 @@ router.post(
       .update(usersTable)
       .set({ failedLoginAttempts: 0, lockedUntil: null, updatedAt: new Date() })
       .where(eq(usersTable.id, user.id));
-    failedAttemptsByIp.delete(req.ip || "unknown");
+    loginRateLimiter.clear(req.ip || "unknown");
     const csrfToken = await issueSession(user.id, res);
     await writeAuditEvent({
       userId: user.id,

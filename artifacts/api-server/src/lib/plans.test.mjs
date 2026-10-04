@@ -10,6 +10,8 @@ import {
   validatePlanDefinition,
   PLAN_CATALOG,
 } from "./plans.ts";
+import { createLoginRateLimiter } from "./login-rate-limit.ts";
+import { parseTelegramDesignerSettings, readTelegramDesignerSettings } from "./telegram-designer.ts";
 
 test("new and malformed store settings resolve to the safe FREE plan", () => {
   assert.equal(readPlanCode({}), "FREE");
@@ -58,4 +60,30 @@ test("plan definitions reject invalid limits, missing features, and fake feature
   assert.equal(validatePlanDefinition({ ...PLAN_CATALOG.PRO, limits: { ...PLAN_CATALOG.PRO.limits, productsPerStore: 0 } }), false);
   assert.equal(validatePlanDefinition({ ...PLAN_CATALOG.PRO, features: { ...PLAN_CATALOG.PRO.features, "catalog.bulkTools": "yes" } }), false);
   assert.equal(validatePlanDefinition({ ...PLAN_CATALOG.BUSINESS, features: { ...PLAN_CATALOG.BUSINESS.features, "staff.basic": true } }), false);
+});
+
+test("login throttling is isolated by client IP, expires, and resets after success", () => {
+  let now = 10_000;
+  const limiter = createLoginRateLimiter({ windowMs: 1_000, maxAttempts: 2, now: () => now });
+  assert.equal(limiter.isLimited("client-a"), false);
+  assert.equal(limiter.isLimited("client-a"), false);
+  assert.equal(limiter.isLimited("client-a"), true);
+  assert.equal(limiter.isLimited("client-b"), false);
+  limiter.clear("client-a");
+  assert.equal(limiter.isLimited("client-a"), false);
+  now += 1_001;
+  assert.equal(limiter.isLimited("client-b"), false);
+});
+
+test("Telegram designer settings validate message lengths and safely default old settings", () => {
+  assert.deepEqual(readTelegramDesignerSettings({}), parseTelegramDesignerSettings({ welcomeMessage: "", helpMessage: "", catalogIntro: "", showStock: true }));
+  assert.equal(parseTelegramDesignerSettings({ welcomeMessage: "x".repeat(401), helpMessage: "", catalogIntro: "", showStock: true }), null);
+  assert.equal(parseTelegramDesignerSettings({ welcomeMessage: " hi ", helpMessage: "", catalogIntro: "", showStock: false }).welcomeMessage, "hi");
+  assert.equal(readTelegramDesignerSettings({ telegramDesigner: { welcomeMessage: "old" } }).showStock, true);
+});
+
+test("advanced Telegram messages are an enforceable Pro entitlement", () => {
+  assert.equal(isFeatureAvailable("FREE", "telegram.advanced"), false);
+  assert.equal(isFeatureAvailable("PRO", "telegram.advanced"), true);
+  assert.equal(isFeatureAvailable("BUSINESS", "telegram.advanced"), true);
 });

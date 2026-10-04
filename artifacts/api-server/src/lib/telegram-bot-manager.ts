@@ -11,8 +11,9 @@ import {
 import { writeAuditEvent } from "./audit";
 import { logger } from "./logger";
 import { createId, decryptBotToken, sha256 } from "./security";
-import { isPlanLimitReached, planLimitMessage, readPlanCode } from "./plans";
-import { getPlanCatalog } from "./store-plans";
+import { isFeatureAvailable, isPlanLimitReached, planLimitMessage, readPlanCode } from "./plans";
+import { getPlanCatalog, getStorePlan } from "./store-plans";
+import { readTelegramDesignerSettings } from "./telegram-designer";
 
 interface TelegramBotUser {
   id: number;
@@ -148,11 +149,20 @@ async function handleUpdate(
       name: storesTable.name,
       currency: storesTable.currency,
       manualPaymentInstructions: storesTable.manualPaymentInstructions,
+      settings: storeSettingsTable.settings,
     })
     .from(storesTable)
+    .leftJoin(storeSettingsTable, eq(storeSettingsTable.storeId, storesTable.id))
     .where(and(eq(storesTable.id, storeId), eq(storesTable.isDeleted, false)))
     .limit(1);
   if (!store) return;
+  const plan = await getStorePlan(storeId);
+  const designer = isFeatureAvailable(plan, "telegram.advanced", await getPlanCatalog())
+    ? readTelegramDesignerSettings(store.settings)
+    : readTelegramDesignerSettings(null);
+  const formatMessage = (value: string) => value
+    .replaceAll("{{store}}", store.name)
+    .replaceAll("{{customer}}", message.from?.first_name?.slice(0, 80) ?? "");
 
   if (command === "/catalog") {
     const products = await db
@@ -175,16 +185,17 @@ async function handleUpdate(
     const content =
       products.length === 0
         ? "لا توجد منتجات متاحة للطلب الآن."
-        : products
+      : products
             .map((product, index) =>
-              `[${product.id.replaceAll("-", "").slice(0, 12)}] ${product.name} — ${Number(product.price).toFixed(2)} ${store.currency}${product.stock < 1 ? " (نفد المخزون)" : ""}`,
+              `[${product.id.replaceAll("-", "").slice(0, 12)}] ${product.name} — ${Number(product.price).toFixed(2)} ${store.currency}${designer.showStock ? (product.stock < 1 ? " (نفد المخزون)" : ` (المخزون: ${product.stock})`) : ""}`,
             )
             .join("\n");
     const orderInstructions =
       products.length > 0
         ? "\n\nلطلب منتج أرسل:\n/order رمز_المنتج الكمية\nانسخ الرمز بين الأقواس من قائمة المنتجات.\nلا يتم الدفع داخل البوت."
         : "";
-    await sendText(bot, message.chat.id, `${store.name}\n\n${content}${orderInstructions}`);
+    const intro = designer.catalogIntro ? `${formatMessage(designer.catalogIntro)}\n\n` : "";
+    await sendText(bot, message.chat.id, `${intro}${store.name}\n\n${content}${orderInstructions}`);
     return;
   }
 
@@ -363,10 +374,13 @@ async function handleUpdate(
     return;
   }
 
-  const helpText =
-    command === "/start"
-      ? `أهلًا بك في ${store.name}.\nاستخدم /catalog لاستعراض المنتجات أو /help للمساعدة.`
-      : `أوامر ${store.name}:\n/start — بدء المحادثة\n/catalog — استعراض المنتجات\n/order رمز_المنتج الكمية — تسجيل طلب\n/help — عرض المساعدة`;
+  const helpText = command === "/start"
+    ? (designer.welcomeMessage
+      ? formatMessage(designer.welcomeMessage)
+      : `أهلًا بك في ${store.name}.\nاستخدم /catalog لاستعراض المنتجات أو /help للمساعدة.`)
+    : (designer.helpMessage
+      ? formatMessage(designer.helpMessage)
+      : `أوامر ${store.name}:\n/start — بدء المحادثة\n/catalog — استعراض المنتجات\n/order رمز_المنتج الكمية — تسجيل طلب\n/help — عرض المساعدة`);
   await sendText(bot, message.chat.id, helpText);
 }
 

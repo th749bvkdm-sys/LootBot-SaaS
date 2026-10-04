@@ -9,6 +9,9 @@ import { logger } from "./lib/logger";
 import { recordSystemError } from "./lib/system-health";
 
 const app: Express = express();
+// Render terminates TLS at one trusted proxy hop; using req.ip keeps IP-based
+// login throttling scoped to the real client instead of every visitor sharing the proxy IP.
+app.set("trust proxy", process.env.NODE_ENV === "production" ? 1 : false);
 const publicDirectory = process.env.STATIC_DIR ?? path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../lootbot/dist/public",
