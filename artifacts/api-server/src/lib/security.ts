@@ -49,8 +49,9 @@ export async function verifyPassword(
   password: string,
   storedHash: string,
 ): Promise<boolean> {
-  const [algorithm, salt, expectedHex] = storedHash.split("$");
-  if (algorithm !== "scrypt" || !salt || !expectedHex) return false;
+  const parts = storedHash.split("$");
+  const [algorithm, salt, expectedHex] = parts;
+  if (parts.length !== 3 || algorithm !== "scrypt" || !/^[a-f0-9]{32}$/i.test(salt ?? "") || !/^[a-f0-9]{128}$/i.test(expectedHex ?? "")) return false;
 
   const expected = Buffer.from(expectedHex, "hex");
   return new Promise((resolve, reject) => {

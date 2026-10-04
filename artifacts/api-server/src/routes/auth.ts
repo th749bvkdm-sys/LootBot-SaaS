@@ -186,7 +186,7 @@ router.post(
       user.passwordHash,
     );
     if (!passwordMatches) {
-      const attempts = user.failedLoginAttempts + 1;
+      const attempts = (user.lockedUntil && user.lockedUntil.getTime() <= Date.now() ? 0 : user.failedLoginAttempts) + 1;
       const lockedUntil =
         attempts >= IP_ATTEMPT_LIMIT
           ? new Date(Date.now() + ACCOUNT_LOCK_MS)
@@ -220,6 +220,7 @@ router.post(
   requireCsrf,
   async (req, res): Promise<void> => {
     await db.delete(sessionsTable).where(eq(sessionsTable.id, req.auth!.sessionId));
+    await writeAuditEvent({ userId: req.auth!.userId, action: "user.logout", summary: "تم تسجيل الخروج" });
     res.clearCookie(SESSION_COOKIE, { path: "/" });
     res.clearCookie(CSRF_COOKIE, { path: "/" });
     res.json(LogoutUserResponse.parse({ success: true }));

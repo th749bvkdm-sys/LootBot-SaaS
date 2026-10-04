@@ -17,6 +17,7 @@ import { createLoginRateLimiter } from "./login-rate-limit.ts";
 import { parseTelegramDesignerSettings, readTelegramDesignerSettings } from "./telegram-designer.ts";
 import { parseGalleryInput, galleryWithLegacyFallback } from "./product-gallery.ts";
 import { productMediaRequest } from "./telegram-product-media.ts";
+import { passwordHash, verifyPassword, safeStringEqual, newOpaqueToken, sha256 } from "./security.ts";
 
 test("new and malformed store settings resolve to the safe FREE plan", () => {
   assert.equal(readPlanCode({}), "FREE");
@@ -157,4 +158,23 @@ test("central feature gate enforces each tier and follows administrative changes
   catalog.PRO.features['catalog.multipleImages'] = false;
   assert.equal(await gate.remaining('pro', 'productsPerStore'), 9);
   await assert.rejects(gate.require('pro', 'catalog.multipleImages'), FeatureAccessError);
+});
+
+test("password checks accept the correct password and reject wrong or malformed stored hashes", async () => {
+  const stored = await passwordHash('test-only-correct-password');
+  assert.equal(await verifyPassword('test-only-correct-password', stored), true);
+  assert.equal(await verifyPassword('wrong-password', stored), false);
+  for (const malformed of ['scrypt$salt$zz', 'scrypt$salt$', 'scrypt$salt$aa', stored + '$extra', 'plain$password', '']) {
+    assert.equal(await verifyPassword('anything', malformed), false);
+  }
+  assert.notEqual(await passwordHash('test-only-correct-password'), stored);
+});
+
+test("session and CSRF token primitives are opaque and comparisons reject unequal lengths", () => {
+  const first = newOpaqueToken(); const second = newOpaqueToken();
+  assert.ok(first.length >= 32);
+  assert.notEqual(first, second);
+  assert.equal(safeStringEqual(first, second), false);
+  assert.equal(safeStringEqual(first, first + 'x'), false);
+  assert.equal(safeStringEqual(sha256(first), sha256(first)), true);
 });

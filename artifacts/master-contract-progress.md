@@ -6,7 +6,7 @@ Working branch: `codex/master-contract-expansion`. This document tracks remainin
 ## Implemented, with verification limits
 
 - Repository audit: existing auth, CSRF/session, catalog, order, store, Telegram polling, Super Admin, plan settings and CSV report flows inspected. No lint script or database test environment exists locally.
-- Login proxy configuration and extracted IP rate limiter; safe frontend auth messages and current-user invalidation. Limiter unit tests pass. Full login/session/CSRF integration tests remain required.
+- Login proxy configuration and extracted IP rate limiter; safe frontend auth messages and current-user invalidation. Password hash format validation, post-expiry lock counter reset and logout audit added. Limiter and real password verification/token primitive unit tests pass. Full login/session/CSRF integration tests remain required.
 - Central catalog of plans, configurable limits/features, store settings plan assignment, API creation limits and usage already exist. FeatureGateService now provides can/require/getLimit/getUsage/remaining/isPlanAtLeast and protects gallery writes. The plan endpoint exposes remaining capacity and warning states. Subscription lifecycle, durable usage and adoption across other feature routes remain required.
 - Telegram message settings: persisted welcome/help/catalog introduction and stock visibility; owner/session/CSRF guards and plan checks; messages consumed by bot. Validation tests pass. Full requested Header/Home/Navigation styling remains incomplete.
 - Product gallery: new additive product_images schema/SQL, up to ten validated image URLs, descriptions, ordering, primary selection, legacy image fallback, transactional replacement and primary synchronization. Owner/session/CSRF/plan protection. Frontend editor and Telegram /product rendering implemented. Unit validation/media tests pass. Database and live Telegram verification remain required.
@@ -43,7 +43,7 @@ Working branch: `codex/master-contract-expansion`. This document tracks remainin
 ## Checkpoint verification
 
 - Typecheck: workspace passed after gallery implementation.
-- Tests: fifteen unit tests passed, covering plans, rate limiter, message parsing, gallery validation/legacy compatibility, old plan definitions, Telegram media request constraints and central feature gate enforcement.
+- Tests: seventeen unit tests passed, covering plans, rate limiter, message parsing, gallery validation/legacy compatibility, old plan definitions, Telegram media request constraints, central feature gate enforcement and password/token primitives.
 - API and frontend production builds passed after gallery wiring; repeat for later changes as needed.
 - Gallery SQL is additive and schema is used by existing `db:push` deploy step. Migration has not been executed locally.
 - Current changes have not been deployed; do not infer live behavior from local tests/builds.
