@@ -18,7 +18,7 @@ import { requireAuth, requireCsrf, getOwnedStore } from "../lib/auth-middleware"
 import { writeAuditEvent } from "../lib/audit";
 import { createId } from "../lib/security";
 import { stopBotForStore } from "../lib/telegram-bot-manager";
-import { enforcePlanLimit } from "../lib/store-plans";
+import { enforcePlanLimit, getPlanCatalog } from "../lib/store-plans";
 import { highestPlan, isPlanLimitReached, readPlanCode } from "../lib/plans";
 
 const router: IRouter = Router();
@@ -73,6 +73,7 @@ router.post(
       return;
     }
 
+    const catalog = await getPlanCatalog();
     const id = createId();
     const result = await db.transaction(async (tx) => {
       await tx
@@ -96,7 +97,7 @@ router.post(
       const accountPlan = highestPlan(
         existingStores.map((row) => readPlanCode(row.settings)),
       );
-      if (isPlanLimitReached(accountPlan, "stores", existingStores.length)) {
+      if (isPlanLimitReached(accountPlan, "stores", existingStores.length, catalog)) {
         return { limit: { plan: accountPlan, usage: existingStores.length } };
       }
 
@@ -119,7 +120,7 @@ router.post(
       return { store: created };
     });
     if (result.limit) {
-      enforcePlanLimit(res, result.limit.plan, "stores", result.limit.usage);
+      enforcePlanLimit(res, result.limit.plan, "stores", result.limit.usage, catalog);
       return;
     }
     const store = result.store;

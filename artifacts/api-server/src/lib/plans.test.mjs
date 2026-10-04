@@ -7,6 +7,8 @@ import {
   isPlanLimitReached,
   planLimitMessage,
   readPlanCode,
+  validatePlanDefinition,
+  PLAN_CATALOG,
 } from "./plans.ts";
 
 test("new and malformed store settings resolve to the safe FREE plan", () => {
@@ -47,4 +49,11 @@ test("plan limit messages explain the next tier without suggesting a payment", (
   assert.match(planLimitMessage("FREE", "productsPerStore"), /Pro/);
   assert.match(planLimitMessage("PRO", "stores"), /Business/);
   assert.match(planLimitMessage("BUSINESS", "stores"), /قريبًا/);
+});
+
+test("plan definitions reject invalid limits, missing features, and fake feature enablement", () => {
+  assert.equal(validatePlanDefinition(PLAN_CATALOG.FREE), true);
+  assert.equal(validatePlanDefinition({ ...PLAN_CATALOG.PRO, limits: { ...PLAN_CATALOG.PRO.limits, productsPerStore: 0 } }), false);
+  assert.equal(validatePlanDefinition({ ...PLAN_CATALOG.PRO, features: { ...PLAN_CATALOG.PRO.features, "catalog.bulkTools": "yes" } }), false);
+  assert.equal(validatePlanDefinition({ ...PLAN_CATALOG.BUSINESS, features: { ...PLAN_CATALOG.BUSINESS.features, "staff.basic": true } }), false);
 });

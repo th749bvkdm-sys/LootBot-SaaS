@@ -33,6 +33,13 @@ export const storeSettingsTable = pgTable("store_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Central plan entitlements are editable by Super Admin and separate from per-store settings.
+export const planDefinitionsTable = pgTable("plan_definitions", {
+  code: text("code").primaryKey(),
+  definition: jsonb("definition").$type<Record<string, unknown>>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const insertStoreSchema = createInsertSchema(storesTable).omit({
   id: true,
   createdAt: true,

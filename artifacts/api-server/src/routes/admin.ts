@@ -1,13 +1,54 @@
 import { and, count, desc, eq, sql, sum } from "drizzle-orm";
 import { Router, type IRouter } from "express";
-import { auditLogsTable, db, ordersTable, productsTable, storeSettingsTable, storesTable, telegramBotsTable, usersTable } from "@workspace/db";
+import { auditLogsTable, db, ordersTable, planDefinitionsTable, productsTable, storeSettingsTable, storesTable, telegramBotsTable, usersTable } from "@workspace/db";
 import { requireAuth, requireCsrf, requireSuperAdmin } from "../lib/auth-middleware";
-import { isPlanCode, PLAN_CATALOG, readPlanCode } from "../lib/plans";
+import { CONFIGURABLE_FEATURES, FEATURE_METADATA, isPlanCode, PLAN_CATALOG, readPlanCode, validatePlanDefinition, type PlanCode } from "../lib/plans";
+import { getPlanCatalog } from "../lib/store-plans";
 import { writeAuditEvent } from "../lib/audit";
 import { getRecentSystemErrors } from "../lib/system-health";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
+
+router.get("/admin/plans", requireAuth, requireSuperAdmin, async (_req, res): Promise<void> => {
+  const catalog = await getPlanCatalog();
+  const stores = await db.select({ settings: storeSettingsTable.settings }).from(storesTable).leftJoin(storeSettingsTable, eq(storeSettingsTable.storeId, storesTable.id)).where(eq(storesTable.isDeleted, false));
+  const planCounts: Record<PlanCode, number> = { FREE: 0, PRO: 0, BUSINESS: 0 };
+  for (const row of stores) planCounts[readPlanCode(row.settings)] += 1;
+  const featureMatrix = Object.entries(FEATURE_METADATA).map(([key, metadata]) => ({
+    key,
+    requiredPlan: metadata.requiredPlan,
+    enabledByPlan: Object.fromEntries((Object.keys(catalog) as PlanCode[]).map((plan) => [plan, catalog[plan].features[key as keyof typeof catalog.FREE.features]])),
+    limit: null,
+    usage: null,
+    description: metadata.description,
+    configurable: CONFIGURABLE_FEATURES.has(key as keyof typeof catalog.FREE.features),
+  }));
+  res.json({ catalog, planCounts, featureMetadata: FEATURE_METADATA, featureMatrix, configurableFeatures: [...CONFIGURABLE_FEATURES] });
+});
+
+router.patch("/admin/plans/:planCode", requireAuth, requireSuperAdmin, requireCsrf, async (req, res): Promise<void> => {
+  const code = req.params.planCode;
+  const definition = req.body?.definition;
+  if (!isPlanCode(code) || !validatePlanDefinition(definition)) {
+    res.status(400).json({ error: "تعريف الباقة غير صالح." });
+    return;
+  }
+  if (!definition.features["catalog.basic"] || !definition.features["analytics.basic"] || !definition.features["telegram.basic"]) {
+    res.status(400).json({ error: "لا يمكن تعطيل الميزات الأساسية للمنتج أو التحليلات أو Telegram." });
+    return;
+  }
+  const catalog = await getPlanCatalog();
+  const candidate = { ...catalog, [code]: definition };
+  const limits = Object.keys(PLAN_CATALOG.FREE.limits) as Array<keyof typeof PLAN_CATALOG.FREE.limits>;
+  if (limits.some((key) => candidate.FREE.limits[key] > candidate.PRO.limits[key] || candidate.PRO.limits[key] > candidate.BUSINESS.limits[key])) {
+    res.status(400).json({ error: "يجب أن تكون حدود كل باقة مساوية أو أعلى من الباقة السابقة." });
+    return;
+  }
+  await db.insert(planDefinitionsTable).values({ code, definition, updatedAt: new Date() }).onConflictDoUpdate({ target: planDefinitionsTable.code, set: { definition, updatedAt: new Date() } });
+  await writeAuditEvent({ userId: req.auth!.userId, action: "admin.plan_definition.updated", summary: `تم تحديث تعريف باقة ${code}`, details: { plan: code } });
+  res.json({ plan: code, definition });
+});
 
 router.get("/admin/health", requireAuth, requireSuperAdmin, async (_req, res): Promise<void> => {
   let database: "healthy" | "unavailable" = "healthy";
@@ -118,14 +159,15 @@ router.patch(
       return;
     }
     const { store, previousPlan } = result;
+    const planCatalog = await getPlanCatalog();
     await writeAuditEvent({
       userId: req.auth!.userId,
       storeId: store.id,
       action: "admin.store_plan.updated",
-      summary: `تم تعيين باقة ${PLAN_CATALOG[planCode].name} للمتجر ${store.name}`,
+      summary: `تم تعيين باقة ${planCatalog[planCode].name} للمتجر ${store.name}`,
       details: { previousPlan, plan: planCode },
     });
-    res.json({ storeId: store.id, plan: planCode, planName: PLAN_CATALOG[planCode].name });
+    res.json({ storeId: store.id, plan: planCode, planName: planCatalog[planCode].name });
   },
 );
 

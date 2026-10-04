@@ -7,16 +7,30 @@ import {
   productsTable,
   storeSettingsTable,
   storesTable,
+  planDefinitionsTable,
 } from "@workspace/db";
 import {
   PLAN_CATALOG,
   type PlanCode,
+  type PlanCatalog,
   type PlanLimit,
   highestPlan,
   isPlanLimitReached,
   planLimitMessage,
   readPlanCode,
+  validatePlanDefinition,
 } from "./plans";
+
+export async function getPlanCatalog(): Promise<PlanCatalog> {
+  const rows = await db.select().from(planDefinitionsTable);
+  const catalog = structuredClone(PLAN_CATALOG) as PlanCatalog;
+  for (const row of rows) {
+    if (row.code in catalog && validatePlanDefinition(row.definition)) {
+      catalog[row.code as keyof typeof catalog] = row.definition;
+    }
+  }
+  return catalog;
+}
 
 export async function getStorePlan(storeId: string): Promise<PlanCode> {
   const [settings] = await db
@@ -93,13 +107,14 @@ export function enforcePlanLimit(
   plan: PlanCode,
   limit: PlanLimit,
   usage: number,
+  catalog: PlanCatalog = PLAN_CATALOG,
 ): boolean {
-  if (!isPlanLimitReached(plan, limit, usage)) return false;
+  if (!isPlanLimitReached(plan, limit, usage, catalog)) return false;
   response.status(403).json({
     code: "PLAN_LIMIT_REACHED",
     plan,
     limit,
-    maximum: PLAN_CATALOG[plan].limits[limit],
+    maximum: catalog[plan].limits[limit],
     error: planLimitMessage(plan, limit),
   });
   return true;
