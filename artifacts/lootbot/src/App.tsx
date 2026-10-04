@@ -506,6 +506,7 @@ function OrdersPage({store,locale='ar',t=copy.ar}:{store?:Store;locale?:Locale;t
   const paymentUpdate=useUpdateOrderPayment(request);
   const updating=update.isPending||paymentUpdate.isPending;
   const params={storeId,page,pageSize:25 as const,status:status||undefined};
+  const plan=useQuery({queryKey:['store-plan',storeId],enabled:!!storeId,queryFn:async()=>{const response=await fetch(`/api/stores/${encodeURIComponent(storeId)}/plan`,{credentials:'include'});if(!response.ok)throw new Error(`HTTP ${response.status}`);return response.json() as Promise<{features:Record<string,boolean>}>;}});
   const orders=useListOrders(params,{query:{enabled:!!storeId,queryKey:getListOrdersQueryKey(params)}});
   const refreshOrders=()=>{
     void qc.invalidateQueries({queryKey:getListOrdersQueryKey()});
@@ -534,7 +535,7 @@ function OrdersPage({store,locale='ar',t=copy.ar}:{store?:Store;locale?:Locale;t
           <option value="fulfilled">{t.orderFulfilled}</option><option value="cancelled">{t.orderCancelled}</option>
         </select>
       </label>
-      <p className="text-xs text-[#829091]">{orders.data?`${orders.data.total} ${rtl?'طلب':'orders'}`:''}</p>
+      <div className="flex flex-wrap items-center gap-3"><p className="text-xs text-[#829091]">{orders.data?`${orders.data.total} ${rtl?'طلب':'orders'}`:''}</p>{plan.data?.features['analytics.reports']&&<a href={`/api/stores/${encodeURIComponent(storeId)}/reports/orders.csv`} className="rounded-lg border border-[#2e5a49] px-3 py-2 text-xs text-[#85e1bd]">{rtl?'تنزيل تقرير CSV':'Download CSV report'}</a>}</div>
     </div>
     {error&&<InlineError message={error}/>}
     {orders.isLoading?<SkeletonRows/>:orders.isError?<ErrorPanel message={t.serverError} onRetry={()=>void orders.refetch()}/>:

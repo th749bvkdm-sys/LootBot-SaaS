@@ -6,6 +6,7 @@ import dashboardRouter from "./dashboard";
 import healthRouter from "./health";
 import ordersRouter from "./orders";
 import plansRouter from "./plans";
+import reportsRouter from "./reports";
 import storesRouter from "./stores";
 import telegramRouter from "./telegram";
 
@@ -19,6 +20,7 @@ router.use(catalogRouter);
 router.use(telegramRouter);
 router.use(ordersRouter);
 router.use(plansRouter);
+router.use(reportsRouter);
 router.use(dashboardRouter);
 
 export default router;

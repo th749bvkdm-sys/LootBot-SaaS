@@ -12,6 +12,7 @@ export type PlanFeature =
   | "catalog.bulkTools"
   | "catalog.multipleImages"
   | "analytics.advanced"
+  | "analytics.reports"
   | "coupons.basic"
   | "loyalty.basic"
   | "reviews.basic"
@@ -35,6 +36,7 @@ export const FEATURE_METADATA: Record<PlanFeature, { requiredPlan: PlanCode; des
   "catalog.bulkTools": { requiredPlan: "PRO", description: "نشر المنتجات أو تحويلها لمسودة جماعيًا" },
   "catalog.multipleImages": { requiredPlan: "PRO", description: "معرض صور متعدد لكل منتج" },
   "analytics.advanced": { requiredPlan: "BUSINESS", description: "تحليلات وتقارير متقدمة" },
+  "analytics.reports": { requiredPlan: "BUSINESS", description: "تنزيل تقرير الطلبات بصيغة CSV" },
   "coupons.basic": { requiredPlan: "PRO", description: "إدارة كوبونات الخصم" },
   "loyalty.basic": { requiredPlan: "BUSINESS", description: "نقاط ولاء العملاء" },
   "reviews.basic": { requiredPlan: "PRO", description: "تقييمات ومراجعات العملاء" },
@@ -42,7 +44,7 @@ export const FEATURE_METADATA: Record<PlanFeature, { requiredPlan: PlanCode; des
   "staff.basic": { requiredPlan: "BUSINESS", description: "إدارة أعضاء الفريق" },
   "branding.removeLootBot": { requiredPlan: "BUSINESS", description: "تحكم إضافي بعلامة المتجر (لا يزيل علامة Telegram)" },
 };
-export const CONFIGURABLE_FEATURES = new Set<PlanFeature>(["catalog.bulkTools"]);
+export const CONFIGURABLE_FEATURES = new Set<PlanFeature>(["catalog.bulkTools", "analytics.reports"]);
 
 export type PlanDefinition = {
   name: string;
@@ -67,6 +69,7 @@ export const PLAN_CATALOG: Record<PlanCode, PlanDefinition> = {
       "catalog.bulkTools": false,
       "catalog.multipleImages": false,
       "analytics.advanced": false,
+      "analytics.reports": false,
       "coupons.basic": false,
       "loyalty.basic": false,
       "reviews.basic": false,
@@ -90,6 +93,7 @@ export const PLAN_CATALOG: Record<PlanCode, PlanDefinition> = {
       "catalog.bulkTools": true,
       "catalog.multipleImages": false,
       "analytics.advanced": false,
+      "analytics.reports": false,
       "coupons.basic": false,
       "loyalty.basic": false,
       "reviews.basic": false,
@@ -113,6 +117,7 @@ export const PLAN_CATALOG: Record<PlanCode, PlanDefinition> = {
       "catalog.bulkTools": true,
       "catalog.multipleImages": false,
       "analytics.advanced": false,
+      "analytics.reports": true,
       "coupons.basic": false,
       "loyalty.basic": false,
       "reviews.basic": false,

@@ -43,6 +43,8 @@ test("unimplemented paid features stay disabled instead of being promised", () =
   assert.equal(isFeatureAvailable("PRO", "catalog.bulkTools"), true);
   assert.equal(isFeatureAvailable("PRO", "catalog.multipleImages"), false);
   assert.equal(isFeatureAvailable("BUSINESS", "staff.basic"), false);
+  assert.equal(isFeatureAvailable("FREE", "analytics.reports"), false);
+  assert.equal(isFeatureAvailable("BUSINESS", "analytics.reports"), true);
 });
 
 test("plan limit messages explain the next tier without suggesting a payment", () => {
