@@ -18,13 +18,18 @@ router.get("/stores/:storeId/plan", requireAuth, async (req, res): Promise<void>
 
   const plan = await getStorePlan(store.id);
   const catalog = await getPlanCatalog();
+  const usage = await getPlanUsage(store.id, req.auth!.userId);
+  const remaining = Object.fromEntries(Object.entries(catalog[plan].limits).map(([key, maximum]) => [key, Math.max(0, maximum - usage[key as keyof typeof usage])]));
+  const warnings = Object.fromEntries(Object.entries(catalog[plan].limits).map(([key, maximum]) => [key, usage[key as keyof typeof usage] >= maximum ? "reached" : usage[key as keyof typeof usage] / maximum >= 0.8 ? "near" : "normal"]));
   res.json({
     plan,
     planName: catalog[plan].name,
     billing: "manual_admin_assignment",
     limits: catalog[plan].limits,
     features: catalog[plan].features,
-    usage: await getPlanUsage(store.id, req.auth!.userId),
+    usage,
+    remaining,
+    warnings,
   });
 });
 

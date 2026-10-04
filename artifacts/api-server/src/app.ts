@@ -7,8 +7,12 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { recordSystemError } from "./lib/system-health";
+import { FeatureAccessError } from "./lib/plans";
 
 const app: Express = express();
+// Render terminates TLS at one trusted proxy hop; using req.ip keeps IP-based
+// login throttling scoped to the real client instead of every visitor sharing the proxy IP.
+app.set("trust proxy", process.env.NODE_ENV === "production" ? 1 : false);
 const publicDirectory = process.env.STATIC_DIR ?? path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../lootbot/dist/public",
@@ -58,6 +62,10 @@ app.get("/{*path}", (req, res, next) => {
   });
 });
 const apiErrorHandler: ErrorRequestHandler = (error, req, res, _next) => {
+  if (error instanceof FeatureAccessError && !res.headersSent) {
+    res.status(error.status).json({ code: error.code, feature: error.feature, requiredPlan: error.requiredPlan, error: error.message });
+    return;
+  }
   const errorType = error instanceof Error ? error.name : "UnknownError";
   recordSystemError({
     occurredAt: new Date().toISOString(),

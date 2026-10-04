@@ -25,6 +25,7 @@ import {
 import {
   categoriesTable,
   db,
+  productImagesTable,
   productsTable,
   storeSettingsTable,
   storesTable,
@@ -33,9 +34,10 @@ import { requireAuth, requireCsrf, getOwnedStore } from "../lib/auth-middleware"
 import { writeAuditEvent } from "../lib/audit";
 import { createId } from "../lib/security";
 import { readPlanCode } from "../lib/plans";
-import { enforcePlanLimit, getPlanCatalog } from "../lib/store-plans";
+import { enforcePlanLimit, getPlanCatalog, featureGate } from "../lib/store-plans";
 import { isFeatureAvailable } from "../lib/plans";
 import { z } from "zod/v4";
+import { galleryWithLegacyFallback, parseGalleryInput } from "../lib/product-gallery";
 
 const router: IRouter = Router();
 const PAGE_SIZES = new Set([10, 25, 50, 100]);
@@ -129,6 +131,44 @@ function publicProduct(
     categoryName,
   };
 }
+
+router.get("/products/:productId/gallery", requireAuth, async (req, res): Promise<void> => {
+  const productId = req.params.productId;
+  if (typeof productId !== "string" || !productId) { res.status(400).json({ error: "معرّف المنتج غير صالح." }); return; }
+  const product = await ownedProduct(productId, req.auth!.userId);
+  if (!product) { res.status(404).json({ error: "لم يتم العثور على المنتج." }); return; }
+  const [settings] = await db.select({ settings: storeSettingsTable.settings }).from(storeSettingsTable).where(eq(storeSettingsTable.storeId, product.storeId)).limit(1);
+  const plan = readPlanCode(settings?.settings);
+  const catalog = await getPlanCatalog();
+  const stored = await db.select({ id: productImagesTable.id, imageUrl: productImagesTable.imageUrl, altText: productImagesTable.altText, sortOrder: productImagesTable.sortOrder, isPrimary: productImagesTable.isPrimary }).from(productImagesTable).where(eq(productImagesTable.productId, product.id)).orderBy(productImagesTable.sortOrder);
+  const images = galleryWithLegacyFallback(stored, product.imageUrl);
+  res.json({ enabled: isFeatureAvailable(plan, "catalog.multipleImages", catalog), images });
+});
+
+router.put("/products/:productId/gallery", requireAuth, requireCsrf, async (req, res): Promise<void> => {
+  const productId = req.params.productId;
+  const parsed = parseGalleryInput(req.body);
+  if (typeof productId !== "string" || !productId || !parsed) {
+    res.status(400).json({ error: "تحقق من صور المنتج؛ الحد الأقصى 10 صور." }); return;
+  }
+  const product = await ownedProduct(productId, req.auth!.userId);
+  if (!product) { res.status(404).json({ error: "لم يتم العثور على المنتج." }); return; }
+  await featureGate.require(product.storeId, "catalog.multipleImages");
+  const primaryIndex = parsed.primaryIndex;
+  const primaryUrl = parsed.images[primaryIndex]?.imageUrl ?? null;
+  const images = await db.transaction(async tx => {
+    await tx.select({ id: productsTable.id }).from(productsTable).where(eq(productsTable.id, product.id)).for("update");
+    await tx.delete(productImagesTable).where(eq(productImagesTable.productId, product.id));
+    const inserted = parsed.images.length ? await tx.insert(productImagesTable).values(parsed.images.map((image, index) => ({
+      id: createId(), productId: product.id, imageUrl: image.imageUrl, altText: image.altText,
+      sortOrder: index, isPrimary: index === primaryIndex,
+    }))).returning() : [];
+    await tx.update(productsTable).set({ imageUrl: primaryUrl, updatedAt: new Date() }).where(eq(productsTable.id, product.id));
+    return inserted;
+  });
+  await writeAuditEvent({ userId: req.auth!.userId, storeId: product.storeId, action: "product.gallery.updated", summary: `تم تحديث معرض صور المنتج ${product.name}`, details: { count: parsed.images.length, primaryIndex } });
+  res.json({ images, primaryIndex });
+});
 
 router.get("/categories", requireAuth, async (req, res): Promise<void> => {
   const parsed = ListCategoriesQueryParams.safeParse({
@@ -686,8 +726,26 @@ router.patch(
     }
 
     try {
-      const [updated] = await db
-        .update(productsTable)
+      const updated = await db.transaction(async tx => {
+        await tx.select({ id: productsTable.id }).from(productsTable).where(eq(productsTable.id, product.id)).for("update");
+        if (parsed.data.imageUrl !== undefined) {
+          const gallery = await tx.select().from(productImagesTable).where(eq(productImagesTable.productId, product.id)).orderBy(productImagesTable.sortOrder);
+          if (gallery.length) {
+            if (parsed.data.imageUrl === null || parsed.data.imageUrl === "") {
+              const primary = gallery.find(image => image.isPrimary) ?? gallery[0];
+              await tx.delete(productImagesTable).where(eq(productImagesTable.id, primary.id));
+              const next = gallery.find(image => image.id !== primary.id);
+              if (next) await tx.update(productImagesTable).set({ isPrimary: true }).where(eq(productImagesTable.id, next.id));
+              updates.imageUrl = next?.imageUrl ?? null;
+            } else {
+              const matching = gallery.find(image => image.imageUrl === parsed.data.imageUrl);
+              const primary = matching ?? gallery.find(image => image.isPrimary) ?? gallery[0];
+              await tx.update(productImagesTable).set({ isPrimary: false }).where(eq(productImagesTable.productId, product.id));
+              await tx.update(productImagesTable).set({ isPrimary: true, imageUrl: parsed.data.imageUrl }).where(eq(productImagesTable.id, primary.id));
+            }
+          }
+        }
+        const [row] = await tx.update(productsTable)
         .set(updates)
         .where(
           and(
@@ -697,6 +755,8 @@ router.patch(
           ),
         )
         .returning();
+        return row;
+      });
       if (!updated) {
         res.status(404).json({ error: "لم يتم العثور على المنتج." });
         return;

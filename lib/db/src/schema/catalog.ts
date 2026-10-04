@@ -1,4 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
+import { sql } from "drizzle-orm";
 import {
   boolean,
   integer,
@@ -45,6 +46,25 @@ export const productsTable = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [uniqueIndex("products_store_sku_unique").on(table.storeId, table.sku)],
+);
+
+export const productImagesTable = pgTable(
+  "product_images",
+  {
+    id: text("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => productsTable.id, { onDelete: "cascade" }),
+    imageUrl: text("image_url").notNull(),
+    altText: text("alt_text").notNull().default(""),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isPrimary: boolean("is_primary").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("product_images_product_sort_unique").on(table.productId, table.sortOrder),
+    uniqueIndex("product_images_primary_unique").on(table.productId).where(sql`${table.isPrimary} = true`),
+  ],
 );
 
 export const insertCategorySchema = createInsertSchema(categoriesTable).omit({

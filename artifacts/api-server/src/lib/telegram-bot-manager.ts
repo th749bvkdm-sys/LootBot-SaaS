@@ -3,6 +3,7 @@ import {
   db,
   orderItemsTable,
   ordersTable,
+  productImagesTable,
   productsTable,
   storeSettingsTable,
   storesTable,
@@ -11,8 +12,10 @@ import {
 import { writeAuditEvent } from "./audit";
 import { logger } from "./logger";
 import { createId, decryptBotToken, sha256 } from "./security";
-import { isPlanLimitReached, planLimitMessage, readPlanCode } from "./plans";
-import { getPlanCatalog } from "./store-plans";
+import { isFeatureAvailable, isPlanLimitReached, planLimitMessage, readPlanCode } from "./plans";
+import { getPlanCatalog, getStorePlan } from "./store-plans";
+import { readTelegramDesignerSettings } from "./telegram-designer";
+import { productMediaRequest } from "./telegram-product-media";
 
 interface TelegramBotUser {
   id: number;
@@ -140,7 +143,7 @@ async function handleUpdate(
   const message = update.message;
   if (!message?.text) return;
   const command = message.text.trim().split(/\s+/, 1)[0]?.split("@", 1)[0];
-  if (!command || !["/start", "/help", "/catalog", "/order"].includes(command)) return;
+  if (!command || !["/start", "/help", "/catalog", "/order", "/product"].includes(command)) return;
 
   const [store] = await db
     .select({
@@ -148,11 +151,40 @@ async function handleUpdate(
       name: storesTable.name,
       currency: storesTable.currency,
       manualPaymentInstructions: storesTable.manualPaymentInstructions,
+      settings: storeSettingsTable.settings,
     })
     .from(storesTable)
+    .leftJoin(storeSettingsTable, eq(storeSettingsTable.storeId, storesTable.id))
     .where(and(eq(storesTable.id, storeId), eq(storesTable.isDeleted, false)))
     .limit(1);
   if (!store) return;
+  const plan = await getStorePlan(storeId);
+  const designer = isFeatureAvailable(plan, "telegram.advanced", await getPlanCatalog())
+    ? readTelegramDesignerSettings(store.settings)
+    : readTelegramDesignerSettings(null);
+  const formatMessage = (value: string) => value
+    .replaceAll("{{store}}", store.name)
+    .replaceAll("{{customer}}", message.from?.first_name?.slice(0, 80) ?? "");
+
+  if (command === "/product") {
+    const code = /^\/product(?:@\w+)?\s+([a-f0-9]{12})\s*$/i.exec(message.text.trim())?.[1]?.toLowerCase();
+    if (!code) { await sendText(bot, message.chat.id, "لعرض تفاصيل المنتج أرسل: /product رمز_المنتج من /catalog"); return; }
+    const [product] = await db.select().from(productsTable).where(and(
+      eq(productsTable.storeId, storeId), eq(productsTable.isDeleted, false), eq(productsTable.isPublished, true),
+      sql`substring(replace(${productsTable.id}, '-', '') from 1 for 12) = ${code}`,
+    )).limit(1);
+    if (!product) { await sendText(bot, message.chat.id, "المنتج غير متاح."); return; }
+    const galleryEnabled = isFeatureAvailable(plan, "catalog.multipleImages", await getPlanCatalog());
+    const storedImages = galleryEnabled ? await db.select({ imageUrl: productImagesTable.imageUrl }).from(productImagesTable)
+      .where(eq(productImagesTable.productId, product.id)).orderBy(productImagesTable.sortOrder).limit(10) : [];
+    const images = storedImages.length ? storedImages : product.imageUrl ? [{ imageUrl: product.imageUrl }] : [];
+    const caption = `${product.name}\n${Number(product.price).toFixed(2)} ${store.currency}`;
+    const media = productMediaRequest(message.chat.id, images, caption);
+    if (media) await telegramCall(bot.token, media.method, media.body)
+      .catch(async () => { await sendText(bot, message.chat.id, "تعذر عرض الصور الآن."); });
+    await sendText(bot, message.chat.id, `${caption}\n\n${product.description.slice(0, 2800)}\n\nللطلب: /order ${code} 1`);
+    return;
+  }
 
   if (command === "/catalog") {
     const products = await db
@@ -175,16 +207,17 @@ async function handleUpdate(
     const content =
       products.length === 0
         ? "لا توجد منتجات متاحة للطلب الآن."
-        : products
+      : products
             .map((product, index) =>
-              `[${product.id.replaceAll("-", "").slice(0, 12)}] ${product.name} — ${Number(product.price).toFixed(2)} ${store.currency}${product.stock < 1 ? " (نفد المخزون)" : ""}`,
+              `[${product.id.replaceAll("-", "").slice(0, 12)}] ${product.name} — ${Number(product.price).toFixed(2)} ${store.currency}${designer.showStock ? (product.stock < 1 ? " (نفد المخزون)" : ` (المخزون: ${product.stock})`) : ""}`,
             )
             .join("\n");
     const orderInstructions =
       products.length > 0
-        ? "\n\nلطلب منتج أرسل:\n/order رمز_المنتج الكمية\nانسخ الرمز بين الأقواس من قائمة المنتجات.\nلا يتم الدفع داخل البوت."
+        ? "\n\nللتفاصيل والصور: /product رمز_المنتج\nلطلب منتج أرسل:\n/order رمز_المنتج الكمية\nانسخ الرمز بين الأقواس من قائمة المنتجات.\nلا يتم الدفع داخل البوت."
         : "";
-    await sendText(bot, message.chat.id, `${store.name}\n\n${content}${orderInstructions}`);
+    const intro = designer.catalogIntro ? `${formatMessage(designer.catalogIntro)}\n\n` : "";
+    await sendText(bot, message.chat.id, `${intro}${store.name}\n\n${content}${orderInstructions}`);
     return;
   }
 
@@ -363,10 +396,13 @@ async function handleUpdate(
     return;
   }
 
-  const helpText =
-    command === "/start"
-      ? `أهلًا بك في ${store.name}.\nاستخدم /catalog لاستعراض المنتجات أو /help للمساعدة.`
-      : `أوامر ${store.name}:\n/start — بدء المحادثة\n/catalog — استعراض المنتجات\n/order رمز_المنتج الكمية — تسجيل طلب\n/help — عرض المساعدة`;
+  const helpText = command === "/start"
+    ? (designer.welcomeMessage
+      ? formatMessage(designer.welcomeMessage)
+      : `أهلًا بك في ${store.name}.\nاستخدم /catalog لاستعراض المنتجات أو /help للمساعدة.`)
+    : (designer.helpMessage
+      ? formatMessage(designer.helpMessage)
+      : `أوامر ${store.name}:\n/start — بدء المحادثة\n/catalog — استعراض المنتجات\n/order رمز_المنتج الكمية — تسجيل طلب\n/help — عرض المساعدة`);
   await sendText(bot, message.chat.id, helpText);
 }
 
