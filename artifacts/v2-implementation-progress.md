@@ -8,7 +8,7 @@ This is a progress checkpoint, not acceptance of the full V2 specification.
 
 - Existing: real store catalog/categories/orders, encrypted Telegram tokens, polling, product gallery, central plan catalog/gates, owner/session/CSRF guards, administrative dashboard.
 - Broken/partial: polling requested only message updates; there was no callback router. `/start` sent text without a full menu. Product browsing used text commands. The legacy designer saved message settings directly with no independent draft or publication.
-- Missing: Business block builder, nested custom menu tree, segmentation, customer journeys, broadcast/automation execution, loyalty/referrals/coupons/favorites/cart, themes and comprehensive acceptance tests.
+- Initially missing: Business block builder/custom menus and audience rules. The follow-up checkpoint implements a validated subset below. Advanced segmentation, customer journeys, broadcast/automation execution, loyalty/referrals/coupons/favorites/cart, themes and comprehensive acceptance tests remain missing.
 
 ## Implemented in this checkpoint
 
@@ -22,6 +22,11 @@ This is a progress checkpoint, not acceptance of the full V2 specification.
 - Persistent draft/published configurations in existing store settings. Revision conflict detection and store-row transaction lock. Publication uses the saved draft; unsaved UI changes cannot be published. Shared server renderer powers both preview and runtime. Runtime reads only published configuration, applies the current plan, and safely falls back to defaults.
 - Telegram health API/UI: actual credential and webhook check with owner/session/CSRF/plan guards, three tests/minute/store, safe error messages and audit. Separate timestamps for successful polling and explicit connection tests. Token rotation prevents writing test results to another connection.
 - Website shell visual update: muted violet/mint accents, active navigation, welcome panel, focus outlines, larger mobile controls, RTL-safe borders, reduced motion, scrollable sidebar, independent accessible close control. Corrected a conditional dashboard hook call. No fake online indicator.
+- Business three-pane editor: screen list/component palette, server preview, editable properties. Root/child/grandchild screens (maximum depth three), add/duplicate/delete/reorder/reparent/disable, up to 30 screens. Text/Header/FAQ/Divider blocks with ordering, content and visibility. Six allowlisted real actions: screen/products/categories/search/orders/account. Custom buttons support label/enable/order/target. No arbitrary code or unimplemented action is accepted.
+- Business visibility: all customers, customers with no prior store orders or with a prior order; UTC start/end dates; ancestor rules also enforced. Runtime resolves prior orders from the store and acting Telegram user, not client claims. Rules reevaluated on callbacks. This is not a full segmentation engine.
+- Independent Business draft/published JSON, revision checks, transaction lock, audit and shared server/runtime renderer. Root cannot be hidden by audience/date rules; an empty root menu safely falls back to actual store actions. Publish rejects cycles, excessive depth, unknown actions, duplicate IDs, missing targets and invalid timestamps.
+- Business navigation retains origin across built-in catalogs, pagination, product/gallery and text search using store/customer/chat-scoped references with 15-minute expiry. Expired references or disabled source screens prompt a new `/start`. Home always returns the active home.
+- New central `telegram.studio` entitlement: Business default only; persisted administrative definitions gain this new key safely. Publishing Pro or Business sets `telegramHomeMode`, so the last published designer controls `/start`; saving/previewing does not switch runtime mode.
 
 ## API and storage
 
@@ -29,7 +34,10 @@ This is a progress checkpoint, not acceptance of the full V2 specification.
 - POST `/api/stores/:storeId/telegram/studio/{draft,preview,publish}`
 - GET `/api/stores/:storeId/telegram/health`
 - POST `/api/stores/:storeId/telegram/test-connection`
+- GET `/api/stores/:storeId/telegram/business-studio`
+- POST `/api/stores/:storeId/telegram/business-studio/{draft,preview,publish}`
 - Home data: existing `store_settings.settings.telegramHomeStudio` `{draft,published,revision}`.
+- Business data: existing settings JSON `telegramBusinessStudio` `{draft,published,revision}` and `telegramHomeMode`; no new tables for these configurations.
 - Additive migration `lib/db/migrations/0002_telegram_health.sql`: three nullable telemetry fields in existing `telegram_bots`. Existing deployment `db:push` must apply the schema before this code runs. No duplicate configuration tables.
 
 ## Acceptance map (all 32 sections)
@@ -42,21 +50,21 @@ This is a progress checkpoint, not acceptance of the full V2 specification.
 | 04 Pro Designer | Home/header/navigation implemented; other screen designers, banners/card/state styles remain. |
 | 05 Product | Existing details/gallery/order plus navigation implemented; discounts/warranty/tags/rating/cart/share/favorites remain. |
 | 06 Search/customer | Text search/order/account implemented; loyalty/referrals/favorites/coupons/notifications remain. |
-| 07 Business Studio | Missing full block builder and runtime. |
-| 08 Menu tree | Missing custom root/child/grandchild editing and execution. |
-| 09 Dynamic menus | Missing customer/date/campaign/segment rules. |
+| 07 Business Studio | Three-pane editor and four validated content block types implemented with runtime; full component catalogue remains. |
+| 08 Menu tree | Root/child/grandchild, reorder/duplicate/disable/delete/preview and six actions implemented; product/category targets, external links and other requested actions remain. |
+| 09 Dynamic menus | Prior-order audience and UTC date rules implemented including ancestor enforcement; full segments/campaign/spend/VIP/points rules remain. |
 | 10 Journeys | Missing journey engine. |
 | 11 Broadcast | Missing campaigns/queue/outcomes. |
 | 12 Automation | Missing builder/validation/job execution. |
 | 13 Themes | Missing bot themes and renderer integration. |
-| 14 Draft/preview/publish | Home implemented; remaining screen/block configurations need the same pipeline. |
+| 14 Draft/preview/publish | Pro home and Business screens/blocks implemented; full remaining component types need the same pipeline. |
 | 15 Visual redesign | Shell styling begun; full site redesign remains. |
 | 16 Dashboard | Welcome/navigation updated; expanded real-data charts/analytics remain. |
-| 17 Designer UI | Responsive home editor/server preview implemented; Business three-pane builder remains. |
+| 17 Designer UI | Responsive Pro home editor and Business three-pane editor/server preview implemented; browser/mobile QA pending. |
 | 18 Pro expansion | Partial; remainder tracked in sections 04–06 and original contract. |
 | 19 Business expansion | Required, incomplete. |
 | 20 Health | API/UI/telemetry implemented; DB and live Telegram checks pending. |
-| 21 Gates | Pro home/legacy designer/gallery and basic connection enforced; gates for remaining features needed. |
+| 21 Gates | Pro home/legacy designer/gallery, basic connection and Business studio enforced; gates for remaining features needed. |
 | 22 Responsive | Responsive editor/shell controls implemented; browser/device QA pending. |
 | 23 Design system | Shared shell accents/focus/mobile/motion rules implemented; full token/component adoption remains. |
 | 24 Security | Existing auth/CSRF/owner gates retained, bounded allowlisted config/callbacks and private order scope added; integration/staff tests remain. |
@@ -71,11 +79,11 @@ This is a progress checkpoint, not acceptance of the full V2 specification.
 
 ## Verification limits
 
-Checkpoint checks on 2026-10-04: full workspace typecheck passed; all 26 unit tests passed; API and frontend production builds passed; `git diff --check` passed. Frontend build retains an existing tooltip sourcemap warning; it does not fail the build.
+First checkpoint checks on 2026-10-04: full workspace typecheck passed; all 26 unit tests passed; API and frontend production builds passed; `git diff --check` passed. Business follow-up passes workspace typecheck, all 33 unit tests, both production builds and `git diff --check`. Frontend build retains an existing tooltip sourcemap warning; it does not fail the build.
 
 - Unit checks cover pure helpers, not actual database writes, Telegram delivery, route authorization or browser interaction.
 - No local `DATABASE_URL` configured; migration and API integration cannot be executed until a test DB environment is available.
 - Live bot/customer credentials are not locally provisioned; no Telegram success is claimed for this branch.
 - No lint script exists. Typecheck/build are separate checks, not a substitute for lint or live tests.
-- Home is currently limited to actual supported built-in actions. Business/customer features remain required; existing paid flags are kept disabled when unimplemented.
+- Actions are limited to supported screens/products/categories/search/orders/account. Business still lacks image/product/category blocks, advanced conditions/segments, journeys, broadcasts, automation and themes. Customer commerce features remain required; flags for unimplemented paid features remain disabled.
 - None of this checkpoint has been merged or deployed. Production still runs the previous release.

@@ -10,6 +10,7 @@ export type PlanFeature =
   | "analytics.basic"
   | "telegram.basic"
   | "telegram.advanced"
+  | "telegram.studio"
   | "catalog.bulkTools"
   | "catalog.multipleImages"
   | "analytics.advanced"
@@ -35,6 +36,7 @@ export const FEATURE_METADATA: Record<PlanFeature, { requiredPlan: PlanCode; des
   "analytics.basic": { requiredPlan: "FREE", description: "ملخص الطلبات والمبيعات الأساسي" },
   "telegram.basic": { requiredPlan: "FREE", description: "ربط بوت Telegram واستقبال الطلبات" },
   "telegram.advanced": { requiredPlan: "PRO", description: "رسائل ترحيب ومساعدة ومقدمة كتالوج مخصصة في بوت Telegram" },
+  "telegram.studio": { requiredPlan: "BUSINESS", description: "شاشات وقوائم البوت المخصصة مع قواعد الجمهور والتوقيت" },
   "catalog.bulkTools": { requiredPlan: "PRO", description: "نشر المنتجات أو تحويلها لمسودة جماعيًا" },
   "catalog.multipleImages": { requiredPlan: "PRO", description: "معرض صور متعدد لكل منتج" },
   "analytics.advanced": { requiredPlan: "BUSINESS", description: "تحليلات وتقارير متقدمة" },
@@ -46,7 +48,7 @@ export const FEATURE_METADATA: Record<PlanFeature, { requiredPlan: PlanCode; des
   "staff.basic": { requiredPlan: "BUSINESS", description: "إدارة أعضاء الفريق" },
   "branding.removeLootBot": { requiredPlan: "BUSINESS", description: "تحكم إضافي بعلامة المتجر (لا يزيل علامة Telegram)" },
 };
-export const CONFIGURABLE_FEATURES = new Set<PlanFeature>(["catalog.bulkTools", "analytics.reports", "telegram.advanced", "catalog.multipleImages"]);
+export const CONFIGURABLE_FEATURES = new Set<PlanFeature>(["catalog.bulkTools", "analytics.reports", "telegram.advanced", "telegram.studio", "catalog.multipleImages"]);
 
 export type PlanDefinition = {
   name: string;
@@ -69,6 +71,7 @@ export const PLAN_CATALOG: Record<PlanCode, PlanDefinition> = {
       "analytics.basic": true,
       "telegram.basic": true,
       "telegram.advanced": false,
+      "telegram.studio": false,
       "catalog.bulkTools": false,
       "catalog.multipleImages": false,
       "analytics.advanced": false,
@@ -94,6 +97,7 @@ export const PLAN_CATALOG: Record<PlanCode, PlanDefinition> = {
       "analytics.basic": true,
       "telegram.basic": true,
       "telegram.advanced": true,
+      "telegram.studio": false,
       "catalog.bulkTools": true,
       "catalog.multipleImages": true,
       "analytics.advanced": false,
@@ -123,6 +127,7 @@ export const PLAN_CATALOG: Record<PlanCode, PlanDefinition> = {
       "catalog.multipleImages": true,
       "analytics.advanced": false,
       "analytics.reports": true,
+      "telegram.studio": true,
       "coupons.basic": false,
       "loyalty.basic": false,
       "reviews.basic": false,

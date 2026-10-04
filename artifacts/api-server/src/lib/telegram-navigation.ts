@@ -1,5 +1,7 @@
 export type NavigationAction =
   | { kind: "home" } | { kind: "account" } | { kind: "close" } | { kind: "searchClear" }
+  | { kind: "screen"; id: string }
+  | { kind: "contextual"; ref: string }
   | { kind: "products"; page: number } | { kind: "categories"; page: number } | { kind: "orders"; page: number }
   | { kind: "category"; id: string; page: number; parentPage?: number }
   | { kind: "product"; code: string; parentRef?: string }
@@ -14,6 +16,10 @@ export function parseNavigationCallback(value: unknown): NavigationAction | null
   if (value === "lb:home") return { kind: "home" };
   if (value === "lb:account") return { kind: "account" };
   if (value === "lb:close") return { kind: "close" };
+  const contextual = /^lb:nav:([a-f0-9]{12})$/.exec(value);
+  if (contextual) return { kind: "contextual", ref: contextual[1] };
+  const screen = /^lb:screen:([a-z][a-z0-9_-]{0,23})$/.exec(value);
+  if (screen) return { kind: "screen", id: screen[1] };
   if (value === "lb:search:clear") return { kind: "searchClear" };
   const search = /^lb:search:(\d{1,5}):([a-f0-9]{12})$/i.exec(value);
   if (search && Number(search[1]) >= 1) return { kind: "search", page: Number(search[1]), queryRef: search[2].toLowerCase() };

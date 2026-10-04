@@ -24,6 +24,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { ProductGallery } from '@/components/product-gallery';
 import { TelegramHomeStudio } from '@/components/telegram-home-studio';
 import { TelegramHealth } from '@/components/telegram-health';
+import { BusinessBotStudio } from '@/components/business-bot-studio';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
@@ -675,7 +676,7 @@ function TelegramPage({store,locale='ar',t=copy.ar}:{store?:Store;locale?:Locale
         <div className="flex flex-wrap items-center gap-3 md:col-span-2">{designerError&&<InlineError message={designerError} />}{designerSaved&&<span className="text-sm text-[#80d7b5]">{locale==='ar'?'تم حفظ الإعدادات':'Settings saved'}</span>}<button disabled={!csrf.data?.token||designer.isFetching} className="ms-auto rounded-xl bg-[#62d6aa] px-5 py-3 text-sm font-bold text-[#10231d] disabled:opacity-50">{locale==='ar'?'حفظ التخصيص':'Save customization'}</button></div>
       </form>}
     </div>
-  </div><TelegramHealth storeId={storeId} csrfToken={csrf.data?.token} locale={locale}/><TelegramHomeStudio storeId={storeId} csrfToken={csrf.data?.token} locale={locale}/></section>;
+  </div><TelegramHealth storeId={storeId} csrfToken={csrf.data?.token} locale={locale}/><TelegramHomeStudio storeId={storeId} csrfToken={csrf.data?.token} locale={locale}/><BusinessBotStudio storeId={storeId} csrfToken={csrf.data?.token} locale={locale}/></section>;
 }
 
 function SettingsPage({store,locale='ar',t=copy.ar}:{store?:Store;locale?:Locale;t?:typeof copy.ar}) {

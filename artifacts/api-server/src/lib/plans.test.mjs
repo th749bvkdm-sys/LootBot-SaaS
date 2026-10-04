@@ -20,6 +20,8 @@ import { productMediaRequest } from "./telegram-product-media.ts";
 import { passwordHash, verifyPassword, safeStringEqual, newOpaqueToken, sha256 } from "./security.ts";
 import { parseNavigationCallback, defaultHomeKeyboard, navigationFooter, paginationButtons, createSearchContexts } from "./telegram-navigation.ts";
 import { DEFAULT_HOME_CONFIGURATION, parseHomeConfiguration, renderConfiguredHome, readHomeStudio } from "./telegram-home-configuration.ts";
+import { DEFAULT_BUSINESS_CONFIGURATION, parseBusinessConfiguration, renderBusinessScreen, readBusinessStudio } from './telegram-business-configuration.ts';
+import { createBusinessNavigation } from './telegram-business-navigation.ts';
 
 test("new and malformed store settings resolve to the safe FREE plan", () => {
   assert.equal(readPlanCode({}), "FREE");
@@ -298,4 +300,96 @@ test("search snapshots and gallery callbacks remain scoped and bounded", () => {
   assert.equal(contexts.get('store-a:snapshot-b', 1, 10), 'mouse');
   assert.equal(contexts.get('store-a:snapshot-a', 2, 10), null);
   assert.equal(contexts.get('store-b:snapshot-a', 1, 10), null);
+});
+
+const businessFixture = () => {
+  const config = structuredClone(DEFAULT_BUSINESS_CONFIGURATION);
+  config.screens.push({ id: 'vip', parentId: 'home', title: 'Customers', enabled: true, audience: 'returning', startsAt: null, endsAt: null, blocks: [{ id: 'text', type: 'HEADER', text: 'Welcome {{customer}}', enabled: true }], buttons: [] });
+  config.screens.push({ id: 'faq', parentId: 'vip', title: 'FAQ', enabled: true, audience: 'all', startsAt: null, endsAt: null, blocks: [{ id: 'faq', type: 'FAQ', text: 'Question and answer', enabled: true }, { id: 'divider', type: 'DIVIDER', text: '', enabled: true }], buttons: [] });
+  return config;
+};
+const viewer = { storeName: 'LootBot', customerName: 'Ali', returning: true, now: Date.parse('2026-10-04T12:00:00.000Z') };
+test('Business screens render actual actions and preserve screen parents', () => {
+  const config = parseBusinessConfiguration(businessFixture());
+  assert.ok(config);
+  const home = renderBusinessScreen(config, 'home', viewer);
+  assert.ok(home.keyboard.flat().some(b => b.callback_data === 'lb:screen:vip'));
+  const faq = renderBusinessScreen(config, 'faq', viewer);
+  assert.match(faq.text, /❓ Question and answer/);
+  assert.match(faq.text, /──────────/);
+  assert.ok(faq.keyboard.flat().some(b => b.text.includes('رجوع') && b.callback_data === 'lb:screen:vip'));
+  assert.ok(faq.keyboard.flat().every(b => parseNavigationCallback(b.callback_data)));
+  assert.equal(renderBusinessScreen(config, 'deleted', viewer), null);
+});
+test('Business visibility enforces audience, ancestors and inclusive/exclusive time boundaries', () => {
+  const config = businessFixture();
+  assert.equal(renderBusinessScreen(config, 'faq', { ...viewer, returning: false }), null);
+  config.screens[1].startsAt = '2026-10-04T12:00:00.000Z';
+  config.screens[1].endsAt = '2026-10-04T13:00:00.000Z';
+  assert.ok(renderBusinessScreen(config, 'faq', viewer));
+  assert.equal(renderBusinessScreen(config, 'faq', { ...viewer, now: viewer.now - 1 }), null);
+  assert.equal(renderBusinessScreen(config, 'faq', { ...viewer, now: viewer.now + 3600000 }), null);
+  config.screens[1].enabled = false;
+  assert.equal(renderBusinessScreen(config, 'faq', viewer), null);
+  assert.equal(renderBusinessScreen(config, 'home', viewer).keyboard.flat().some(b => b.callback_data === 'lb:screen:vip'), false);
+});
+test('Business validator rejects cycles, missing targets, bad dates, unknown actions and invalid root rules', () => {
+  for (const mutate of [
+    c => c.screens[1].parentId = 'faq',
+    c => c.screens[1].parentId = 'deleted',
+    c => c.screens[1].id = 'home',
+    c => c.screens[1].startsAt = '2026-02-30T12:00:00.000Z',
+    c => c.screens[1].startsAt = 'not-a-date',
+    c => c.screens[0].audience = 'returning',
+    c => c.screens[0].enabled = false,
+    c => c.screens[0].buttons[0].action = 'RUN_SCRIPT',
+    c => Object.assign(c.screens[0].buttons[0], { action: 'OPEN_SCREEN', target: 'deleted' }),
+    c => c.screens[0].blocks[0].text = 'x'.repeat(501),
+  ]) { const config = businessFixture(); mutate(config); assert.equal(parseBusinessConfiguration(config), null); }
+  const deep = businessFixture(); deep.screens.push({ ...deep.screens[2], id: 'level3', parentId: 'faq' }, { ...deep.screens[2], id: 'level4', parentId: 'level3' });
+  assert.equal(parseBusinessConfiguration(deep), null);
+});
+test('Business draft isolation and serialization use the same renderer for published data', () => {
+  const draft = businessFixture(); draft.screens[0].title = 'Draft';
+  const published = businessFixture(); published.screens[0].title = 'Published';
+  const persisted = readBusinessStudio(JSON.parse(JSON.stringify({ draft, published, revision: 4 })));
+  assert.ok(renderBusinessScreen(persisted.published, 'home', viewer).text.startsWith('Published'));
+  assert.ok(renderBusinessScreen(persisted.draft, 'home', viewer).text.startsWith('Draft'));
+  assert.equal(persisted.revision, 4);
+  assert.equal(readBusinessStudio({ published: 'invalid' }).published, null);
+});
+test('Business empty home falls back to real store actions and text remains within Telegram limits', () => {
+  const config = structuredClone(DEFAULT_BUSINESS_CONFIGURATION); config.screens[0].buttons = [];
+  const rendered = renderBusinessScreen(config, 'home', viewer);
+  assert.ok(rendered.keyboard.flat().some(b => b.callback_data === 'lb:products:1'));
+  config.screens[0].blocks[0].text = '{{store}}'.repeat(50);
+  assert.ok(renderBusinessScreen(config, 'home', { ...viewer, storeName: 'x'.repeat(120) }).text.length <= 3800);
+});
+test('Business entitlement is unavailable in Free/Pro and old administrative plan data gains its default', () => {
+  assert.equal(isFeatureAvailable('FREE', 'telegram.studio'), false);
+  assert.equal(isFeatureAvailable('PRO', 'telegram.studio'), false);
+  assert.equal(isFeatureAvailable('BUSINESS', 'telegram.studio'), true);
+  const old = structuredClone(PLAN_CATALOG.BUSINESS); delete old.features['telegram.studio'];
+  assert.equal(readPlanDefinition(old, 'BUSINESS').features['telegram.studio'], true);
+});
+
+test('Business navigation preserves the source screen across real actions and expires per customer', () => {
+  let now = 0; const navigation = createBusinessNavigation(() => now);
+  const rows = navigation.wrap('store-a', 1, 10, 'faq', [[{ text: 'Products', callback_data: 'lb:products:2' }], ...navigationFooter('lb:home', 'lb:products:2')]);
+  const reference = parseNavigationCallback(rows[0][0].callback_data);
+  assert.equal(reference.kind, 'contextual');
+  assert.deepEqual(navigation.read('store-a', 1, 10, reference.ref), { source: 'faq', callback: 'lb:products:2' });
+  assert.equal(navigation.read('store-a', 2, 10, reference.ref), null);
+  assert.equal(navigation.read('store-a', 1, 11, reference.ref), null);
+  assert.equal(navigation.read('store-b', 1, 10, reference.ref), null);
+  assert.equal(rows[1][0].callback_data, 'lb:screen:faq');
+  assert.equal(rows[1][1].callback_data, 'lb:home');
+  navigation.rememberSearchOrigin('store-a', 1, 10, 'faq');
+  assert.equal(navigation.searchOrigin('store-a', 1, 10), 'faq');
+  assert.equal(navigation.searchOrigin('store-a', 2, 10), null);
+  navigation.clearSearchOrigin('store-a', 1, 10);
+  assert.equal(navigation.searchOrigin('store-a', 1, 10), null);
+  assert.ok(rows.flat().every(b => Buffer.byteLength(b.callback_data) <= 64 && parseNavigationCallback(b.callback_data)));
+  now += 15 * 60_000;
+  assert.equal(navigation.read('store-a', 1, 10, reference.ref), null);
 });

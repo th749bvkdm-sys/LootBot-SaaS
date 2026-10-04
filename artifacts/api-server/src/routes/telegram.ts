@@ -24,8 +24,10 @@ import { getPlanCatalog, getStorePlan, featureGate } from "../lib/store-plans";
 import { isFeatureAvailable } from "../lib/plans";
 import { DEFAULT_TELEGRAM_DESIGNER, parseTelegramDesignerSettings } from "../lib/telegram-designer";
 import { parseHomeConfiguration, readHomeStudio, renderConfiguredHome } from "../lib/telegram-home-configuration";
+import { businessStudioRouter } from "./telegram-business-studio";
 
 const router: IRouter = Router();
+router.use(businessStudioRouter);
 const connectionTests = createLoginRateLimiter({ windowMs: 60_000, maxAttempts: 3 });
 
 router.get("/stores/:storeId/telegram/health", requireAuth, async (req, res): Promise<void> => {
@@ -84,7 +86,7 @@ router.post("/stores/:storeId/telegram/studio/:action", requireAuth, requireCsrf
     const studio = readHomeStudio(row?.settings.telegramHomeStudio);
     if (studio.revision !== revision) return null;
     const next = { draft: action === "draft" ? configuration! : studio.draft, published: action === "publish" ? studio.draft : studio.published, revision: revision + 1 };
-    const settings = { ...row?.settings, telegramHomeStudio: next };
+    const settings = { ...row?.settings, telegramHomeStudio: next, ...(action === "publish" ? { telegramHomeMode: "pro" } : {}) };
     await tx.insert(storeSettingsTable).values({ storeId, settings }).onConflictDoUpdate({ target: storeSettingsTable.storeId, set: { settings, updatedAt: new Date() } });
     return next;
   });

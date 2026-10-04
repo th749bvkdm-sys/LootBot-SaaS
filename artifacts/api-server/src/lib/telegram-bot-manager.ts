@@ -20,6 +20,8 @@ import { defaultHomeKeyboard, navigationFooter, parseNavigationCallback, type Bo
 import { captureSearchMessage, clearPendingSearch, rememberProductParent, renderStoreScreen, type ScreenContext } from "./telegram-store-screens";
 import { createLoginRateLimiter } from "./login-rate-limit";
 import { readHomeStudio, renderConfiguredHome } from "./telegram-home-configuration";
+import { readBusinessStudio, renderBusinessScreen } from "./telegram-business-configuration";
+import { createBusinessNavigation } from "./telegram-business-navigation";
 
 interface TelegramBotUser {
   id: number;
@@ -70,6 +72,7 @@ interface ActiveBot {
 const activeByStore = new Map<string, ActiveBot>();
 const activeStoreByToken = new Map<string, string>();
 const callbackRateLimiter = createLoginRateLimiter({ windowMs: 60_000, maxAttempts: 40 });
+const businessNavigation = createBusinessNavigation();
 
 async function telegramCall<T>(
   token: string,
@@ -153,13 +156,14 @@ async function handleUpdate(
   update: TelegramUpdate,
   productParent = "lb:products:1",
   galleryIndex = 0,
+  businessParent?: string,
 ): Promise<void> {
   const callback = update.callback_query;
   const message = callback?.message ? { ...callback.message, from: callback.from, text: callback.message.text ?? "" } : update.message;
   if (!message || message.from?.is_bot) return;
   const text = message.text ?? "";
   const command = text.trim().split(/\s+/, 1)[0]?.split("@", 1)[0];
-  const action = callback ? parseNavigationCallback(callback.data) : null;
+  let action = callback ? parseNavigationCallback(callback.data) : null;
   if (callback) {
     if (callbackRateLimiter.isLimited(`${storeId}:${callback.from.id}`)) {
       await telegramCall(bot.token, "answerCallbackQuery", { callback_query_id: callback.id, text: "انتظر قليلًا ثم حاول مجددًا." }); return;
@@ -200,19 +204,52 @@ async function handleUpdate(
   const context: ScreenContext | null = message.from ? {
     storeId, storeName: store.name, currency: store.currency, userId: message.from.id,
     chatId: message.chat.id, privateChat: message.chat.type === "private", customerName: message.from.first_name.slice(0, 80),
-    send: (content, buttons) => sendText(bot, message.chat.id, content, buttons),
+    send: (content, buttons) => sendText(bot, message.chat.id, content, businessParent
+      ? businessNavigation.wrap(storeId, message.from!.id, message.chat.id, businessParent, buttons) : buttons),
     product: async (code, parent, index) => {
-      await handleUpdate(storeId, bot, { update_id: update.update_id, message: { ...message, text: `/product ${code}` } }, parent, index);
+      await handleUpdate(storeId, bot, { update_id: update.update_id, message: { ...message, text: `/product ${code}` } }, parent, index, businessParent);
     },
   } : null;
   const searchText = context && !callback ? captureSearchMessage(context, text) : null;
+  const business = store.settings?.telegramHomeMode !== "pro" && isFeatureAvailable(plan, "telegram.studio", await getPlanCatalog()) ? readBusinessStudio(store.settings?.telegramBusinessStudio).published : null;
+  const businessViewer = async () => {
+    const [priorOrder] = context && message.chat.type === "private" ? await db.select({ id: ordersTable.id }).from(ordersTable)
+      .where(and(eq(ordersTable.storeId, storeId), eq(ordersTable.telegramUserId, String(context.userId)))).limit(1) : [];
+    return { storeName: store.name, customerName: message.from?.first_name ?? "", returning: !!priorOrder, now: Date.now() };
+  };
+  if (action?.kind === "contextual") {
+    const saved = context ? businessNavigation.read(storeId, context.userId, context.chatId, action.ref) : null;
+    if (!saved || !business || !renderBusinessScreen(business, saved.source, await businessViewer())) {
+      await sendText(bot, message.chat.id, "هذه القائمة انتهت أو لم تعد متاحة. أرسل /start لتحديثها.", navigationFooter()); return;
+    }
+    businessParent = saved.source; action = parseNavigationCallback(saved.callback);
+  }
+  if (context && businessParent && (action?.kind === "search" || action?.kind === "searchClear")) {
+    businessNavigation.rememberSearchOrigin(storeId, context.userId, context.chatId, businessParent);
+  }
+  if (context && searchText !== null && !businessParent) {
+    const source = businessNavigation.searchOrigin(storeId, context.userId, context.chatId);
+    if (source && business && renderBusinessScreen(business, source, await businessViewer())) businessParent = source;
+  }
+  const sendBusinessScreen = async (screenId: string) => {
+    const rendered = business ? renderBusinessScreen(business, screenId, await businessViewer()) : null;
+    if (rendered) await sendText(bot, message.chat.id, rendered.text, context ? businessNavigation.wrap(storeId, context.userId, context.chatId, screenId, rendered.keyboard) : rendered.keyboard);
+    else await sendText(bot, message.chat.id, "هذه الشاشة غير متاحة الآن.", navigationFooter());
+  };
+  if (action?.kind === "screen") {
+    if (context) { clearPendingSearch(context); businessNavigation.clearSearchOrigin(storeId, context.userId, context.chatId); }
+    await sendBusinessScreen(action.id); return;
+  }
   if (action?.kind === "buy") {
     await handleUpdate(storeId, bot, { update_id: update.update_id, message: { ...message, text: `/order ${action.code} 1` } }); return;
   }
   if (action?.kind === "home" || (!callback && command === "/start")) {
-    if (context) clearPendingSearch(context);
+    if (context) { clearPendingSearch(context); businessNavigation.clearSearchOrigin(storeId, context.userId, context.chatId); }
     const productLink = !callback && /^\/start(?:@\w+)?\s+product_([a-f0-9]{12})\s*$/i.exec(text.trim());
     if (productLink && context) { await context.product(productLink[1].toLowerCase(), "lb:home"); return; }
+    const screenLink = !callback && /^\/start(?:@\w+)?\s+screen_([a-z][a-z0-9_-]{0,23})\s*$/.exec(text.trim());
+    if (screenLink) { await sendBusinessScreen(screenLink[1]); return; }
+    if (business) { await sendBusinessScreen("home"); return; }
     const published = isFeatureAvailable(plan, "telegram.advanced", await getPlanCatalog()) ? readHomeStudio(store.settings?.telegramHomeStudio).published : null;
     if (published) {
       const home = renderConfiguredHome(published, store.name, message.from?.first_name ?? "");
@@ -236,7 +273,7 @@ async function handleUpdate(
       eq(productsTable.storeId, storeId), eq(productsTable.isDeleted, false), eq(productsTable.isPublished, true),
       sql`substring(replace(${productsTable.id}, '-', '') from 1 for 12) = ${code}`,
     )).limit(1);
-    if (!product) { await sendText(bot, message.chat.id, "المنتج غير متاح.", navigationFooter(productParent)); return; }
+    if (!product) { if (context) await context.send("المنتج غير متاح.", navigationFooter(productParent)); else await sendText(bot, message.chat.id, "المنتج غير متاح.", navigationFooter(productParent)); return; }
     const galleryEnabled = isFeatureAvailable(plan, "catalog.multipleImages", await getPlanCatalog());
     const storedImages = galleryEnabled ? await db.select({ imageUrl: productImagesTable.imageUrl }).from(productImagesTable)
       .where(eq(productImagesTable.productId, product.id)).orderBy(productImagesTable.sortOrder).limit(10) : [];
@@ -251,11 +288,13 @@ async function handleUpdate(
     const galleryButtons: BotButton[] = [];
     if (parentRef && index > 0) galleryButtons.push({ text: "◀ الصورة السابقة", callback_data: `lb:gallery:${code}:${index - 1}:${parentRef}` });
     if (parentRef && index + 1 < images.length) galleryButtons.push({ text: "الصورة التالية ▶", callback_data: `lb:gallery:${code}:${index + 1}:${parentRef}` });
-    await sendText(bot, message.chat.id, `${caption}${imageCounter}\n\n${product.description.slice(0, 2800)}\n\nللطلب: /order ${code} 1`, [
+    const productText = `${caption}${imageCounter}\n\n${product.description.slice(0, 2800)}\n\nللطلب: /order ${code} 1`;
+    const productButtons: BotButton[][] = [
       ...(galleryButtons.length ? [galleryButtons] : []),
       ...(product.stock > 0 ? [[{ text: "🛍 طلب قطعة واحدة", callback_data: `lb:buy:${code}` }]] : []),
       ...navigationFooter(productParent),
-    ]);
+    ];
+    if (context) await context.send(productText, productButtons); else await sendText(bot, message.chat.id, productText, productButtons);
     return;
   }
 
