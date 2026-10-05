@@ -2,7 +2,7 @@
 
 Updated **2026-10-05**. Authoritative specification: user attachment a0a1b741-3071-4b4a-bf37-3b87d1e11fbb/نص ملصق.txt, sections 01–32.
 
-This replaces the obsolete initial checkpoint. Commerce, growth execution, staff, analytics, themes and the complete component catalogue were implemented, merged and successfully deployed as the first V2 production release. A production finding in resuming an existing Telegram connection is being repaired separately. Deployment, credential checks and actual Telegram chat delivery are reported separately.
+This replaces the obsolete initial checkpoint. Commerce, growth execution, staff, analytics, themes and the complete component catalogue were implemented, merged and successfully deployed. The saved Telegram connection recovery fix is also merged/deployed, and an actual successful production poll was observed. Real Telegram customer-chat delivery remains unverified.
 
 ## Release identity and acceptance boundary
 
@@ -10,21 +10,22 @@ This replaces the obsolete initial checkpoint. Commerce, growth execution, staff
 | --- | --- |
 | Repository | th749bvkdm-sys/LootBot-SaaS |
 | V2 implementation branch | codex/v2-telegram-studio; merged. |
-| Follow-up branch | codex/telegram-reconnect-release; saved-credential polling resume fix is in progress, final source/PR/deployment identity pending. |
+| Follow-up branch | codex/telegram-reconnect-release; source **3c5331d02ecce4f36bbebaf0ec0ec1806959dc0f**, [PR #5](https://github.com/th749bvkdm-sys/LootBot-SaaS/pull/5) merged as **0695391bca36f1ba4daa8e4af59fe180419fae9f**. |
 | Starting deployed commit | b40df5f |
 | Source commits | 5d645b9, 41b7702; complete expansion **8cc90da97e69575e051959fc73eaa5f1eb0c966e** pushed. |
 | Pull request | [PR #4](https://github.com/th749bvkdm-sys/LootBot-SaaS/pull/4) **merged** into main as **73043f2705c5a163c018f3f9c05bcca8edf74b81**. |
 | First V2 deployed source | **8d653290751bf50cd865c650fc6e919031475299** (main after the merged implementation and evidence update). |
 | Render deployment | **dep-db1nl15g1s2s73b1qhbg**, **Live**, **1m 26s**, existing free service. |
-| Public application | [LootBot](https://lootbot-saas.onrender.com/); **first V2 release verified** through health, new asset and signed-in critical pages. |
+| Current Render deployment | **dep-db1o4jp42hec73dj8e9g**, **Live**, **1m 28s**, source **0695391**, October 5 at 13:56:15 Riyadh. Runtime/new public files verified; migrations ready (0 applied). |
+| Public application | [LootBot](https://lootbot-saas.onrender.com/); **V2 plus recovery verified** through health, /assets/index-D4x9xCmk.js (486,882 bytes, JavaScript), signed-in pages and owner reconnect. |
 | Test database | Separate Neon schema-only branch; synthetic test accounts/catalog/customers/orders, no copied production customer data. Runners reject other database hosts. |
 | Telegram transport in tests | Explicit controlled responses. Actual handler/renderer/database/execution code runs; no real Telegram messages are sent. |
 | Real Telegram credential check | **Passed in production:** the owner Test Connection invoked actual Telegram getMe/webhook checks with the saved credential. |
-| Telegram polling follow-up | Existing connection remained in stored error status with no prior successful poll and zero active startup bots. Explicit saved-credential resume is being repaired; credential validity alone does not establish active polling. |
+| Telegram polling follow-up | **Recovered:** owner resume at **13:58:44 Riyadh**; actual successful Telegram poll at **13:59:04**, connected **@lootSa_bot**, no recorded reception error. |
 | Live Telegram chat acceptance | **Not performed.** No real-chat storefront walkthrough or delivery success is claimed. |
 | Browser acceptance | **Passed local critical paths:** login, Pro draft/publish, Business child edit/save/real preview/publish/reload, searchable customer, coupon/campaign saves, actual catalog/analytics, mobile Studio tabs and Free lock/modal accessibility. Four viewport checks passed; three screenshots linked below. |
 
-**Release boundary:** the first V2 application release and its nine migrations are verified in production. The saved-credential reconnect fix still needs its source/PR/deployment verification. A real Telegram storefront chat walkthrough remains unverified.
+**Release boundary:** V2, its nine migrations and the saved-credential reconnect fix are verified in production, including actual polling recovery. A real Telegram storefront customer-chat walkthrough remains unverified.
 
 ## Audit and defects repaired
 
@@ -125,23 +126,23 @@ Central gates apply in UI and backend. A one-time migration upgrades only exact 
 | 13 Themes | All 11 participate in shared runtime/preview presentation. | Native Telegram visual review; custom CSS is unavailable. |
 | 14 Draft/preview/publish | Separate draft/published JSON, actual server preview, revision/lock/reference checks and disabled preview writes. | Published bot appearance. |
 | 15 Website redesign | RTL shell/workspaces/navigation/profile/mobile drawer and plan locks; local critical checks and signed-in production pages passed. | No outstanding first-release page smoke check. |
-| 16 Dashboard | Actual statistics/usage/health/charts/recent orders/alerts with financial redaction; new production dashboard loads without the previous React 310 error. | Existing Telegram polling resume follow-up. |
+| 16 Dashboard | Actual statistics/usage/health/charts/recent orders/alerts with financial redaction; new production dashboard loads without the previous React 310 error. | Production polling recovery also verified. |
 | 17 Designer UI | Grouped Pro options, screen accordions, folding Business properties, selectors/panes/mobile tabs and Save/Preview/Publish/Reset; production Pro real-catalog preview and all 27 Business palette entries observed. | Real Telegram published appearance. |
 | 18 Pro expansion | Required presentation/customer options use persistence and shared renderer. | Live option matrix. |
 | 19 Business expansion | Builder/rules/segments/campaign/VIP/content/growth/staff/branding/analytics/experiments/health; production workspaces load. | Real execution/delivery acceptance. |
-| 20 Health | Real getMe/webhook checks passed from the deployed owner UI; telemetry separates credential tests from polling. | Resume stored error connection and observe actual successful polling. |
+| 20 Health | Real getMe/webhook checks, saved connection resume and actual successful polling verified in production. | Customer-chat delivery remains a separate acceptance item. |
 | 21 Gates | Central catalog/backend enforcement/UI locks/safe defaults upgrade; all nine production migrations applied. | Real Telegram feature toggle sequence. |
 | 22 Responsive | Mobile tabs/drawer/tables/RTL; four local viewports without overflow; desktop/mobile/lock screenshots and production page smoke check. | No outstanding first-release page smoke check. |
 | 23 Design system | Shared primitives/focus/touch/accents/motion/loading; local visual review and production pages passed. | No outstanding first-release page smoke check. |
 | 24 Security | Session/CSRF/store/current plan/staff/admin/inputs/URLs/callbacks/rates/secret guards; real allowed/denied HTTP cases. | No external penetration-test claim. |
 | 25 Callback safety | Store/customer/chat/source/revision/current condition checks and stale/deleted/private-group fallbacks. | Real stale callback walkthrough. |
 | 26 DB/config | Existing settings/catalog/orders reused; nine additive migrations/ledger/CHECK repairs and repeat rehearsal; production logs verify each 0001–0009 application. | No outstanding first-release migration evidence. |
-| 27 Tests | 84 helpers, 16 API checks, isolated DB/HTTP suites, 2 migration/constraint tests, browser/mobile/modal and production page checks. | Reconnect regression/deployment and real chat cases. |
+| 27 Tests | 85 helpers, 16 API checks, 13 reconnect checks, isolated DB/HTTP suites, 2 migration/constraint tests, browser/mobile/modal and production page checks. | Real customer-chat cases remain unverified. |
 | 28 Live Telegram | Actual handlers tested with controlled transport; actual production credential test passed. | **Chat sequence not passed:** real storefront interaction/delivery has not been observed. |
 | 29 No fake completion | Actual data/renderers/jobs/transactions; labeled state preview; no fabricated revenue/rating/conversion/health/delivery. | Keep live/deployment boundary explicit. |
-| 30 Execution | Implementation/local acceptance/source merge/first production deployment/migrations/public smoke checks completed. | Complete reconnect follow-up and real chat sequence. |
-| 31 Done | Local implementation and first production application release verified. | **Full Telegram acceptance remains open:** polling resume and real-chat storefront sequence. |
-| 32 Final report | Features/bugs/schema/API/tests/limits/files/screenshots/source/merge/Render/migrations/public verification recorded. | Add final reconnect identity and real chat evidence. |
+| 30 Execution | Implementation/local acceptance/source merge/production deployments/migrations/public smoke and actual polling recovery completed. | Real customer-chat sequence remains unverified. |
+| 31 Done | Local implementation, production application release and bot polling verified. | **Full Telegram acceptance remains open:** real customer-chat storefront sequence. |
+| 32 Final report | Features/bugs/schema/API/tests/limits/files/screenshots/source/merge/Render/migrations/public verification and reconnect identity/result recorded. | Real customer-chat evidence remains unavailable. |
 
 ## Storage and migrations
 
@@ -202,7 +203,7 @@ Latest final revision checks reported by the coordinating implementation task:
 | Production release | **Verified:** Render deployment dep-db1nl15g1s2s73b1qhbg is Live from 8d653290751bf50cd865c650fc6e919031475299; nine migrations applied; public health HTTP 200/ok and new /assets/index-CnxID8Xt.js confirmed; signed-in critical pages passed. |
 | Real Telegram Test Connection | **Passed in production** actual getMe/webhook checks using the owner's saved credential; no secret disclosed. |
 | Saved Telegram reconnect integration | **13/13 passed**, latest run **32.9 seconds**: owner/CSRF/plan/credential/webhook/duplicate/stale guards; saved offset; real health write with mocked poll; retry bounds; queued disconnect/archive; late same-token completions; startup and permanent shutdown. Transport is synthetic and never sends customer messages. |
-| Telegram polling/chat | **Follow-up pending:** stored error connection was not resumed at startup. Explicit resume is being repaired; no successful real chat storefront sequence is claimed. |
+| Telegram polling/chat | **Actual production polling recovered:** owner resume 13:58:44, successful poll 13:59:04 Riyadh, connected @lootSa_bot, no reception error. Real customer-chat storefront sequence remains unverified. |
 
 Integration runners are in artifacts/api-server/tests and read an ignored .env.v2-test, enforcing the isolated test host. No connection secrets are logged. The isolated UI application runs without production Telegram polling or growth workers.
 
@@ -229,7 +230,7 @@ Public /api/healthz returns HTTP 200 with status ok; public HTML/new JavaScript 
 
 Evidence: [Render Live status](v2-render-live.png) and [production migration/build log excerpt](v2-render-migrations.txt). These contain service/deployment metadata without tokens or connection strings. The production dashboard screenshot containing a private account email is deliberately excluded from committed public evidence.
 
-The owner's deployed Test Connection successfully checked the saved credential against real Telegram getMe/webhook endpoints. It also exposed a separate issue: the connection's stored status was error, there was no previous successful poll and startup reported zero active bots. A valid credential check does not mean the bot is actively receiving updates. The saved-credential resume fix is in progress on **codex/telegram-reconnect-release**; its final source/PR/deployment identity is pending. The real Telegram /start/storefront/publish walkthrough has not been performed.
+The owner's deployed Test Connection successfully checked the saved credential against real Telegram getMe/webhook endpoints. It exposed a separate issue: the connection's stored status was error, there was no previous successful poll and startup reported zero active bots. That recovery issue was repaired in PR #5 and verified below. The real Telegram customer /start/storefront/publish walkthrough has not been performed.
 
 The local UI server was stopped and its generated bundle removed. Nine audited synthetic fixture users/stores and their dependent rows were removed from the guarded isolated Neon branch; remaining scoped users/stores/sessions are zero. Production data was not accessed for this cleanup.
 
@@ -237,7 +238,13 @@ The local UI server was stopped and its generated bundle removed. Nine audited s
 
 The final repair adds an owner-only, CSRF-protected saved-connection resume action. It validates the decrypted credential hash, bot identity and absent webhook; rechecks ownership/nondeleted store/current credential inside locked persistence; preserves the saved update offset; bounds retries; and records a safe audit event. Connection changes, archive/disconnect and worker side effects serialize per store. Aborted or replaced workers cannot persist late health/error/offset changes, and shutdown prevents in-flight or queued requests from starting new reception.
 
-The UI offers **استئناف الاتصال** on a saved error connection, keeps Test Connection diagnostic, refreshes health every fifteen seconds and refreshes store/summary state after a transition. Store changes discard stale request results. The isolated reconnect suite passed 13/13 in 32.9 seconds; final API lint/typecheck/build, 85 helper checks and the full 16-case API regression passed after the final guards. Independent final review found no unresolved concrete issue. Its controlled Telegram transport uses only synthetic getMe/getWebhookInfo/getUpdates responses and cannot send a customer message. The follow-up PR/deployment and actual polling result will be recorded after publication.
+The UI offers **استئناف الاتصال** on a saved error connection, keeps Test Connection diagnostic, refreshes health every fifteen seconds and refreshes store/summary state after a transition. Store changes discard stale request results. The isolated reconnect suite passed 13/13 in 32.9 seconds; final API lint/typecheck/build, 85 helper checks and the full 16-case API regression passed after the final guards. Independent final review found no unresolved concrete issue. Its controlled Telegram transport uses only synthetic getMe/getWebhookInfo/getUpdates responses and cannot send a customer message. Final cleanup verification found zero scoped reconnect users/stores and zero API fixture users in the isolated database.
+
+Source **3c5331d** was published through [PR #5](https://github.com/th749bvkdm-sys/LootBot-SaaS/pull/5) and merged as **0695391**. The first follow-up deployment dep-db1o05jtqb8s73e07omg reported Live, but public HTML still contained the old asset and unauthenticated reconnect returned 404. A service restart was recorded at 13:55 Riyadh. A subsequent manual retry, [dep-db1o4jp42hec73dj8e9g](https://dashboard.render.com/web/srv-db0mf2k9v7es73c39g60/deploys/dep-db1o4jp42hec73dj8e9g), completed **Live in 1m28s** from the same reviewed source, and public verification confirmed the actual new runtime. The initial deployment mismatch is not attributed to an established root cause.
+
+Public HTML now loads **/assets/index-D4x9xCmk.js**; that asset returns 486,882 bytes with JavaScript MIME type. /api/healthz returns 200/ok, and unauthenticated reconnect returns 401. The owner resume action succeeded against the saved production credential at **13:58:44 Riyadh**. The UI showed **connected**, bot **@lootSa_bot**, then an actual successful Telegram poll at **13:59:04** and no recorded reception error. Production catalogues, designs, memberships and payment data were not changed for this recovery check. No new credential was entered.
+
+Safe release evidence: [Render current Live deployment](v2-reconnect-render-live.png) and [build/migration/runtime excerpt](v2-reconnect-render-log.txt). The owner-facing bot health screenshot is kept outside committed public evidence. An actual successful poll establishes update reception connectivity; it does not establish customer-menu delivery or a completed purchase walkthrough.
 
 ### Frontend loading performance
 
@@ -247,7 +254,7 @@ Measured latest production output: initial JavaScript **998,945 → 486,882 byte
 
 ## Known limitations and constraints
 
-1. Real Telegram credential validation passed in production, but actual delivery/appearance remains unverified. The stored error connection needs the reconnect follow-up before active polling can be confirmed. The requested /start → browsing/gallery → Back/Home → private account/orders → website draft/preview/publish → reorder/feature toggle sequence still requires an actual bot/customer test.
+1. Real Telegram credential validation, saved connection recovery and an actual successful poll passed in production. Actual customer-chat delivery/appearance remains unverified. The requested /start → browsing/gallery → Back/Home → private account/orders → website draft/preview/publish → reorder/feature toggle sequence still requires an authenticated Telegram customer test.
 2. Native Telegram rendering does not accept website CSS/custom fonts/arbitrary keyboard colors from this renderer. Themes use supported text, emoji, keyboard/media order and card presentation. Carousel is a Telegram gallery/buttons experience.
 3. Existing **manual payment confirmation** and administrative plan assignment remain; no payment gateway, automatic charge or subscription billing was added.
 4. Logs measure API acceptance/failure, and experiments measure actual unique visits. Read receipts, message opens, automatic conversion attribution and conversion lift are not fabricated.
@@ -262,7 +269,7 @@ Measured latest production output: initial JavaScript **998,945 → 486,882 byte
 
 ## Changed areas and release checklist
 
-Changed source areas: Telegram bot manager/navigation/configuration/data/presentation/preview/product rendering; customer commerce and catalog/order extensions; typed rules/growth execution/finance policy; staff/Studio access; RTL shell and overview/plans/team/analytics/commerce/growth/studios/catalog metadata UI; additive schemas/migrations/runner; helper/HTTP/DB/migration/UI tests; lint/build/Render configuration. Detailed file changes are in [PR #4](https://github.com/th749bvkdm-sys/LootBot-SaaS/pull/4).
+Changed source areas: Telegram bot manager/navigation/configuration/data/presentation/preview/product rendering; customer commerce and catalog/order extensions; typed rules/growth execution/finance policy; staff/Studio access; RTL shell and overview/plans/team/analytics/commerce/growth/studios/catalog metadata UI; additive schemas/migrations/runner; helper/HTTP/DB/migration/UI tests; lint/build/Render configuration. Detailed file changes are in [PR #4](https://github.com/th749bvkdm-sys/LootBot-SaaS/pull/4), with saved-connection/lifecycle/health recovery in [PR #5](https://github.com/th749bvkdm-sys/LootBot-SaaS/pull/5).
 
 Secrets, caches, disposable fixture data and generated test bundles must not be committed.
 
@@ -275,7 +282,7 @@ Secrets, caches, disposable fixture data and generated test bundles must not be 
 - [x] Complete source pushed as 8cc90da; PR #4 merged into main as 73043f2.
 - [x] First V2 Render deployment Live from 8d65329; actual build/migrations/new public assets/health and signed-in critical pages verified.
 - [x] Real production owner Test Connection/getMe/webhook check succeeds.
-- [ ] Finish saved-credential polling resume fix, record follow-up source/PR/deploy and confirm actual polling recovery.
-- [ ] Perform the real Telegram sequence when live bot/customer credentials are available.
+- [x] Saved-credential polling resume fix merged/deployed; final source/PR/Render identity, public assets/health and actual successful polling recovery recorded.
+- [ ] Perform the real customer-chat Telegram sequence when an authenticated customer session is available.
 
 The real Telegram item stays unverified until actual delivery is observed. Source completion alone is not a substitute for that evidence.

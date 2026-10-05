@@ -1,0 +1,26 @@
+      - generic: dep-db1o4jp42hec73dj8e9g
+  - definition: Deploy succeeded|Live
+  - definition:
+  - definition:
+  - definition: Manually deployed by you via Dashboard
+  - definition:
+    - link "0695391":
+      - /url: https://github.com/th749bvkdm-sys/LootBot-SaaS/commit/0695391bca36f1ba4daa8e4af59fe180419fae9f
+    - option "01:56:41 PM Database migrations ready (0 applied).":
+      - generic: Database migrations ready (0 applied).
+    - option "01:56:50 PM ==> Build successful 🎉":
+      - generic: ==> Build successful 🎉
+    - 'option "01:57:37 PM [2ghq5] {\"level\":30,\"time\":1791197857490,\"pid\":103,\"hostname\":\"srv-db0mf2k9v7es73c39g60-hibernate-6f6b5c77cd-2ghq5\",\"port\":10000,\"msg\":\"Server listening\"}"':
+      - generic: "{\"level\":30,\"time\":1791197857490,\"pid\":103,\"hostname\":\"srv-db0mf2k9v7es73c39g60-hibernate-6f6b5c77cd-2ghq5\",\"port\":10000,\"msg\":\"Server listening\"}"
+    - 'option "01:57:37 PM [2ghq5] {\"level\":30,\"time\":1791197857705,\"pid\":103,\"hostname\":\"srv-db0mf2k9v7es73c39g60-hibernate-6f6b5c77cd-2ghq5\",\"count\":0,\"msg\":\"Loaded active Telegram bots.\"}"':
+      - generic: "{\"level\":30,\"time\":1791197857705,\"pid\":103,\"hostname\":\"srv-db0mf2k9v7es73c39g60-hibernate-6f6b5c77cd-2ghq5\",\"count\":0,\"msg\":\"Loaded active Telegram bots.\"}"
+    - option "01:57:43 PM ==> Your service is live 🎉":
+      - generic: ==> Your service is live 🎉
+Public verification after this deployment:
+HTML entry: /assets/index-D4x9xCmk.js
+New asset: HTTP 200, 486882 bytes, text/javascript; charset=utf-8
+/api/healthz: HTTP 200, status ok
+Unauthenticated saved reconnect request: HTTP 401
+Production owner resume: 2026-10-05 13:58:44 Asia/Riyadh
+Actual Telegram successful poll shown in owner UI: 2026-10-05 13:59:04 Asia/Riyadh
+Reception error: none recorded
