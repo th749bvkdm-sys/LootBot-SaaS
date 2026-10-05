@@ -31,7 +31,7 @@ startGrowthWorker();
 
 function shutdown(signal: string): void {
   logger.info({ signal }, "Shutting down LootBot API.");
-  stopAllBots();
+  stopAllBots({ shutdown: true });
   stopGrowthWorker();
   server.close((error) => {
     if (error) {

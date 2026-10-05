@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 import {
   db,
   orderItemsTable,
@@ -29,6 +29,7 @@ import { presentTelegramScreen, themeDefaults, type ScreenStyleMap } from './tel
 import { renderStoreHome } from './telegram-home-data';
 import { productCardText } from './telegram-product-card';
 import { productButtons, productInstructions } from './telegram-product-buttons';
+import { withBotConnectionChange } from './bot-connection-lock';
 
 interface TelegramBotUser {
   id: number;
@@ -80,6 +81,17 @@ const activeByStore = new Map<string, ActiveBot>();
 const activeStoreByToken = new Map<string, string>();
 const callbackRateLimiter = createLoginRateLimiter({ windowMs: 60_000, maxAttempts: 40 });
 const businessNavigation = createBusinessNavigation();
+let lifecycleVersion=0;
+let draining=false;
+export const botLifecycleVersion=()=>lifecycleVersion;
+export function assertBotLifecycleCurrent(version:number):void {
+  if(draining||version!==lifecycleVersion)throw new TelegramFailure('Bot lifecycle changed',undefined,true);
+}
+
+export function assertBotTokenAvailable(storeId: string, token: string): void {
+  const existingStore = activeStoreByToken.get(sha256(token));
+  if (existingStore && existingStore !== storeId) throw new TelegramFailure('هذا البوت مرتبط بمتجر آخر.', undefined, true);
+}
 
 async function telegramCall<T>(
   token: string,
@@ -108,6 +120,11 @@ async function telegramCall<T>(
     );
   }
   return payload.result;
+}
+
+async function activeBotCall<T>(bot: ActiveBot, method: string, body?: Record<string,unknown>): Promise<T> {
+  if (bot.controller.signal.aborted) throw new TelegramFailure('Bot reception stopped');
+  return telegramCall<T>(bot.token,method,body,AbortSignal.any([bot.controller.signal,AbortSignal.timeout(25_000)]));
 }
 
 export async function validateTelegramBotToken(
@@ -149,7 +166,7 @@ async function sendText(
   text: string,
   buttons?: BotButton[][],
 ): Promise<void> {
-  await telegramCall(bot.token, "sendMessage", {
+  await activeBotCall(bot, "sendMessage", {
     chat_id: chatId,
     text,
     disable_web_page_preview: true,
@@ -166,6 +183,7 @@ export async function handleTelegramUpdate(
   businessParent?: string,
   businessOrigin?: string,
 ): Promise<void> {
+  if (bot.controller.signal.aborted) return;
   const callback = update.callback_query;
   const message = callback?.message ? { ...callback.message, from: callback.from, text: callback.message.text ?? "" } : update.message;
   if (!message || message.from?.is_bot) return;
@@ -174,14 +192,14 @@ export async function handleTelegramUpdate(
   let action = callback ? parseNavigationCallback(callback.data) : null;
   if (callback) {
     if (callbackRateLimiter.isLimited(`${storeId}:${callback.from.id}`)) {
-      await telegramCall(bot.token, "answerCallbackQuery", { callback_query_id: callback.id, text: "انتظر قليلًا ثم حاول مجددًا." }); return;
+      await activeBotCall(bot, "answerCallbackQuery", { callback_query_id: callback.id, text: "انتظر قليلًا ثم حاول مجددًا." }); return;
     }
-    await telegramCall(bot.token, "answerCallbackQuery", { callback_query_id: callback.id,
+    await activeBotCall(bot, "answerCallbackQuery", { callback_query_id: callback.id,
       ...(!action ? { text: "هذه القائمة قديمة. أرسل /start لتحديثها." } : {}),
     });
     if (!action) return;
     if (action.kind === "close" && callback.message) {
-      await telegramCall(bot.token, "editMessageReplyMarkup", { chat_id: callback.message.chat.id, message_id: callback.message.message_id, reply_markup: { inline_keyboard: [] } });
+      await activeBotCall(bot, "editMessageReplyMarkup", { chat_id: callback.message.chat.id, message_id: callback.message.message_id, reply_markup: { inline_keyboard: [] } });
       return;
     }
   }
@@ -228,10 +246,10 @@ export async function handleTelegramUpdate(
     styles:proPresentation?.screenStyles,
     send: async (content, buttons, screen = 'products', media = []) => {
       const styled = presentTelegramScreen(presentationTheme, proPresentation?.screenStyles?.[screen as keyof ScreenStyleMap], content, buttons, store.name, message.from!.first_name);
-      for(const photo of media.slice(0,6)) await telegramCall(bot.token,'sendPhoto',{chat_id:message.chat.id,photo}).catch(()=>undefined);
-      if (styled.imageUrl && styled.imagePlacement==='before') await telegramCall(bot.token, 'sendPhoto', { chat_id: message.chat.id, photo: styled.imageUrl }).catch(() => undefined);
+      for(const photo of media.slice(0,6)) await activeBotCall(bot,'sendPhoto',{chat_id:message.chat.id,photo}).catch(()=>undefined);
+      if (styled.imageUrl && styled.imagePlacement==='before') await activeBotCall(bot, 'sendPhoto', { chat_id: message.chat.id, photo: styled.imageUrl }).catch(() => undefined);
       await sendText(bot, message.chat.id, styled.text, businessParent && business ? businessNavigation.wrap(storeId, message.from!.id, message.chat.id, businessParent, styled.keyboard, {revision:sha256(JSON.stringify(business)),origin:businessOrigin}) : styled.keyboard);
-      if (styled.imageUrl && styled.imagePlacement==='after') await telegramCall(bot.token, 'sendPhoto', { chat_id: message.chat.id, photo: styled.imageUrl }).catch(() => undefined);
+      if (styled.imageUrl && styled.imagePlacement==='after') await activeBotCall(bot, 'sendPhoto', { chat_id: message.chat.id, photo: styled.imageUrl }).catch(() => undefined);
     },
     product: async (code, parent, index) => {
       await handleTelegramUpdate(storeId, bot, { update_id: update.update_id, message: { ...message, text: `/product ${code}` } }, parent, index, businessParent, businessOrigin);
@@ -263,7 +281,7 @@ export async function handleTelegramUpdate(
     const viewer = business ? await businessViewerData({ id: storeId, name: store.name, currency: store.currency }, business, screenId, customerProfile, true) : null;
     const rendered = business && viewer ? renderBusinessScreen(business, screenId, viewer) : null;
     if (rendered) {
-      for (const image of rendered.images) await telegramCall(bot.token, 'sendPhoto', {chat_id: message.chat.id, photo:image}).catch(() => undefined);
+      for (const image of rendered.images) await activeBotCall(bot, 'sendPhoto', {chat_id: message.chat.id, photo:image}).catch(() => undefined);
       await sendText(bot, message.chat.id, rendered.text, context && business ? businessNavigation.wrap(storeId, context.userId, context.chatId, screenId, rendered.keyboard,{revision:sha256(JSON.stringify(business))}) : rendered.keyboard);
     }
     else await sendText(bot, message.chat.id, "هذه الشاشة غير متاحة الآن.", navigationFooter());
@@ -303,7 +321,7 @@ export async function handleTelegramUpdate(
     const published = isFeatureAvailable(plan, "telegram.advanced", await getPlanCatalog()) ? readHomeStudio(store.settings?.telegramHomeStudio).published : null;
     if (published) {
       const home = await renderStoreHome({id:storeId,name:store.name,currency:store.currency},published,message.from?.first_name ?? '');
-      if (home.imageUrl) await telegramCall(bot.token, 'sendPhoto', { chat_id: message.chat.id, photo: home.imageUrl }).catch(() => undefined);
+      if (home.imageUrl) await activeBotCall(bot, 'sendPhoto', { chat_id: message.chat.id, photo: home.imageUrl }).catch(() => undefined);
       await sendText(bot, message.chat.id, home.text, home.keyboard); return;
     }
     const welcome = designer.welcomeMessage ? formatMessage(designer.welcomeMessage) : `أهلًا ${message.from?.first_name?.slice(0, 80) ?? ""} في ${store.name}.\nاختر من قائمة المتجر:`;
@@ -333,7 +351,7 @@ export async function handleTelegramUpdate(
     const index = galleryIndex < images.length ? galleryIndex : 0;
     const imageCounter = images.length ? `\nالصورة ${index + 1} من ${images.length}` : "";
     const media = productMediaRequest(message.chat.id, images.slice(index, index + 1), caption + imageCounter);
-    if (media) await telegramCall(bot.token, media.method, media.body)
+    if (media) await activeBotCall(bot, media.method, media.body)
       .catch(async () => { await sendText(bot, message.chat.id, "تعذر عرض الصور الآن."); });
     const parentRef = context ? rememberProductParent(context, productParent) : null;
     const galleryButtons: BotButton[] = [];
@@ -613,19 +631,24 @@ async function recordBotError(
   storeId: string,
   message: string,
   code?: number,
+  tokenHash?: string,
+  encryptedToken?: string,
 ): Promise<void> {
   const safeMessage =
-    code === 403
+    code === 409
+      ? 'يوجد استقبال آخر أو Webhook للبوت. أوقف الخدمة الأخرى قبل استئناف الاتصال.'
+      : code === 403
       ? "البوت محظور أو لا يملك الإذن المطلوب."
       : "تعذر الاتصال بالبوت.";
-  await db
+  const saved = await db
     .update(telegramBotsTable)
     .set({ status: "error", lastError: safeMessage, updatedAt: new Date() })
-    .where(eq(telegramBotsTable.storeId, storeId));
+    .where(and(eq(telegramBotsTable.storeId, storeId),ne(telegramBotsTable.status,'disconnected'),sql`exists(select 1 from ${storesTable} where ${storesTable.id}=${storeId} and ${storesTable.isDeleted}=false)`, ...(tokenHash ? [eq(telegramBotsTable.tokenHash, tokenHash)] : []), ...(encryptedToken?[eq(telegramBotsTable.encryptedToken,encryptedToken)]:[]))).returning({storeId:telegramBotsTable.storeId});
+  if (!saved.length) return;
   await db
     .update(storesTable)
     .set({ botStatus: "error", updatedAt: new Date() })
-    .where(eq(storesTable.id, storeId));
+    .where(and(eq(storesTable.id, storeId), eq(storesTable.isDeleted,false), sql`exists(select 1 from ${telegramBotsTable} where ${telegramBotsTable.storeId}=${storeId} and ${telegramBotsTable.status}='error' ${tokenHash?sql`and ${telegramBotsTable.tokenHash}=${tokenHash}`:sql``})`));
   logger.warn(
     { storeId, telegramCode: code, errorType: message },
     "Telegram bot connection reported an error.",
@@ -645,14 +668,21 @@ async function poll(storeId: string, bot: ActiveBot): Promise<void> {
           AbortSignal.timeout(25_000),
         ]),
       );
+      if (bot.controller.signal.aborted) return;
       if (Date.now() - lastHealthWrite >= 60_000) {
+        await withBotConnectionChange(storeId,async()=>{
+        if(bot.controller.signal.aborted||activeByStore.get(storeId)!==bot)return;
         await db.update(telegramBotsTable).set({ lastSuccessfulPollAt: new Date(), status: "connected", lastError: null })
-          .where(and(eq(telegramBotsTable.storeId, storeId), eq(telegramBotsTable.tokenHash, bot.tokenHash)));
-        await db.update(storesTable).set({ botStatus: "connected" }).where(eq(storesTable.id, storeId));
+          .where(and(eq(telegramBotsTable.storeId, storeId), eq(telegramBotsTable.tokenHash, bot.tokenHash),ne(telegramBotsTable.status,'disconnected'),sql`exists(select 1 from ${storesTable} where ${storesTable.id}=${storeId} and ${storesTable.isDeleted}=false)`));
+        await db.update(storesTable).set({ botStatus: "connected" }).where(and(eq(storesTable.id, storeId),eq(storesTable.isDeleted,false),sql`exists(select 1 from ${telegramBotsTable} where ${telegramBotsTable.storeId}=${storeId} and ${telegramBotsTable.tokenHash}=${bot.tokenHash} and ${telegramBotsTable.status}='connected')`));
         lastHealthWrite = Date.now();
+        });
       }
       for (const update of updates) {
+        if (bot.controller.signal.aborted) return;
         bot.nextOffset = Math.max(bot.nextOffset, update.update_id + 1);
+        await withBotConnectionChange(storeId,async()=>{
+        if(bot.controller.signal.aborted||activeByStore.get(storeId)!==bot)return;
         try {
           await handleTelegramUpdate(storeId, bot, update);
         } catch (error) {
@@ -671,23 +701,29 @@ async function poll(storeId: string, bot: ActiveBot): Promise<void> {
             await sendText(bot, chatId, "تعذر إكمال الطلب الآن. أرسل /start للمحاولة مجددًا.").catch(() => undefined);
           }
         }
+        if (bot.controller.signal.aborted) return;
         await db
           .update(telegramBotsTable)
           .set({
             lastUpdateId: String(bot.nextOffset),
             updatedAt: new Date(),
           })
-          .where(eq(telegramBotsTable.storeId, storeId));
+          .where(and(eq(telegramBotsTable.storeId, storeId),eq(telegramBotsTable.tokenHash,bot.tokenHash),ne(telegramBotsTable.status,'disconnected'),sql`exists(select 1 from ${storesTable} where ${storesTable.id}=${storeId} and ${storesTable.isDeleted}=false)`));
+        });
       }
     } catch (error) {
       if (bot.controller.signal.aborted) return;
       const telegramCode =
         error instanceof TelegramFailure ? error.telegramCode : undefined;
+      await withBotConnectionChange(storeId,async()=>{
+      if(bot.controller.signal.aborted||activeByStore.get(storeId)!==bot)return;
       await recordBotError(
         storeId,
         error instanceof Error ? error.name : "UnknownError",
         telegramCode,
+        bot.tokenHash,
       );
+      });
       await pause(5_000, bot.controller.signal);
     }
   }
@@ -698,11 +734,9 @@ export function startBotForStore(input: {
   token: string;
   lastUpdateId?: string | null;
 }): void {
+  if(draining)throw new TelegramFailure('Bot reception is shutting down',undefined,true);
   const tokenHash = sha256(input.token);
-  const existingStore = activeStoreByToken.get(tokenHash);
-  if (existingStore && existingStore !== input.storeId) {
-    throw new TelegramFailure("هذا البوت مرتبط بمتجر آخر.", undefined, true);
-  }
+  assertBotTokenAvailable(input.storeId,input.token);
   stopBotForStore(input.storeId);
   const bot: ActiveBot = {
     tokenHash,
@@ -728,18 +762,23 @@ export function stopBotForStore(storeId: string): void {
   }
 }
 
-export function stopAllBots(): void {
+export function stopAllBots(options: { shutdown?: boolean } = {}): void {
+  if(options.shutdown)draining=true;
+  lifecycleVersion++;
   for (const storeId of activeByStore.keys()) {
     stopBotForStore(storeId);
   }
 }
 
-export async function startActiveStoreBots(): Promise<void> {
+export async function startActiveStoreBots(storeIds?: readonly string[]): Promise<void> {
+  if(storeIds?.length===0)return;
+  const version=lifecycleVersion;
   const active = await db
     .select({
       storeId: telegramBotsTable.storeId,
       encryptedToken: telegramBotsTable.encryptedToken,
       lastUpdateId: telegramBotsTable.lastUpdateId,
+      tokenHash: telegramBotsTable.tokenHash,
     })
     .from(telegramBotsTable)
     .innerJoin(storesTable, eq(storesTable.id, telegramBotsTable.storeId))
@@ -747,29 +786,39 @@ export async function startActiveStoreBots(): Promise<void> {
       and(
         eq(storesTable.isDeleted, false),
         eq(telegramBotsTable.status, "connected"),
+        ...(storeIds?[inArray(telegramBotsTable.storeId,[...storeIds])]:[]),
       ),
     );
 
   for (const record of active) {
+    await withBotConnectionChange(record.storeId,async () => {
+    if(draining||version!==lifecycleVersion)return;
+    const [current] = await db.select({encryptedToken:telegramBotsTable.encryptedToken,tokenHash:telegramBotsTable.tokenHash,status:telegramBotsTable.status,lastUpdateId:telegramBotsTable.lastUpdateId}).from(telegramBotsTable).innerJoin(storesTable,eq(storesTable.id,telegramBotsTable.storeId)).where(and(eq(telegramBotsTable.storeId,record.storeId),eq(storesTable.isDeleted,false))).limit(1);
+    if (!current || current.status!=='connected' || current.encryptedToken!==record.encryptedToken || current.tokenHash!==record.tokenHash) return;
     try {
       const token = decryptBotToken(record.encryptedToken);
       const { webhookUrl } = await validateTelegramBotToken(token);
+      if(draining||version!==lifecycleVersion)return;
       if (webhookUrl) {
-        await recordBotError(record.storeId, "Webhook configured", 409);
-        continue;
+        await recordBotError(record.storeId, "Webhook configured", 409,record.tokenHash,record.encryptedToken);
+        return;
       }
       startBotForStore({
         storeId: record.storeId,
         token,
-        lastUpdateId: record.lastUpdateId,
+        lastUpdateId: current.lastUpdateId,
       });
     } catch (error) {
+      if(draining||version!==lifecycleVersion)return;
       await recordBotError(
         record.storeId,
         error instanceof Error ? error.name : "UnknownError",
         error instanceof TelegramFailure ? error.telegramCode : undefined,
+        record.tokenHash,
+        record.encryptedToken,
       );
     }
+    });
   }
   logger.info({ count: active.length }, "Loaded active Telegram bots.");
 }
