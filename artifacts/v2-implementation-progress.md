@@ -11,7 +11,7 @@ This replaces the obsolete initial checkpoint. Commerce, growth execution, staff
 | Repository | th749bvkdm-sys/LootBot-SaaS |
 | V2 implementation branch | codex/v2-telegram-studio; merged. |
 | Follow-up branch | codex/telegram-reconnect-release; source **3c5331d02ecce4f36bbebaf0ec0ec1806959dc0f**, [PR #5](https://github.com/th749bvkdm-sys/LootBot-SaaS/pull/5) merged as **0695391bca36f1ba4daa8e4af59fe180419fae9f**. |
-| Starting deployed commit | b40df5f |
+| Starting deployed commit | b40df5f; [previous release evidence](deployment-b40df5f.jpg). |
 | Source commits | 5d645b9, 41b7702; complete expansion **8cc90da97e69575e051959fc73eaa5f1eb0c966e** pushed. |
 | Pull request | [PR #4](https://github.com/th749bvkdm-sys/LootBot-SaaS/pull/4) **merged** into main as **73043f2705c5a163c018f3f9c05bcca8edf74b81**. |
 | First V2 deployed source | **8d653290751bf50cd865c650fc6e919031475299** (main after the merged implementation and evidence update). |
@@ -244,7 +244,7 @@ Source **3c5331d** was published through [PR #5](https://github.com/th749bvkdm-s
 
 Public HTML now loads **/assets/index-D4x9xCmk.js**; that asset returns 486,882 bytes with JavaScript MIME type. /api/healthz returns 200/ok, and unauthenticated reconnect returns 401. The owner resume action succeeded against the saved production credential at **13:58:44 Riyadh**. The UI showed **connected**, bot **@lootSa_bot**, then an actual successful Telegram poll at **13:59:04** and no recorded reception error. Production catalogues, designs, memberships and payment data were not changed for this recovery check. No new credential was entered.
 
-Safe release evidence: [Render current Live deployment](v2-reconnect-render-live.png) and [build/migration/runtime excerpt](v2-reconnect-render-log.txt). The owner-facing bot health screenshot is kept outside committed public evidence. An actual successful poll establishes update reception connectivity; it does not establish customer-menu delivery or a completed purchase walkthrough.
+Saved release evidence: [Render current Live deployment](v2-reconnect-render-live.png) and [build/migration/runtime excerpt](v2-reconnect-render-log.txt). The owner-facing bot health screenshot remains local because it includes private store information. During the GitHub backup check, the visible health card also showed a successful poll at **14:55:18 Riyadh** with no recorded reception error. An actual successful poll establishes update reception connectivity; it does not establish customer-menu delivery or a completed purchase walkthrough.
 
 ### Frontend loading performance
 
