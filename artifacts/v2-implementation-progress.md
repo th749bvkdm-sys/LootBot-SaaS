@@ -11,15 +11,15 @@ This replaces the obsolete initial checkpoint. Commerce, growth execution, staff
 | Repository | th749bvkdm-sys/LootBot-SaaS |
 | Branch | codex/v2-telegram-studio |
 | Starting deployed commit | b40df5f |
-| Earlier branch commits | 5d645b9, 41b7702; final expansion commit pending. |
-| Pull request | [PR #4](https://github.com/th749bvkdm-sys/LootBot-SaaS/pull/4); final update/merge pending. |
+| Source commits | 5d645b9, 41b7702; complete expansion **8cc90da97e69575e051959fc73eaa5f1eb0c966e** pushed. |
+| Pull request | [PR #4](https://github.com/th749bvkdm-sys/LootBot-SaaS/pull/4) **merged** into main as **73043f2705c5a163c018f3f9c05bcca8edf74b81**. |
 | Public application | [LootBot](https://lootbot-saas.onrender.com/); final V2 deployment not yet verified. |
 | Test database | Separate Neon schema-only branch; synthetic test accounts/catalog/customers/orders, no copied production customer data. Runners reject other database hosts. |
 | Telegram transport in tests | Explicit controlled responses. Actual handler/renderer/database/execution code runs; no real Telegram messages are sent. |
 | Live Telegram acceptance | **Not performed:** local live bot/customer credentials are unavailable. No real-chat delivery success is claimed. |
 | Browser acceptance | **Passed local critical paths:** login, Pro draft/publish, Business child edit/save/real preview/publish/reload, searchable customer, coupon/campaign saves, actual catalog/analytics, mobile Studio tabs and Free lock/modal accessibility. Four viewport checks passed; three screenshots linked below. |
 
-**Release evidence to update:** final commit, merged PR and Render deployed commit/build command/public verification. Local implementation and critical browser acceptance are complete; deployment and real Telegram delivery are not established by these checks.
+**Release evidence still required:** Render deployed commit/build command/public verification. Source commit and successful merge are recorded above. Local implementation and critical browser acceptance are complete; deployment and real Telegram delivery are not established by these checks.
 
 ## Audit and defects repaired
 
@@ -134,9 +134,9 @@ Central gates apply in UI and backend. A one-time migration upgrades only exact 
 | 27 Tests | 84 helper tests, 16 API checks, separate isolated DB/HTTP suites, 2 migration/constraint tests and actual browser/mobile/modal flows. | Live cases and public release checks. |
 | 28 Live Telegram | Actual handlers tested with controlled transport. | **Not passed:** live credentials unavailable. |
 | 29 No fake completion | Actual data/renderers/jobs/transactions; labeled state preview; no fabricated revenue/rating/conversion/health/delivery. | Keep live/deployment boundary explicit. |
-| 30 Execution | Audit, storefront, designer extensions, site/runtime/persistence and local critical QA completed; final checks listed below. | Commit/merge/deploy/public verification. |
+| 30 Execution | Audit, storefront, designer extensions, site/runtime/persistence and final local acceptance completed; source pushed and PR merged. | Deploy and live delivery checks. |
 | 31 Done | Requested implementation and local critical acceptance completed with recorded evidence. | **Not fully accepted as a live release:** deployment and real Telegram steps remain. |
-| 32 Final report | Features/bugs/schema/API/test scope/limits/files/release identity recorded here. | Add final commit/browser/deployment evidence. |
+| 32 Final report | Features/bugs/schema/API/test scope/limits/files, screenshots, final source commit and merged PR recorded here. | Add production deployment and live delivery evidence. |
 
 ## Storage and migrations
 
@@ -194,7 +194,7 @@ Latest final revision checks reported by the coordinating implementation task:
 | API and frontend production builds | **Passed again after the final constraint declarations**, together with ESLint and the complete workspace typecheck/build. Initial JavaScript is 484.82 kB instead of 998.95 kB; the chunk-size advisory is gone. Existing tooltip sourcemap warning remains nonfatal. |
 | Browser | **Passed local critical paths:** isolated login; Pro save/publish; Business edit/save/preview/publish/reload/mobile tabs; customer search; V2CHECK coupon; campaign draft; actual catalog/analytics; four viewports; Free lock/direct route/modal focus/Tab/Escape. |
 | Diff/whitespace review | **Passed** for the latest final source revision. |
-| Production release | Pending merged commit/Render/public-site evidence. |
+| Production release | Source merged as 73043f2; **deployment not verified**. Public health returns HTTP 200 with status ok, but public HTML still loads old /assets/index-BpWGasbh.js rather than new /assets/index-CnxID8Xt.js. Render dashboard requires account sign-in. |
 | Live Telegram | **Not run** without live credentials; controlled test transport is not delivery acceptance. |
 
 Integration runners are in artifacts/api-server/tests and read an ignored .env.v2-test, enforcing the isolated test host. No connection secrets are logged. The isolated UI application runs without production Telegram polling or growth workers.
@@ -214,7 +214,9 @@ Free plan navigation shows current PRO/Business locks. Clicking a locked navigat
 
 Saved screenshots: [Business Studio desktop](v2-business-ui.png), [mobile Studio](v2-mobile-studio-ui.png), [plan lock and upgrade modal](v2-plan-lock-ui.png). These show the isolated test environment, not an already deployed production release.
 
-Release access is separate: the Render dashboard currently requires sign-in, and the selected GitHub OAuth account did not establish access to the correct hosting account. Login to the correct account is pending. A repository merge may trigger the existing automatic deployment; successful deployment must be verified through the public assets/health and/or Render deployed commit before this report marks it released.
+Release access is separate: the Render dashboard currently requires sign-in, and the selected GitHub OAuth account did not establish access to the correct hosting account. Login to the correct account is pending. PR #4 has been merged successfully; no GitHub deployment/check status is available for the merged commit. Public /api/healthz returns HTTP 200 and status ok. Public HTML still references the old /assets/index-BpWGasbh.js; the expected new entry is /assets/index-CnxID8Xt.js. Reloading the old production dashboard showed React error 310, which also predates the merge in its console history. The isolated replacement dashboard completed its browser checks. This evidence does not establish a successful production deployment.
+
+The local UI server was stopped and its generated bundle removed. Nine audited synthetic fixture users/stores and their dependent rows were removed from the guarded isolated Neon branch; remaining scoped users/stores/sessions are zero. Production data was not accessed for this cleanup.
 
 ### Frontend loading performance
 
@@ -249,7 +251,7 @@ Secrets, caches, disposable fixture data and generated test bundles must not be 
 - [x] Isolated complete db:push and additive migration deployment rehearsal passes.
 - [x] Final whitespace/diff review passes.
 - [x] Free upgrade-modal/direct-route/focus/Tab/Escape checks pass; desktop/mobile/lock screenshots saved.
-- [ ] Record final commit and merged PR.
+- [x] Complete source pushed as 8cc90da; PR #4 merged into main as 73043f2.
 - [ ] Verify actual Render build command/migrations/deployed commit and public critical pages.
 - [ ] Perform the real Telegram sequence when live bot/customer credentials are available.
 
