@@ -18,6 +18,7 @@ import { db, storeSettingsTable, storesTable, usersTable } from "@workspace/db";
 import { requireAuth, requireCsrf, getOwnedStore } from "../lib/auth-middleware";
 import { writeAuditEvent } from "../lib/audit";
 import { createId } from "../lib/security";
+import { withBotConnectionChange } from "../lib/bot-connection-lock";
 import { stopBotForStore } from "../lib/telegram-bot-manager";
 import { enforcePlanLimit, getPlanCatalog } from "../lib/store-plans";
 import { highestPlan, isPlanLimitReached, readPlanCode } from "../lib/plans";
@@ -227,6 +228,7 @@ router.delete(
       res.status(400).json({ error: "معرّف المتجر غير صالح." });
       return;
     }
+    await withBotConnectionChange(params.data.storeId, async () => {
     const [store] = await db
       .update(storesTable)
       .set({ isDeleted: true, updatedAt: new Date() })
@@ -250,6 +252,7 @@ router.delete(
       summary: `تم أرشفة المتجر ${store.name}`,
     });
     res.json(DeleteStoreResponse.parse({ success: true }));
+    });
   },
 );
 

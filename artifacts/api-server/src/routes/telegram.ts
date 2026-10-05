@@ -17,6 +17,9 @@ import {
   stopBotForStore,
   TelegramFailure,
   validateTelegramBotToken,
+  assertBotTokenAvailable,
+  botLifecycleVersion,
+  assertBotLifecycleCurrent,
 } from "../lib/telegram-bot-manager";
 import { decryptBotToken, encryptBotToken, sha256 } from "../lib/security";
 import { createLoginRateLimiter } from "../lib/login-rate-limit";
@@ -30,11 +33,69 @@ import { canPreviewCustomer } from '../lib/studio-access';
 import { renderStoreHome } from '../lib/telegram-home-data';
 import { parseStudioPreviewInput } from '../lib/studio-preview-input';
 import { studioOptionsRouter } from './telegram-studio-options';
+import { withBotConnectionChange } from '../lib/bot-connection-lock';
 
 const router: IRouter = Router();
 router.use(studioOptionsRouter);
 router.use(businessStudioRouter);
 const connectionTests = createLoginRateLimiter({ windowMs: 60_000, maxAttempts: 3 });
+const reconnectAttempts = createLoginRateLimiter({ windowMs: 60_000, maxAttempts: 3 });
+
+router.post('/stores/:storeId/telegram/reconnect', requireAuth, requireCsrf, async (req, res): Promise<void> => {
+  const params = ConnectStoreBotParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: 'معرّف المتجر غير صالح.' }); return; }
+  const storeId = params.data.storeId;
+  const version=botLifecycleVersion();
+  if (!await getOwnedStore(storeId, req.auth!.userId)) { res.status(404).json({ error: 'المتجر غير موجود.' }); return; }
+  await featureGate.require(storeId, 'telegram.basic');
+  if (reconnectAttempts.isLimited(storeId)) { res.status(429).json({ error: 'انتظر دقيقة قبل إعادة محاولة استئناف الاتصال.' }); return; }
+  await withBotConnectionChange(storeId, async () => {
+    try { assertBotLifecycleCurrent(version); }
+    catch { res.status(409).json({error:'تغيّر استقبال البوت أثناء الطلب. حدّث الصفحة وأعد المحاولة.'});return; }
+    const [snapshot] = await db.select().from(telegramBotsTable).where(eq(telegramBotsTable.storeId, storeId)).limit(1);
+    if (!snapshot || snapshot.status === 'disconnected' || !snapshot.encryptedToken) { res.status(409).json({ error: 'لا يوجد اتصال محفوظ يمكن استئنافه. اربط البوت أولًا.' }); return; }
+    let token: string;
+    try { token = decryptBotToken(snapshot.encryptedToken); }
+    catch { res.status(409).json({ error: 'تعذر استخدام رمز الاتصال المحفوظ. أعد ربط البوت برمزه الحالي.' }); return; }
+    if (sha256(token) !== snapshot.tokenHash) { res.status(409).json({ error: 'تغيّر رمز الاتصال المحفوظ. أعد ربط البوت.' }); return; }
+    try {
+      const { bot, webhookUrl } = await validateTelegramBotToken(token);
+      assertBotLifecycleCurrent(version);
+      if (webhookUrl) { res.status(409).json({ error: 'يوجد Webhook مفعّل. عطّله قبل استئناف استقبال البوت هنا.' }); return; }
+      if (!bot.is_bot || String(bot.id) !== snapshot.telegramBotId) { res.status(409).json({ error: 'هوية البوت المحفوظ لا تطابق الاتصال. أعد ربط البوت.' }); return; }
+      assertBotTokenAvailable(storeId,token);
+      const saved = await db.transaction(async tx => {
+        const [currentStore] = await tx.select({id:storesTable.id}).from(storesTable).where(and(eq(storesTable.id,storeId),eq(storesTable.ownerId,req.auth!.userId),eq(storesTable.isDeleted,false))).for('update');
+        if (!currentStore) return null;
+        await featureGate.require(storeId,'telegram.basic');
+        const [current] = await tx.select().from(telegramBotsTable).where(eq(telegramBotsTable.storeId,storeId)).for('update');
+        if (!current || current.status==='disconnected' || current.encryptedToken!==snapshot.encryptedToken || current.tokenHash!==snapshot.tokenHash || current.telegramBotId!==snapshot.telegramBotId) return null;
+        const [duplicate] = await tx.select({storeId:telegramBotsTable.storeId}).from(telegramBotsTable).where(and(eq(telegramBotsTable.tokenHash,snapshot.tokenHash),ne(telegramBotsTable.storeId,storeId))).limit(1);
+        if (duplicate) throw new TelegramFailure('Duplicate bot connection',undefined,true);
+        assertBotTokenAvailable(storeId,token);
+        assertBotLifecycleCurrent(version);
+        const [next] = await tx.update(telegramBotsTable).set({status:'connected',lastError:null,username:bot.username??null,firstName:bot.first_name,lastConnectionTestAt:new Date(),lastConnectionTestError:null,updatedAt:new Date()}).where(eq(telegramBotsTable.storeId,storeId)).returning();
+        await tx.update(storesTable).set({botStatus:'connected',updatedAt:new Date()}).where(eq(storesTable.id,storeId));
+        return next;
+      });
+      if (!saved) { res.status(409).json({ error: 'تغيّر المتجر أو اتصال البوت أثناء التحقق. حدّث الصفحة وأعد المحاولة.' }); return; }
+      try { assertBotLifecycleCurrent(version);startBotForStore({storeId,token,lastUpdateId:saved.lastUpdateId}); }
+      catch (error) {
+        if(botLifecycleVersion()===version){
+          const changed=await db.update(telegramBotsTable).set({status:'error',lastError:'تعذر استئناف استقبال البوت.'}).where(and(eq(telegramBotsTable.storeId,storeId),eq(telegramBotsTable.tokenHash,snapshot.tokenHash),eq(telegramBotsTable.encryptedToken,snapshot.encryptedToken))).returning({storeId:telegramBotsTable.storeId});
+          if(changed.length)await db.update(storesTable).set({botStatus:'error'}).where(and(eq(storesTable.id,storeId),eq(storesTable.isDeleted,false)));
+        }
+        throw error;
+      }
+      await writeAuditEvent({userId:req.auth!.userId,storeId,action:'telegram.reconnected',summary:'تم استئناف اتصال البوت المحفوظ',details:{username:saved.username}});
+      res.json(ConnectStoreBotResponse.parse({connected:true,username:saved.username,firstName:saved.firstName,status:'connected',lastError:null}));
+    } catch (error) {
+      if (error instanceof TelegramFailure) { res.status(error.conflict?409:502).json({ error: error.conflict?'يتعارض اتصال البوت مع متجر أو استقبال آخر. تحقق من اتصاله وأعد المحاولة.':'تعذر التحقق من Telegram. لم يُستأنف الاتصال؛ أعد المحاولة.' }); return; }
+      if ((error as {code?:string}).code==='23505') { res.status(409).json({error:'هذا البوت مرتبط بمتجر آخر.'});return; }
+      throw error;
+    }
+  });
+});
 
 router.get("/stores/:storeId/telegram/health", requireAuth, async (req, res): Promise<void> => {
   const storeId = req.params.storeId;
@@ -186,6 +247,7 @@ router.post(
   requireAuth,
   requireCsrf,
   async (req, res): Promise<void> => {
+    const version=botLifecycleVersion();
     const params = ConnectStoreBotParams.safeParse(req.params);
     const parsed = ConnectStoreBotBody.safeParse(req.body);
     if (!params.success || !parsed.success) {
@@ -198,7 +260,10 @@ router.post(
       return;
     }
 
+    await withBotConnectionChange(store.id, async () => {
+    if (!await getOwnedStore(store.id,req.auth!.userId)) { res.status(404).json({error:"المتجر غير موجود."}); return; }
     try {
+      assertBotLifecycleCurrent(version);
       const { bot, webhookUrl } = await validateTelegramBotToken(parsed.data.token);
       if (webhookUrl) {
         res.status(409).json({
@@ -207,6 +272,8 @@ router.post(
         return;
       }
 
+      assertBotLifecycleCurrent(version);
+      assertBotTokenAvailable(store.id,parsed.data.token);
       const tokenHash = sha256(parsed.data.token);
       const [alreadyConnected] = await db
         .select({ storeId: telegramBotsTable.storeId })
@@ -263,6 +330,7 @@ router.post(
         .update(storesTable)
         .set({ botStatus: "connected", updatedAt: new Date() })
         .where(eq(storesTable.id, store.id));
+      assertBotLifecycleCurrent(version);
       startBotForStore({
         storeId: store.id,
         token: parsed.data.token,
@@ -302,6 +370,7 @@ router.post(
       }
       throw error;
     }
+    });
   },
 );
 
@@ -320,6 +389,7 @@ router.delete(
       res.status(404).json({ error: "لم يتم العثور على المتجر." });
       return;
     }
+    await withBotConnectionChange(store.id,async () => {
     stopBotForStore(store.id);
     await db
       .delete(telegramBotsTable)
@@ -335,6 +405,7 @@ router.delete(
       summary: "تم فصل بوت Telegram",
     });
     res.json(DisconnectStoreBotResponse.parse({ success: true }));
+    });
   },
 );
 

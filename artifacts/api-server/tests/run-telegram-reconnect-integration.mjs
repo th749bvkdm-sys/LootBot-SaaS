@@ -1,0 +1,10 @@
+import { build } from 'esbuild';
+import { readFile, unlink } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+const connection=(await readFile('../../.env.v2-test','utf8')).trim().slice('DATABASE_URL='.length);
+if(new URL(connection).hostname!=='ep-summer-recipe-b21ls93d-pooler.c-6.eu-central-1.aws.neon.tech')throw Error('Only disposable acceptance branch is permitted.');
+const url=new URL(connection);url.searchParams.set('sslmode','verify-full');
+const output=`.telegram-reconnect-${process.pid}.mjs`;
+await build({entryPoints:['tests/telegram-reconnect-integration.ts'],outfile:output,bundle:true,platform:'node',format:'esm',external:['pg-native','pino','pino-pretty'],banner:{js:"import {createRequire} from 'node:module';globalThis.require=createRequire(import.meta.url);"},logLevel:'silent'});
+const child=spawn(process.execPath,['--test',output],{env:{...process.env,DATABASE_URL:url.toString(),SESSION_SECRET:'isolated-reconnect-tests-only-secret-2026',NODE_ENV:'test',LOG_LEVEL:'silent'},stdio:'inherit'});
+const code=await new Promise(resolve=>child.on('exit',resolve));await unlink(output);process.exitCode=Number(code??1);
