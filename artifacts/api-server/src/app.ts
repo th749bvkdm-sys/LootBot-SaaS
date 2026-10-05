@@ -53,10 +53,8 @@ app.use("/api", (_req, res) => {
 });
 app.use(express.static(publicDirectory, { index: false, maxAge: "1h" }));
 app.get("/{*path}", (req, res, next) => {
-  if (!req.accepts("html")) {
-    next();
-    return;
-  }
+  // All non-API GET routes are SPA entry points. Some browser bridges send
+  // malformed Accept tokens; content negotiation must not break navigation.
   res.sendFile(path.join(publicDirectory, "index.html"), (error) => {
     if (error) next(error);
   });

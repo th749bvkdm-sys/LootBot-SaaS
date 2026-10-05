@@ -20,6 +20,8 @@ import {
 import { getOwnedStore, requireAuth, requireCsrf } from "../lib/auth-middleware";
 import { writeAuditEvent } from "../lib/audit";
 import { notifyTelegramOrderStatus } from "../lib/telegram-bot-manager";
+import { enqueueGrowthEvent } from "../lib/growth-service";
+import { rewardPaidOrder, reverseOrderRewards } from '../lib/customer-commerce';
 
 const router: IRouter = Router();
 const PAGE_SIZES = new Set([10, 25, 50, 100]);
@@ -36,7 +38,7 @@ router.get("/orders", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const store = await getOwnedStore(parsed.data.storeId, req.auth!.userId);
+  const store = await getOwnedStore(parsed.data.storeId, req.auth!.userId, 'orders.read');
   if (!store) {
     res.status(404).json({ error: "لم يتم العثور على المتجر." });
     return;
@@ -141,13 +143,12 @@ router.patch(
       .where(
         and(
           eq(ordersTable.id, params.data.orderId),
-          eq(storesTable.ownerId, req.auth!.userId),
           eq(storesTable.isDeleted, false),
         ),
       )
       .limit(1);
 
-    if (!order) {
+    if (!order || !await getOwnedStore(order.storeId, req.auth!.userId, 'orders.manage')) {
       res.status(404).json({ error: "لم يتم العثور على الطلب." });
       return;
     }
@@ -188,7 +189,7 @@ router.patch(
             eq(ordersTable.id, order.id),
             eq(ordersTable.storeId, order.storeId),
             eq(ordersTable.status, order.status),
-            ne(ordersTable.paymentStatus, "paid"),
+            target === 'cancelled' ? ne(ordersTable.paymentStatus, 'paid') : undefined,
           ),
         )
         .returning();
@@ -196,6 +197,7 @@ router.patch(
       if (!changed) return undefined;
 
       if (target === "cancelled") {
+        await reverseOrderRewards(tx, changed);
         for (const line of lineRows) {
           if (!line.productId) continue;
           await tx
@@ -212,6 +214,8 @@ router.patch(
             );
         }
       }
+      if (changed.telegramUserId && (target === "fulfilled" || target === "cancelled")) await enqueueGrowthEvent(tx, { storeId: changed.storeId, telegramUserId: changed.telegramUserId,
+        trigger: target === "fulfilled" ? "ORDER_FULFILLED" : "ORDER_CANCELLED", eventId: changed.id, orderId: changed.id, orderValue: Number(changed.total) });
       return changed;
     });
 
@@ -317,7 +321,8 @@ router.patch(
     }
 
     const now = new Date();
-    const [updated] = await db
+    const updated = await db.transaction(async tx => {
+    const [changed] = await tx
       .update(ordersTable)
       .set({
         paymentStatus: target,
@@ -333,6 +338,10 @@ router.patch(
         ),
       )
       .returning();
+    if (changed?.telegramUserId && target === "paid") await enqueueGrowthEvent(tx, { storeId: changed.storeId, telegramUserId: changed.telegramUserId, trigger: "ORDER_PAID", eventId: changed.id, orderId: changed.id, orderValue: Number(changed.total) });
+    if (changed) { if (target === 'paid') await rewardPaidOrder(tx,changed); else await reverseOrderRewards(tx,changed); }
+    return changed;
+    });
 
     if (!updated) {
       res.status(409).json({ error: "تم تحديث الطلب من جلسة أخرى. أعد تحميل القائمة." });

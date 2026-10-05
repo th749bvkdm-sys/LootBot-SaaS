@@ -1,0 +1,12 @@
+import { build } from 'esbuild';
+import { readFile,unlink } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { spawn } from 'node:child_process';
+import path from 'node:path';
+const connection=(await readFile('../../.env.v2-test','utf8')).trim().slice('DATABASE_URL='.length);
+if(new URL(connection).hostname!=='ep-summer-recipe-b21ls93d-pooler.c-6.eu-central-1.aws.neon.tech')throw Error('Only the isolated V2 test branch is permitted.');
+const url=new URL(connection);url.searchParams.set('sslmode','verify-full');globalThis.require=createRequire(import.meta.url);
+const output=`.api-integration-${process.pid}.mjs`;
+await build({entryPoints:['tests/api-integration.ts'],outfile:output,bundle:true,platform:'node',format:'esm',external:['pg-native','pino','pino-pretty'],banner:{js:"import { createRequire } from 'node:module';globalThis.require=createRequire(import.meta.url);"},logLevel:'silent'});
+const child=spawn(process.execPath,['--test',output],{env:{...process.env,DATABASE_URL:url.toString(),NODE_ENV:'production',LOG_LEVEL:'silent',STATIC_DIR:path.resolve('../lootbot/dist/public')},stdio:'inherit'});
+const code=await new Promise(resolve=>child.on('exit',resolve));await unlink(output);process.exitCode=Number(code??1);

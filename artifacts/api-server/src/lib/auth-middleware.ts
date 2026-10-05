@@ -1,3 +1,5 @@
+import { getStoreAccess } from './staff-access';
+import type { StaffPermission } from './staff-policy';
 import { and, eq, gt } from "drizzle-orm";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { db, sessionsTable, storesTable, usersTable } from "@workspace/db";
@@ -102,7 +104,10 @@ export const requireCsrf: RequestHandler = (
 export async function getOwnedStore(
   storeId: string,
   ownerId: string,
+  permission: StaffPermission | 'owner' = 'owner',
 ): Promise<{ id: string; name: string; currency: string } | undefined> {
+  const access = await getStoreAccess(storeId, ownerId, permission);
+  if (!access) return undefined;
   const [store] = await db
     .select({
       id: storesTable.id,
@@ -113,7 +118,6 @@ export async function getOwnedStore(
     .where(
       and(
         eq(storesTable.id, storeId),
-        eq(storesTable.ownerId, ownerId),
         eq(storesTable.isDeleted, false),
       ),
     )

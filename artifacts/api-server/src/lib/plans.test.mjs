@@ -49,12 +49,12 @@ test("limits distinguish tiers and block at the configured boundary", () => {
   assert.equal(isPlanLimitReached("BUSINESS", "stores", 20), true);
 });
 
-test("unimplemented paid features stay disabled instead of being promised", () => {
+test("implemented paid features follow the tier matrix", () => {
   assert.equal(isFeatureAvailable("FREE", "catalog.basic"), true);
   assert.equal(isFeatureAvailable("FREE", "catalog.bulkTools"), false);
   assert.equal(isFeatureAvailable("PRO", "catalog.bulkTools"), true);
   assert.equal(isFeatureAvailable("PRO", "catalog.multipleImages"), true);
-  assert.equal(isFeatureAvailable("BUSINESS", "staff.basic"), false);
+  assert.equal(isFeatureAvailable("BUSINESS", "staff.basic"), true);
   assert.equal(isFeatureAvailable("FREE", "analytics.reports"), false);
   assert.equal(isFeatureAvailable("BUSINESS", "analytics.reports"), true);
 });
@@ -69,7 +69,7 @@ test("plan definitions reject invalid limits, missing features, and fake feature
   assert.equal(validatePlanDefinition(PLAN_CATALOG.FREE), true);
   assert.equal(validatePlanDefinition({ ...PLAN_CATALOG.PRO, limits: { ...PLAN_CATALOG.PRO.limits, productsPerStore: 0 } }), false);
   assert.equal(validatePlanDefinition({ ...PLAN_CATALOG.PRO, features: { ...PLAN_CATALOG.PRO.features, "catalog.bulkTools": "yes" } }), false);
-  assert.equal(validatePlanDefinition({ ...PLAN_CATALOG.BUSINESS, features: { ...PLAN_CATALOG.BUSINESS.features, "staff.basic": true } }), false);
+  assert.equal(validatePlanDefinition({ ...PLAN_CATALOG.BUSINESS, features: { ...PLAN_CATALOG.BUSINESS.features, "catalog.basic": false } }), false);
 });
 
 test("login throttling is isolated by client IP, expires, and resets after success", () => {
@@ -185,7 +185,7 @@ test("session and CSRF token primitives are opaque and comparisons reject unequa
 
 test("default store home exposes real navigable actions with safe callback payloads", () => {
   const buttons = defaultHomeKeyboard().flat();
-  assert.equal(buttons.length, 5);
+  assert.equal(buttons.length, 6);
   assert.ok(buttons.every(button => parseNavigationCallback(button.callback_data)));
   assert.equal(buttons.some(button => /points|referrals|coupons/.test(button.callback_data)), false);
   assert.equal(parseNavigationCallback('https://example.com'), null);

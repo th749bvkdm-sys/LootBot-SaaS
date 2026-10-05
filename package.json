@@ -4,10 +4,12 @@
   "packageManager": "pnpm@11.19.0",
   "license": "MIT",
   "scripts": {
+    "lint": "eslint .",
+    "db:migrate": "node ./scripts/run-pnpm.mjs --filter @workspace/db run migrate",
     "preinstall": "node ./scripts/check-package-manager.mjs",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "dev": "node ./scripts/run-pnpm.mjs --parallel --filter @workspace/api-server --filter @workspace/lootbot run dev",
-    "db:push": "node ./scripts/run-pnpm.mjs --filter @workspace/db run push",
+    "db:push": "node ./scripts/run-pnpm.mjs --filter @workspace/db run push && node ./scripts/run-pnpm.mjs --filter @workspace/db run migrate",
     "start": "node ./scripts/run-pnpm.mjs --filter @workspace/api-server run start",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
@@ -17,6 +19,9 @@
     "@replit/connectors-sdk": "^0.4.3"
   },
   "devDependencies": {
+    "@typescript-eslint/parser": "^8.71.0",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "prettier": "^3.9.6",
     "typescript": "~5.9.3"
   }

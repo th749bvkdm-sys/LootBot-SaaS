@@ -50,3 +50,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Local package cache and bundled integration runners
+/.pnpm-store/
+/artifacts/api-server/.*.mjs

@@ -1,3 +1,4 @@
+import type { StaffPermission } from '../lib/staff-policy';
 import { and, count, eq, ilike, inArray, or } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import {
@@ -38,9 +39,51 @@ import { enforcePlanLimit, getPlanCatalog, featureGate } from "../lib/store-plan
 import { isFeatureAvailable } from "../lib/plans";
 import { z } from "zod/v4";
 import { galleryWithLegacyFallback, parseGalleryInput } from "../lib/product-gallery";
+import { parseCategoryPresentation } from '../lib/category-presentation';
 
 const router: IRouter = Router();
 const PAGE_SIZES = new Set([10, 25, 50, 100]);
+
+async function categoryPresentationAccess(categoryId: string, userId: string, permission: StaffPermission) {
+  const [category] = await db.select({ id: categoriesTable.id, storeId: categoriesTable.storeId, imageUrl: categoriesTable.imageUrl, emoji: categoriesTable.emoji })
+    .from(categoriesTable).where(and(eq(categoriesTable.id, categoryId), eq(categoriesTable.isDeleted, false))).limit(1);
+  return category && await getOwnedStore(category.storeId, userId, permission) ? category : undefined;
+}
+router.get('/categories/:categoryId/presentation', requireAuth, async (req, res) => {
+  const category = await categoryPresentationAccess(String(req.params.categoryId), req.auth!.userId, 'catalog.read');
+  if (!category) { res.status(404).json({ error: 'التصنيف غير موجود.' }); return; }
+  res.json({ imageUrl: category.imageUrl, emoji: category.emoji });
+});
+router.put('/categories/:categoryId/presentation', requireAuth, requireCsrf, async (req, res) => {
+  const category = await categoryPresentationAccess(String(req.params.categoryId), req.auth!.userId, 'catalog.write');
+  if (!category) { res.status(404).json({ error: 'التصنيف غير موجود.' }); return; }
+  await featureGate.require(category.storeId, 'telegram.advanced');
+  const presentation = parseCategoryPresentation(req.body);
+  if (!presentation) { res.status(400).json({ error: 'استخدم رمزًا تعبيريًا ورابط صورة HTTPS دون بيانات دخول.' }); return; }
+  const [updated] = await db.update(categoriesTable).set({ ...presentation, updatedAt: new Date() }).where(and(eq(categoriesTable.id, category.id), eq(categoriesTable.storeId, category.storeId), eq(categoriesTable.isDeleted, false))).returning({ imageUrl: categoriesTable.imageUrl, emoji: categoriesTable.emoji });
+  if (!updated) { res.status(404).json({ error: 'التصنيف غير موجود.' }); return; }
+  await writeAuditEvent({ userId: req.auth!.userId, storeId: category.storeId, action: 'category.presentation.updated', summary: 'تم تحديث صورة التصنيف ورمزه التعبيري' });
+  res.json(updated);
+});
+
+router.get('/products/:productId/presentation', requireAuth, async (req, res) => {
+  const product = await ownedProduct(String(req.params.productId), req.auth!.userId, req.method==='GET'?'catalog.read':'catalog.write');
+  if (!product) { res.status(404).json({ error: 'المنتج غير موجود.' }); return; }
+  const [row] = await db.select({ oldPrice: productsTable.oldPrice, warranty: productsTable.warranty, tags: productsTable.tags, featured: productsTable.featured }).from(productsTable).where(eq(productsTable.id, product.id));
+  res.json({ ...row, oldPrice: row.oldPrice === null ? null : Number(row.oldPrice) });
+});
+router.put('/products/:productId/presentation', requireAuth, requireCsrf, async (req, res) => {
+  const product = await ownedProduct(String(req.params.productId), req.auth!.userId, req.method==='GET'?'catalog.read':'catalog.write');
+  if (!product) { res.status(404).json({ error: 'المنتج غير موجود.' }); return; }
+  await featureGate.require(product.storeId, 'telegram.advanced');
+  const body = req.body;
+  if (!body || (body.oldPrice !== null && (!Number.isFinite(body.oldPrice) || body.oldPrice < Number(product.price) || body.oldPrice > 9999999999)) ||
+    typeof body.warranty !== 'string' || body.warranty.length > 500 || !Array.isArray(body.tags) || body.tags.length > 20 || !body.tags.every((tag: unknown) => typeof tag === 'string' && tag.trim() && tag.length <= 40) || typeof body.featured !== 'boolean') {
+    res.status(400).json({ error: 'تحقق من السعر السابق والضمان والوسوم.' }); return;
+  }
+  await db.update(productsTable).set({ oldPrice: body.oldPrice === null ? null : body.oldPrice.toFixed(2), warranty: body.warranty.trim(), tags: [...new Set<string>(body.tags.map((t: string) => t.trim()))], featured: body.featured, updatedAt: new Date() }).where(eq(productsTable.id, product.id));
+  await writeAuditEvent({ userId: req.auth!.userId, storeId: product.storeId, action: 'product.presentation.updated', summary: 'تم تحديث عرض المنتج' }); res.json({ ok: true });
+});
 
 function isSupportedImageUrl(value: string | null | undefined): boolean {
   if (!value) return true;
@@ -55,7 +98,7 @@ function isSupportedImageUrl(value: string | null | undefined): boolean {
   }
 }
 
-async function ownedCategory(categoryId: string, ownerId: string) {
+async function ownedCategory(categoryId: string, ownerId: string, permission: StaffPermission = 'catalog.read') {
   const [category] = await db
     .select({
       id: categoriesTable.id,
@@ -70,15 +113,14 @@ async function ownedCategory(categoryId: string, ownerId: string) {
       and(
         eq(categoriesTable.id, categoryId),
         eq(categoriesTable.isDeleted, false),
-        eq(storesTable.ownerId, ownerId),
         eq(storesTable.isDeleted, false),
       ),
     )
     .limit(1);
-  return category;
+  return category && await getOwnedStore(category.storeId,ownerId,permission) ? category : undefined;
 }
 
-async function ownedProduct(productId: string, ownerId: string) {
+async function ownedProduct(productId: string, ownerId: string, permission: StaffPermission = 'catalog.read') {
   const [product] = await db
     .select({
       id: productsTable.id,
@@ -98,12 +140,11 @@ async function ownedProduct(productId: string, ownerId: string) {
       and(
         eq(productsTable.id, productId),
         eq(productsTable.isDeleted, false),
-        eq(storesTable.ownerId, ownerId),
         eq(storesTable.isDeleted, false),
       ),
     )
     .limit(1);
-  return product;
+  return product && await getOwnedStore(product.storeId,ownerId,permission) ? product : undefined;
 }
 
 async function getCategoryName(categoryId: string | null): Promise<string | null> {
@@ -135,7 +176,7 @@ function publicProduct(
 router.get("/products/:productId/gallery", requireAuth, async (req, res): Promise<void> => {
   const productId = req.params.productId;
   if (typeof productId !== "string" || !productId) { res.status(400).json({ error: "معرّف المنتج غير صالح." }); return; }
-  const product = await ownedProduct(productId, req.auth!.userId);
+  const product = await ownedProduct(productId, req.auth!.userId, req.method==='GET'?'catalog.read':'catalog.write');
   if (!product) { res.status(404).json({ error: "لم يتم العثور على المنتج." }); return; }
   const [settings] = await db.select({ settings: storeSettingsTable.settings }).from(storeSettingsTable).where(eq(storeSettingsTable.storeId, product.storeId)).limit(1);
   const plan = readPlanCode(settings?.settings);
@@ -151,7 +192,7 @@ router.put("/products/:productId/gallery", requireAuth, requireCsrf, async (req,
   if (typeof productId !== "string" || !productId || !parsed) {
     res.status(400).json({ error: "تحقق من صور المنتج؛ الحد الأقصى 10 صور." }); return;
   }
-  const product = await ownedProduct(productId, req.auth!.userId);
+  const product = await ownedProduct(productId, req.auth!.userId, req.method==='GET'?'catalog.read':'catalog.write');
   if (!product) { res.status(404).json({ error: "لم يتم العثور على المنتج." }); return; }
   await featureGate.require(product.storeId, "catalog.multipleImages");
   const primaryIndex = parsed.primaryIndex;
@@ -181,7 +222,7 @@ router.get("/categories", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ error: "خيارات الصفحات غير صالحة." });
     return;
   }
-  const store = await getOwnedStore(parsed.data.storeId, req.auth!.userId);
+  const store = await getOwnedStore(parsed.data.storeId, req.auth!.userId, req.method==='GET'?'catalog.read':'catalog.write');
   if (!store) {
     res.status(404).json({ error: "لم يتم العثور على المتجر." });
     return;
@@ -245,7 +286,7 @@ router.post(
       res.status(400).json({ error: "تحقق من بيانات التصنيف." });
       return;
     }
-    const store = await getOwnedStore(params.data.storeId, req.auth!.userId);
+    const store = await getOwnedStore(params.data.storeId, req.auth!.userId, req.method==='GET'?'catalog.read':'catalog.write');
     if (!store) {
       res.status(404).json({ error: "لم يتم العثور على المتجر." });
       return;
@@ -319,7 +360,7 @@ router.patch(
       res.status(400).json({ error: "تحقق من بيانات التصنيف." });
       return;
     }
-    const category = await ownedCategory(params.data.categoryId, req.auth!.userId);
+    const category = await ownedCategory(params.data.categoryId, req.auth!.userId, req.method==='GET'?'catalog.read':'catalog.write');
     if (!category) {
       res.status(404).json({ error: "لم يتم العثور على التصنيف." });
       return;
@@ -380,7 +421,7 @@ router.delete(
       res.status(400).json({ error: "معرّف التصنيف غير صالح." });
       return;
     }
-    const category = await ownedCategory(params.data.categoryId, req.auth!.userId);
+    const category = await ownedCategory(params.data.categoryId, req.auth!.userId, req.method==='GET'?'catalog.read':'catalog.write');
     if (!category) {
       res.status(404).json({ error: "لم يتم العثور على التصنيف." });
       return;
@@ -427,7 +468,7 @@ router.get("/products", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ error: "خيارات الصفحات غير صالحة." });
     return;
   }
-  const store = await getOwnedStore(parsed.data.storeId, req.auth!.userId);
+  const store = await getOwnedStore(parsed.data.storeId, req.auth!.userId, req.method==='GET'?'catalog.read':'catalog.write');
   if (!store) {
     res.status(404).json({ error: "لم يتم العثور على المتجر." });
     return;
@@ -499,7 +540,7 @@ router.post(
       res.status(400).json({ error: "أدخل رابط صورة صالحًا يبدأ بـ HTTP أو HTTPS." });
       return;
     }
-    const store = await getOwnedStore(params.data.storeId, req.auth!.userId);
+    const store = await getOwnedStore(params.data.storeId, req.auth!.userId, req.method==='GET'?'catalog.read':'catalog.write');
     if (!store) {
       res.status(404).json({ error: "لم يتم العثور على المتجر." });
       return;
@@ -607,7 +648,7 @@ router.patch(
       return;
     }
     const productIds = [...new Set(body.data.productIds)];
-    const store = await getOwnedStore(storeId, req.auth!.userId);
+    const store = await getOwnedStore(storeId, req.auth!.userId, req.method==='GET'?'catalog.read':'catalog.write');
     if (!store) {
       res.status(404).json({ error: "لم يتم العثور على المتجر." });
       return;
@@ -680,7 +721,7 @@ router.patch(
       res.status(400).json({ error: "أدخل رابط صورة صالحًا يبدأ بـ HTTP أو HTTPS." });
       return;
     }
-    const product = await ownedProduct(params.data.productId, req.auth!.userId);
+    const product = await ownedProduct(params.data.productId, req.auth!.userId, req.method==='GET'?'catalog.read':'catalog.write');
     if (!product) {
       res.status(404).json({ error: "لم يتم العثور على المنتج." });
       return;
@@ -792,7 +833,7 @@ router.delete(
       res.status(400).json({ error: "معرّف المنتج غير صالح." });
       return;
     }
-    const product = await ownedProduct(params.data.productId, req.auth!.userId);
+    const product = await ownedProduct(params.data.productId, req.auth!.userId, req.method==='GET'?'catalog.read':'catalog.write');
     if (!product) {
       res.status(404).json({ error: "لم يتم العثور على المنتج." });
       return;

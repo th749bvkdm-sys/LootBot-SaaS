@@ -1,8 +1,10 @@
 export type NavigationAction =
   | { kind: "home" } | { kind: "account" } | { kind: "close" } | { kind: "searchClear" }
   | { kind: "screen"; id: string }
+  | { kind: "message"; screenId: string; buttonId: string }
   | { kind: "contextual"; ref: string }
-  | { kind: "products"; page: number } | { kind: "categories"; page: number } | { kind: "orders"; page: number }
+  | { kind: "commerce"; feature: string; code?: string; page?: number; parentRef?: string }
+  | { kind: "products"; page: number } | { kind: "offers"; page: number } | { kind: "categories"; page: number } | { kind: "orders"; page: number }
   | { kind: "category"; id: string; page: number; parentPage?: number }
   | { kind: "product"; code: string; parentRef?: string }
   | { kind: "gallery"; code: string; index: number; parentRef: string }
@@ -10,12 +12,22 @@ export type NavigationAction =
   | { kind: "order"; id: string; parentPage?: number }
   | { kind: "search"; page: number; queryRef?: string };
 
-export type BotButton = { text: string; callback_data: string };
+export type BotButton = { text: string; callback_data?: string; url?: string };
 export function parseNavigationCallback(value: unknown): NavigationAction | null {
   if (typeof value !== "string" || Buffer.byteLength(value) > 64) return null;
   if (value === "lb:home") return { kind: "home" };
   if (value === "lb:account") return { kind: "account" };
   if (value === "lb:close") return { kind: "close" };
+  const favoritePage = /^lb:commerce:favorites:([1-9]\d{0,4})(?::([a-f0-9]{12}))?$/.exec(value);
+  if (favoritePage) return { kind:'commerce',feature:'favorites',page:Number(favoritePage[1]), ...(favoritePage[2] ? { parentRef: favoritePage[2] } : {}) };
+  const configuredMessage = /^lb:msg:([a-z][a-z0-9_-]{0,23}):([a-z][a-z0-9_-]{0,23})$/.exec(value);
+  if (configuredMessage) return { kind: 'message', screenId: configuredMessage[1], buttonId: configuredMessage[2] };
+  const commerce = /^lb:commerce:(cart|favorites|points|referrals|coupons|support|notifications|add|remove|checkout|favorite|review|couponClear)(?::([a-f0-9]{12}))?(?::([a-f0-9]{12}))?$/.exec(value);
+  if (commerce) {
+    const productAction = ['add', 'remove', 'favorite', 'review'].includes(commerce[1]);
+    if (productAction && commerce[2]) return { kind: 'commerce', feature: commerce[1], code: commerce[2], ...(commerce[3] ? { parentRef: commerce[3] } : {}) };
+    if (!productAction && !commerce[3]) return { kind: 'commerce', feature: commerce[1], ...(commerce[2] ? { parentRef: commerce[2] } : {}) };
+  }
   const contextual = /^lb:nav:([a-f0-9]{12})$/.exec(value);
   if (contextual) return { kind: "contextual", ref: contextual[1] };
   const screen = /^lb:screen:([a-z][a-z0-9_-]{0,23})$/.exec(value);
@@ -23,8 +35,8 @@ export function parseNavigationCallback(value: unknown): NavigationAction | null
   if (value === "lb:search:clear") return { kind: "searchClear" };
   const search = /^lb:search:(\d{1,5}):([a-f0-9]{12})$/i.exec(value);
   if (search && Number(search[1]) >= 1) return { kind: "search", page: Number(search[1]), queryRef: search[2].toLowerCase() };
-  const page = /^lb:(products|categories|orders|search):(\d{1,5})$/.exec(value);
-  if (page && Number(page[2]) >= 1) return { kind: page[1] as "products" | "categories" | "orders" | "search", page: Number(page[2]) };
+  const page = /^lb:(products|offers|categories|orders|search):(\d{1,5})$/.exec(value);
+  if (page && Number(page[2]) >= 1) return { kind: page[1] as "products" | "offers" | "categories" | "orders" | "search", page: Number(page[2]) };
   const category = /^lb:category:([a-f0-9-]{36}):(\d{1,5})(?::(\d{1,5}))?$/i.exec(value);
   if (category && /^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(category[1]) && Number(category[2]) >= 1 && (!category[3] || Number(category[3]) >= 1)) return { kind: "category", id: category[1], page: Number(category[2]), ...(category[3] ? { parentPage: Number(category[3]) } : {}) };
   const product = /^lb:product:([a-f0-9]{12})(?::([a-f0-9]{12}))?$/i.exec(value);
@@ -42,6 +54,7 @@ export function defaultHomeKeyboard(): BotButton[][] {
     [{ text: "🛍 المنتجات", callback_data: "lb:products:1" }, { text: "📂 التصنيفات", callback_data: "lb:categories:1" }],
     [{ text: "🔎 البحث", callback_data: "lb:search:1" }, { text: "📦 طلباتي", callback_data: "lb:orders:1" }],
     [{ text: "👤 حسابي", callback_data: "lb:account" }],
+    [{ text: "🔥 العروض", callback_data: "lb:offers:1" }],
   ];
 }
 
@@ -58,7 +71,7 @@ export function paginationButtons(prefix: string, page: number, hasNext: boolean
 }
 
 // Search is conversational state, never shared across stores, users or chats.
-export function createSearchContexts(now: () => number = Date.now) {
+export function createSearchContexts(now: () => number = () => Date.now(), maxLength = 120) {
   const contexts = new Map<string, { query: string; expiresAt: number }>();
   const key = (storeId: string, userId: number, chatId: number) => `${storeId}:${userId}:${chatId}`;
   return {
@@ -67,7 +80,7 @@ export function createSearchContexts(now: () => number = Date.now) {
         for (const [id, context] of contexts) if (context.expiresAt <= now()) contexts.delete(id);
         if (contexts.size >= 10_000) contexts.delete(contexts.keys().next().value!);
       }
-      contexts.set(key(storeId, userId, chatId), { query: query.slice(0, 120), expiresAt: now() + 15 * 60_000 });
+      contexts.set(key(storeId, userId, chatId), { query: query.slice(0, Math.min(1024,Math.max(120,maxLength))), expiresAt: now() + 15 * 60_000 });
     },
     get(storeId: string, userId: number, chatId: number): string | null {
       const id = key(storeId, userId, chatId); const context = contexts.get(id);

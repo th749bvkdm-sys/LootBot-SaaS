@@ -25,15 +25,21 @@ import { isFeatureAvailable } from "../lib/plans";
 import { DEFAULT_TELEGRAM_DESIGNER, parseTelegramDesignerSettings } from "../lib/telegram-designer";
 import { parseHomeConfiguration, readHomeStudio, renderConfiguredHome } from "../lib/telegram-home-configuration";
 import { businessStudioRouter } from "./telegram-business-studio";
+import { previewStoreScreen } from '../lib/telegram-preview';
+import { canPreviewCustomer } from '../lib/studio-access';
+import { renderStoreHome } from '../lib/telegram-home-data';
+import { parseStudioPreviewInput } from '../lib/studio-preview-input';
+import { studioOptionsRouter } from './telegram-studio-options';
 
 const router: IRouter = Router();
+router.use(studioOptionsRouter);
 router.use(businessStudioRouter);
 const connectionTests = createLoginRateLimiter({ windowMs: 60_000, maxAttempts: 3 });
 
 router.get("/stores/:storeId/telegram/health", requireAuth, async (req, res): Promise<void> => {
   const storeId = req.params.storeId;
-  if (typeof storeId !== "string" || !await getOwnedStore(storeId, req.auth!.userId)) { res.status(404).json({ error: "المتجر غير موجود." }); return; }
-  const [bot] = await db.select({ status: telegramBotsTable.status, lastError: telegramBotsTable.lastError,
+  if (typeof storeId !== "string" || !(await getOwnedStore(storeId, req.auth!.userId, 'overview.read') || await getOwnedStore(storeId, req.auth!.userId, 'telegram.design'))) { res.status(404).json({ error: "المتجر غير موجود." }); return; }
+  const [bot] = await db.select({ username:telegramBotsTable.username, status: telegramBotsTable.status, lastError: telegramBotsTable.lastError,
     lastSuccessfulPollAt: telegramBotsTable.lastSuccessfulPollAt, lastConnectionTestAt: telegramBotsTable.lastConnectionTestAt,
     lastConnectionTestError: telegramBotsTable.lastConnectionTestError }).from(telegramBotsTable).where(eq(telegramBotsTable.storeId, storeId)).limit(1);
   res.json(bot ?? { status: "disconnected", lastError: null, lastSuccessfulPollAt: null, lastConnectionTestAt: null, lastConnectionTestError: null });
@@ -62,22 +68,29 @@ router.post("/stores/:storeId/telegram/test-connection", requireAuth, requireCsr
 router.get("/stores/:storeId/telegram/studio", requireAuth, async (req, res): Promise<void> => {
   const storeId = req.params.storeId;
   if (typeof storeId !== "string") { res.status(400).json({ error: "معرّف المتجر غير صالح." }); return; }
-  const store = await getOwnedStore(storeId, req.auth!.userId);
+  const store = await getOwnedStore(storeId, req.auth!.userId, 'telegram.design');
   if (!store) { res.status(404).json({ error: "المتجر غير موجود." }); return; }
   const [row] = await db.select().from(storeSettingsTable).where(eq(storeSettingsTable.storeId, storeId)).limit(1);
   const studio = readHomeStudio(row?.settings.telegramHomeStudio);
-  res.json({ ...studio, enabled: await featureGate.can(storeId, "telegram.advanced"), preview: renderConfiguredHome(studio.draft, store.name, "اسم العميل") });
+  res.json({ ...studio, enabled: await featureGate.can(storeId, "telegram.advanced"), preview: await renderStoreHome(store,studio.draft,"اسم العميل") });
 });
 
 router.post("/stores/:storeId/telegram/studio/:action", requireAuth, requireCsrf, async (req, res): Promise<void> => {
   const storeId = req.params.storeId; const action = req.params.action;
   if (typeof storeId !== "string" || !["draft", "preview", "publish"].includes(String(action))) { res.status(400).json({ error: "طلب غير صالح." }); return; }
-  const store = await getOwnedStore(storeId, req.auth!.userId);
+  const store = await getOwnedStore(storeId, req.auth!.userId, 'telegram.design');
   if (!store) { res.status(404).json({ error: "المتجر غير موجود." }); return; }
   await featureGate.require(storeId, "telegram.advanced");
   const configuration = parseHomeConfiguration(req.body?.configuration);
   if (action !== "publish" && !configuration) { res.status(400).json({ error: "إعدادات الصفحة الرئيسية غير صالحة." }); return; }
-  if (action === "preview") { res.json({ preview: renderConfiguredHome(configuration!, store.name, "اسم العميل") }); return; }
+  if (action === "preview") {
+    const input = parseStudioPreviewInput(req.body);
+    if (!input) { res.status(400).json({ error: 'سياق المعاينة غير صالح.' }); return; }
+    if(!await canPreviewCustomer(storeId,req.auth!.userId,input.customerId,input.callbackData)){res.status(403).json({error:'معاينة بيانات العميل تتطلب صلاحيات العملاء والطلبات المناسبة.'});return;}
+    const preview = await previewStoreScreen(store, configuration!, { callback: input.callbackData, customerId: input.customerId, search: input.search,state:input.state });
+    if (!preview) { res.status(400).json({ error: 'هذا الإجراء غير متاح في المعاينة. المعاينة لا تنشئ طلبات.' }); return; }
+    res.json({ preview }); return;
+  }
   const revision = req.body?.revision;
   if (!Number.isSafeInteger(revision) || revision < 0) { res.status(400).json({ error: "إصدار الإعدادات غير صالح." }); return; }
   const result = await db.transaction(async tx => {
@@ -92,13 +105,13 @@ router.post("/stores/:storeId/telegram/studio/:action", requireAuth, requireCsrf
   });
   if (!result) { res.status(409).json({ error: "تم تعديل التصميم من جلسة أخرى. أعد تحميل الصفحة." }); return; }
   await writeAuditEvent({ userId: req.auth!.userId, storeId, action: `telegram.home.${action}`, summary: action === "publish" ? "تم نشر الصفحة الرئيسية للبوت" : "تم حفظ مسودة الصفحة الرئيسية للبوت", details: { revision: result.revision } });
-  res.json({ ...result, enabled: true, preview: renderConfiguredHome(result.draft, store.name, "اسم العميل") });
+  res.json({ ...result, enabled: true, preview: await renderStoreHome(store,result.draft,"اسم العميل") });
 });
 
 router.get("/stores/:storeId/telegram/designer", requireAuth, async (req, res): Promise<void> => {
   const storeId = req.params.storeId;
   if (typeof storeId !== "string" || !storeId) { res.status(400).json({ error: "معرّف المتجر غير صالح." }); return; }
-  const store = await getOwnedStore(storeId, req.auth!.userId);
+  const store = await getOwnedStore(storeId, req.auth!.userId, 'telegram.design');
   if (!store) { res.status(404).json({ error: "لم يتم العثور على المتجر." }); return; }
   const [row] = await db.select({ settings: storeSettingsTable.settings }).from(storeSettingsTable).where(eq(storeSettingsTable.storeId, store.id)).limit(1);
   const raw = row?.settings?.telegramDesigner;
@@ -111,7 +124,7 @@ router.get("/stores/:storeId/telegram/designer", requireAuth, async (req, res): 
 router.patch("/stores/:storeId/telegram/designer", requireAuth, requireCsrf, async (req, res): Promise<void> => {
   const storeId = req.params.storeId;
   if (typeof storeId !== "string" || !storeId) { res.status(400).json({ error: "معرّف المتجر غير صالح." }); return; }
-  const store = await getOwnedStore(storeId, req.auth!.userId);
+  const store = await getOwnedStore(storeId, req.auth!.userId, 'telegram.design');
   if (!store) { res.status(404).json({ error: "لم يتم العثور على المتجر." }); return; }
   const settings = parseTelegramDesignerSettings(req.body);
   if (!settings) { res.status(400).json({ error: "تحقق من الرسائل. الحد الأقصى 400 حرف لكل رسالة." }); return; }

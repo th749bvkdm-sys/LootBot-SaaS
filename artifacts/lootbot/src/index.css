@@ -524,6 +524,26 @@ button, input, select, textarea { font: inherit; }
   --console-accent: #aa9bf4;
   background-image: radial-gradient(ellipse at 80% 0%, #7762ce14, transparent 45%);
 }
+.merchant-console { min-width: 0; font-size: 14px; line-height: 1.55; }
+.merchant-console main, .console-content, .workspace-card { min-width: 0; }
+.console-content { width: 100%; }
+.console-sidebar { scrollbar-width: thin; scrollbar-color: #4b4565 transparent; }
+.console-navigation a { flex-shrink: 0; }
+.workspace-card { box-shadow: 0 4px 20px #05081212; }
+.workspace-card > :first-child { margin-top: 0; }
+.workspace-input { min-height: 44px; outline: none; }
+.workspace-input:focus { border-color: #aa9bf4 !important; box-shadow: 0 0 0 3px #aa9bf417; }
+.workspace-button { min-height: 42px; transition: background-color .15s, border-color .15s; }
+.workspace-button:not(:disabled):hover { border-color: #796caa; background-color: #aa9bf415; }
+.merchant-console :is(input, select, textarea) { max-width: 100%; }
+.merchant-console :is(th, td) { vertical-align: middle; }
+.console-content .overflow-x-auto { max-width: 100%; overscroll-behavior-inline: contain; scrollbar-width: thin; }
+.merchant-console .bg-\[\#171f22\] { background-color: #171f27; }
+.merchant-console .border-\[\#293638\] { border-color: #303b49; }
+.merchant-console .bg-\[\#182123\] { background-color: #18222d; }
+.merchant-console .bg-\[\#62d6aa\] { background-color: #aa9bf4; color: #161329; }
+.merchant-console .focus\:border-\[\#62d6aa\]:focus { border-color: #aa9bf4; }
+.console-welcome > header { margin-bottom: 0; }
 .console-sidebar { background-image: linear-gradient(175deg, #211d3524, transparent 50%); }
 .console-navigation a { min-height: 44px; border: 1px solid transparent; }
 .console-navigation a[aria-current="page"] {
@@ -557,6 +577,13 @@ button, input, select, textarea { font: inherit; }
   .merchant-console button { min-height: 44px; }
   .merchant-console :is(input:not([type="checkbox"]):not([type="radio"]), select) { min-height: 44px; font-size: 16px; }
   .console-welcome h1 { overflow-wrap: anywhere; }
+  .console-sidebar { width: min(286px, calc(100vw - 32px)); }
+  .console-content { padding-inline: 16px; }
+  .console-topbar { padding-inline: 12px; gap: 8px; }
+  .console-content .workspace-card { padding: 18px; }
+  .console-content table :is(th, td) { padding: 12px; }
+  .console-content .recharts-wrapper { max-width: 100%; }
+  .merchant-console [role="dialog"] { max-height: calc(100dvh - 32px); overflow-y: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
   .fade-up { animation: none; }
