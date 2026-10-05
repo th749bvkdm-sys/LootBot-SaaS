@@ -9,6 +9,10 @@ import plansRouter from "./plans";
 import reportsRouter from "./reports";
 import storesRouter from "./stores";
 import telegramRouter from "./telegram";
+import { growthRouter } from './growth';
+import { commerceRouter } from './commerce';
+import teamRouter from './team';
+import analyticsRouter from './analytics';
 
 const router: IRouter = Router();
 
@@ -18,6 +22,10 @@ router.use(adminRouter);
 router.use(storesRouter);
 router.use(catalogRouter);
 router.use(telegramRouter);
+router.use(growthRouter);
+router.use(commerceRouter);
+router.use(teamRouter);
+router.use(analyticsRouter);
 router.use(ordersRouter);
 router.use(plansRouter);
 router.use(reportsRouter);

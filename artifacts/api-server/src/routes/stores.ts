@@ -1,3 +1,4 @@
+import { listAccessibleStores } from '../lib/staff-access';
 import { randomBytes } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
@@ -45,16 +46,7 @@ function makeSlug(name: string): string {
 }
 
 router.get("/stores", requireAuth, async (req, res): Promise<void> => {
-  const stores = await db
-    .select()
-    .from(storesTable)
-    .where(
-      and(
-        eq(storesTable.ownerId, req.auth!.userId),
-        eq(storesTable.isDeleted, false),
-      ),
-    )
-    .orderBy(storesTable.createdAt);
+  const stores = await listAccessibleStores(req.auth!.userId);
   res.json(ListStoresResponse.parse(stores));
 });
 

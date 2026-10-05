@@ -10,6 +10,7 @@ export type PlanFeature =
   | "analytics.basic"
   | "telegram.basic"
   | "telegram.advanced"
+  | "telegram.studio"
   | "catalog.bulkTools"
   | "catalog.multipleImages"
   | "analytics.advanced"
@@ -35,18 +36,19 @@ export const FEATURE_METADATA: Record<PlanFeature, { requiredPlan: PlanCode; des
   "analytics.basic": { requiredPlan: "FREE", description: "ملخص الطلبات والمبيعات الأساسي" },
   "telegram.basic": { requiredPlan: "FREE", description: "ربط بوت Telegram واستقبال الطلبات" },
   "telegram.advanced": { requiredPlan: "PRO", description: "رسائل ترحيب ومساعدة ومقدمة كتالوج مخصصة في بوت Telegram" },
+  "telegram.studio": { requiredPlan: "BUSINESS", description: "شاشات وقوائم البوت المخصصة مع قواعد الجمهور والتوقيت" },
   "catalog.bulkTools": { requiredPlan: "PRO", description: "نشر المنتجات أو تحويلها لمسودة جماعيًا" },
   "catalog.multipleImages": { requiredPlan: "PRO", description: "معرض صور متعدد لكل منتج" },
   "analytics.advanced": { requiredPlan: "BUSINESS", description: "تحليلات وتقارير متقدمة" },
   "analytics.reports": { requiredPlan: "BUSINESS", description: "تنزيل تقرير الطلبات بصيغة CSV" },
   "coupons.basic": { requiredPlan: "PRO", description: "إدارة كوبونات الخصم" },
-  "loyalty.basic": { requiredPlan: "BUSINESS", description: "نقاط ولاء العملاء" },
+  "loyalty.basic": { requiredPlan: "PRO", description: "نقاط ولاء العملاء" },
   "reviews.basic": { requiredPlan: "PRO", description: "تقييمات ومراجعات العملاء" },
-  "referrals.basic": { requiredPlan: "BUSINESS", description: "إحالات وتتبع العملاء" },
+  "referrals.basic": { requiredPlan: "PRO", description: "إحالات وتتبع العملاء" },
   "staff.basic": { requiredPlan: "BUSINESS", description: "إدارة أعضاء الفريق" },
   "branding.removeLootBot": { requiredPlan: "BUSINESS", description: "تحكم إضافي بعلامة المتجر (لا يزيل علامة Telegram)" },
 };
-export const CONFIGURABLE_FEATURES = new Set<PlanFeature>(["catalog.bulkTools", "analytics.reports", "telegram.advanced", "catalog.multipleImages"]);
+export const CONFIGURABLE_FEATURES = new Set<PlanFeature>(["catalog.bulkTools", "analytics.reports", "telegram.advanced", "telegram.studio", "catalog.multipleImages", "coupons.basic", "loyalty.basic", "reviews.basic", "referrals.basic", "staff.basic", "analytics.advanced", "branding.removeLootBot"]);
 
 export type PlanDefinition = {
   name: string;
@@ -69,6 +71,7 @@ export const PLAN_CATALOG: Record<PlanCode, PlanDefinition> = {
       "analytics.basic": true,
       "telegram.basic": true,
       "telegram.advanced": false,
+      "telegram.studio": false,
       "catalog.bulkTools": false,
       "catalog.multipleImages": false,
       "analytics.advanced": false,
@@ -94,14 +97,15 @@ export const PLAN_CATALOG: Record<PlanCode, PlanDefinition> = {
       "analytics.basic": true,
       "telegram.basic": true,
       "telegram.advanced": true,
+      "telegram.studio": false,
       "catalog.bulkTools": true,
       "catalog.multipleImages": true,
       "analytics.advanced": false,
       "analytics.reports": false,
-      "coupons.basic": false,
-      "loyalty.basic": false,
-      "reviews.basic": false,
-      "referrals.basic": false,
+      "coupons.basic": true,
+      "loyalty.basic": true,
+      "reviews.basic": true,
+      "referrals.basic": true,
       "staff.basic": false,
       "branding.removeLootBot": false,
     },
@@ -121,14 +125,15 @@ export const PLAN_CATALOG: Record<PlanCode, PlanDefinition> = {
       "telegram.advanced": true,
       "catalog.bulkTools": true,
       "catalog.multipleImages": true,
-      "analytics.advanced": false,
+      "analytics.advanced": true,
       "analytics.reports": true,
-      "coupons.basic": false,
-      "loyalty.basic": false,
-      "reviews.basic": false,
-      "referrals.basic": false,
-      "staff.basic": false,
-      "branding.removeLootBot": false,
+      "telegram.studio": true,
+      "coupons.basic": true,
+      "loyalty.basic": true,
+      "reviews.basic": true,
+      "referrals.basic": true,
+      "staff.basic": true,
+      "branding.removeLootBot": true,
     },
   },
 } as const;

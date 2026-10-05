@@ -516,3 +516,76 @@ button, input, select, textarea { font: inherit; }
 ::selection { background: hsl(160 65% 48% / .28); }
 .fade-up { animation: rise-in .48s cubic-bezier(.2,.75,.25,1) both; }
 @keyframes rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Shared merchant surfaces: muted gaming accents, readable data and RTL-safe spacing. */
+.merchant-console {
+  --console-panel: #171f27;
+  --console-line: #303b49;
+  --console-accent: #aa9bf4;
+  background-image: radial-gradient(ellipse at 80% 0%, #7762ce14, transparent 45%);
+}
+.merchant-console { min-width: 0; font-size: 14px; line-height: 1.55; }
+.merchant-console main, .console-content, .workspace-card { min-width: 0; }
+.console-content { width: 100%; }
+.console-sidebar { scrollbar-width: thin; scrollbar-color: #4b4565 transparent; }
+.console-navigation a { flex-shrink: 0; }
+.workspace-card { box-shadow: 0 4px 20px #05081212; }
+.workspace-card > :first-child { margin-top: 0; }
+.workspace-input { min-height: 44px; outline: none; }
+.workspace-input:focus { border-color: #aa9bf4 !important; box-shadow: 0 0 0 3px #aa9bf417; }
+.workspace-button { min-height: 42px; transition: background-color .15s, border-color .15s; }
+.workspace-button:not(:disabled):hover { border-color: #796caa; background-color: #aa9bf415; }
+.merchant-console :is(input, select, textarea) { max-width: 100%; }
+.merchant-console :is(th, td) { vertical-align: middle; }
+.console-content .overflow-x-auto { max-width: 100%; overscroll-behavior-inline: contain; scrollbar-width: thin; }
+.merchant-console .bg-\[\#171f22\] { background-color: #171f27; }
+.merchant-console .border-\[\#293638\] { border-color: #303b49; }
+.merchant-console .bg-\[\#182123\] { background-color: #18222d; }
+.merchant-console .bg-\[\#62d6aa\] { background-color: #aa9bf4; color: #161329; }
+.merchant-console .focus\:border-\[\#62d6aa\]:focus { border-color: #aa9bf4; }
+.console-welcome > header { margin-bottom: 0; }
+.console-sidebar { background-image: linear-gradient(175deg, #211d3524, transparent 50%); }
+.console-navigation a { min-height: 44px; border: 1px solid transparent; }
+.console-navigation a[aria-current="page"] {
+  background: linear-gradient(100deg, #6c5baa30, #25443a70);
+  border-color: #71629b70;
+  box-shadow: inset 3px 0 #aa9bf4;
+  color: #e0d9ff;
+}
+[dir="rtl"] .console-navigation a[aria-current="page"] { box-shadow: inset -3px 0 #aa9bf4; }
+.console-topbar { box-shadow: 0 8px 28px #080c121c; }
+.console-welcome {
+  padding: clamp(1rem, 2vw, 1.75rem);
+  border: 1px solid var(--console-line);
+  border-radius: 1.25rem;
+  background: linear-gradient(120deg, #29223d70, #19332a50);
+}
+.console-content > section > h1, .console-content > div > h1 { letter-spacing: -.025em; }
+.merchant-console :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--console-accent);
+  outline-offset: 3px;
+}
+.merchant-console :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  border-color: var(--console-line);
+  transition: border-color .15s;
+}
+.merchant-console button { touch-action: manipulation; }
+.merchant-console button:not(:disabled) { cursor: pointer; }
+.merchant-console button:disabled { cursor: not-allowed; }
+.merchant-console table { font-variant-numeric: tabular-nums; }
+@media (max-width: 767px) {
+  .merchant-console button { min-height: 44px; }
+  .merchant-console :is(input:not([type="checkbox"]):not([type="radio"]), select) { min-height: 44px; font-size: 16px; }
+  .console-welcome h1 { overflow-wrap: anywhere; }
+  .console-sidebar { width: min(286px, calc(100vw - 32px)); }
+  .console-content { padding-inline: 16px; }
+  .console-topbar { padding-inline: 12px; gap: 8px; }
+  .console-content .workspace-card { padding: 18px; }
+  .console-content table :is(th, td) { padding: 12px; }
+  .console-content .recharts-wrapper { max-width: 100%; }
+  .merchant-console [role="dialog"] { max-height: calc(100dvh - 32px); overflow-y: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-up { animation: none; }
+  .merchant-console * { scroll-behavior: auto; transition-duration: 0s !important; }
+}

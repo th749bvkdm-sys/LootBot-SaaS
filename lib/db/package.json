@@ -8,6 +8,9 @@
     "./schema": "./src/schema/index.ts"
   },
   "scripts": {
+    "migrate": "node ./run-migrations.mjs",
+    "test:migrations": "node --test ./tests/migrations.test.mjs",
+    "test:constraints": "node --test ./tests/commerce-constraints.test.mjs",
     "push": "drizzle-kit push --config ./drizzle.config.ts",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
   },
