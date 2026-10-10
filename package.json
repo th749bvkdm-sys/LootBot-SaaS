@@ -9,7 +9,7 @@
     "preinstall": "node ./scripts/check-package-manager.mjs",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "dev": "node ./scripts/run-pnpm.mjs --parallel --filter @workspace/api-server --filter @workspace/lootbot run dev",
-    "db:push": "node ./scripts/run-pnpm.mjs --filter @workspace/db run push && node ./scripts/run-pnpm.mjs --filter @workspace/db run migrate",
+    "db:push": "node ./scripts/run-db-push.mjs",
     "start": "node ./scripts/run-pnpm.mjs --filter @workspace/api-server run start",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"

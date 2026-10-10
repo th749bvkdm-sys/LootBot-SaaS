@@ -44,6 +44,8 @@ app.use((req, res, next) => {
   next();
 });
 app.use(cookieParser());
+// Exam scans remain private and never pass through the general JSON parser.
+app.use('/api/teacher/assets', express.raw({ type: ['image/jpeg','image/png','image/webp'], limit: '8mb' }));
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -60,6 +62,8 @@ app.get("/{*path}", (req, res, next) => {
   });
 });
 const apiErrorHandler: ErrorRequestHandler = (error, req, res, _next) => {
+  if (error?.type === 'entity.too.large' && !res.headersSent) { res.status(413).json({ error: 'حجم الملف أو المستند أكبر من الحد المسموح.' }); return; }
+  if (error?.type === 'entity.parse.failed' && !res.headersSent) { res.status(400).json({ error: 'تنسيق الطلب غير صالح.' }); return; }
   if (error instanceof FeatureAccessError && !res.headersSent) {
     res.status(error.status).json({ code: error.code, feature: error.feature, requiredPlan: error.requiredPlan, error: error.message });
     return;

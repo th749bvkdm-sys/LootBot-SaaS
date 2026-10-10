@@ -3,7 +3,7 @@ services:
     name: lootbot-saas
     runtime: node
     plan: free
-    buildCommand: corepack pnpm install --frozen-lockfile && corepack pnpm --filter @workspace/api-server run build && corepack pnpm --filter @workspace/lootbot run build && corepack pnpm db:push && corepack pnpm db:migrate
+    buildCommand: corepack pnpm install --frozen-lockfile && corepack pnpm --filter @workspace/api-server run build && corepack pnpm --filter @workspace/lootbot run build && corepack pnpm db:migrate
     startCommand: corepack pnpm start
     healthCheckPath: /api/healthz
     envVars:

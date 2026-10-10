@@ -5,13 +5,17 @@ import { commerceAvailability, productReviewSummary } from './customer-commerce'
 import { customerFacts } from './growth-service';
 import { evaluateRule } from './customer-rules';
 import { safeUrl, visibleBusinessScreen, type BusinessConfiguration, type BusinessViewer } from './telegram-business-configuration';
-import { featureGate } from './store-plans';
+import { featureGate, getPlanCatalog, getStorePlan } from './store-plans';
+import { isFeatureAvailable } from './plans';
 import { publicCustomerFacts } from './growth-finance-policy';
 import { businessProductCard } from './telegram-business-product-card';
 import { themeDefaults } from './telegram-presentation';
 
-export async function validateBusinessReferences(storeId: string, configuration: BusinessConfiguration) {
-  if (configuration.hideBranding && !await featureGate.can(storeId, 'branding.removeLootBot')) return false;
+export async function validateBusinessReferences(storeId: string, configuration: BusinessConfiguration, reader: Pick<typeof db, 'select'> = db) {
+  if (configuration.hideBranding) {
+    const [plan, catalog] = await Promise.all([getStorePlan(storeId, reader), getPlanCatalog(reader)]);
+    if (!isFeatureAvailable(plan, 'branding.removeLootBot', catalog)) return false;
+  }
   const products = new Set<string>(); const categories = new Set<string>();
   for (const screen of configuration.screens) {
     for (const button of [...screen.buttons, ...screen.blocks.filter(b => b.type === 'CUSTOM_BUTTON').map(b => ({ action: b.action, target: b.target }))]) {
@@ -21,8 +25,8 @@ export async function validateBusinessReferences(storeId: string, configuration:
     for (const block of screen.blocks) if (block.type === 'PRODUCT') products.add(block.target!);
   }
   const [productRows, categoryRows] = await Promise.all([
-    products.size ? db.select({ id: productsTable.id }).from(productsTable).where(and(eq(productsTable.storeId, storeId), eq(productsTable.isDeleted, false), eq(productsTable.isPublished, true), inArray(productsTable.id, [...products]))) : [],
-    categories.size ? db.select({ id: categoriesTable.id }).from(categoriesTable).where(and(eq(categoriesTable.storeId, storeId), eq(categoriesTable.isDeleted, false), inArray(categoriesTable.id, [...categories]))) : [],
+    products.size ? reader.select({ id: productsTable.id }).from(productsTable).where(and(eq(productsTable.storeId, storeId), eq(productsTable.isDeleted, false), eq(productsTable.isPublished, true), inArray(productsTable.id, [...products]))) : [],
+    categories.size ? reader.select({ id: categoriesTable.id }).from(categoriesTable).where(and(eq(categoriesTable.storeId, storeId), eq(categoriesTable.isDeleted, false), inArray(categoriesTable.id, [...categories]))) : [],
   ]);
   return products.size === productRows.length && categories.size === categoryRows.length;
 }

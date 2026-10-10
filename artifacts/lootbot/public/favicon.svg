@@ -1,5 +1,1 @@
-<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="180" height="180" rx="40" fill="#63D7AA"/>
-  <path d="M51 90H129M90 51V129" stroke="#10231D" stroke-width="17" stroke-linecap="round"/>
-  <circle cx="90" cy="90" r="30" stroke="#10231D" stroke-width="9"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><defs><linearGradient id="l" x1="7" y1="7" x2="41" y2="43" gradientUnits="userSpaceOnUse"><stop stop-color="#aa91ef"/><stop offset=".5" stop-color="#8477de"/><stop offset="1" stop-color="#669ddd"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="#141827"/><path d="M11 7h12v22h18v12H11z" fill="url(#l)"/><path d="M11 7l4 4v26l-4 4z" fill="#cfc6ff" opacity=".45"/><path d="M15 37h22l4 4H11z" fill="#385f9f" opacity=".7"/></svg>

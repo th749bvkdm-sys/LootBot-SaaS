@@ -1,0 +1,73 @@
+{
+  "fixture": "http://127.0.0.1:5190",
+  "fakeDataOnly": true,
+  "browser": "Edge Chromium",
+  "results": [
+    {
+      "name": "Arabic registration, persisted role choice, saved and resumable profile wizard",
+      "passed": true,
+      "milliseconds": 4060
+    },
+    {
+      "name": "Class creation and saved editable gradebook templates survive refresh",
+      "passed": true,
+      "milliseconds": 2124
+    },
+    {
+      "name": "Manual student creation, keyboard dialog focus, private profile and persistence",
+      "passed": true,
+      "milliseconds": 1203
+    },
+    {
+      "name": "CSV column mapping, row errors, explicit add mode, existing matches and import summary",
+      "passed": true,
+      "milliseconds": 809
+    },
+    {
+      "name": "Student archive, restore, recoverable removal and removed archive visibility",
+      "passed": true,
+      "milliseconds": 474
+    },
+    {
+      "name": "Attendance saved by class and date and reopened after reload",
+      "passed": true,
+      "milliseconds": 1562
+    },
+    {
+      "name": "Gradebook preset, Arabic digits, atomic grades and saved assessment reopening",
+      "passed": true,
+      "milliseconds": 1541
+    },
+    {
+      "name": "Persisted assignment and student completion",
+      "passed": true,
+      "milliseconds": 1292
+    },
+    {
+      "name": "Lesson preparation saved, duplicated and actual question-bank content saved",
+      "passed": true,
+      "milliseconds": 1884
+    },
+    {
+      "name": "Automation rule, persisted schedule and repeated review without duplicate reminders",
+      "passed": true,
+      "milliseconds": 1352
+    },
+    {
+      "name": "Real report print surface, A4 PDF, Arabic RTL and private-note exclusion",
+      "passed": true,
+      "milliseconds": 695
+    },
+    {
+      "name": "Bulk student move preserves the same ID and attendance, grade and assignment history",
+      "passed": true,
+      "milliseconds": 2448
+    },
+    {
+      "name": "All teacher module routes, RTL, mobile/tablet/desktop and reduced motion",
+      "passed": true,
+      "milliseconds": 33090
+    }
+  ],
+  "pageErrors": []
+}

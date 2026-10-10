@@ -11,6 +11,7 @@ declare global {
       auth?: {
         userId: string;
         role: string;
+        accountType: string | null;
         sessionId: string;
         csrfHash: string;
       };
@@ -36,6 +37,7 @@ export const requireAuth: RequestHandler = async (
         csrfHash: sessionsTable.csrfHash,
         userId: usersTable.id,
         role: usersTable.role,
+        accountType: usersTable.accountType,
       })
       .from(sessionsTable)
       .innerJoin(usersTable, eq(sessionsTable.userId, usersTable.id))
@@ -57,13 +59,28 @@ export const requireAuth: RequestHandler = async (
     req.auth = {
       userId: row.userId,
       role: row.role,
+      accountType: row.accountType,
       sessionId: row.sessionId,
       csrfHash: row.csrfHash,
     };
+    const apiPath = req.originalUrl.split('?')[0].replace(/^\/api/, '');
+    if (row.role !== 'SUPERADMIN' && row.accountType !== 'merchant' &&
+        !/^\/(auth|account|teacher|admin)(\/|$)/.test(apiPath)) {
+      res.status(403).json({ error: 'هذه الأدوات متاحة لحساب التاجر فقط.' });
+      return;
+    }
     next();
   } catch (error) {
     next(error);
   }
+};
+
+export const requireTeacher: RequestHandler = (req, res, next): void => {
+  if (!req.auth) { res.status(401).json({ error: 'يجب تسجيل الدخول للمتابعة.' }); return; }
+  if (req.auth.accountType !== 'teacher' && req.auth.role !== 'SUPERADMIN') {
+    res.status(403).json({ error: 'هذه الأدوات متاحة لحساب المعلم فقط.' }); return;
+  }
+  next();
 };
 
 export const requireSuperAdmin: RequestHandler = (req, res, next): void => {

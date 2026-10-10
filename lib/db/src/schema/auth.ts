@@ -1,5 +1,6 @@
 import { createInsertSchema } from "drizzle-zod";
-import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, check, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from 'drizzle-orm';
 import { z } from "zod/v4";
 
 export const usersTable = pgTable("users", {
@@ -8,12 +9,14 @@ export const usersTable = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   role: text("role").notNull().default("OWNER"),
+  // Legacy users stay merchants; registration explicitly starts without a choice.
+  accountType: text("account_type").default("merchant"),
   failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
   lockedUntil: timestamp("locked_until", { withTimezone: true }),
   isDeleted: boolean("is_deleted").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, t => [check('users_account_type_check', sql`${t.accountType} IS NULL OR ${t.accountType} IN ('merchant','teacher')`)]);
 
 export const sessionsTable = pgTable("sessions", {
   id: text("id").primaryKey(),

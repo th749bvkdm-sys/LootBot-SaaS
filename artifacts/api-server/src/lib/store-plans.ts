@@ -22,8 +22,8 @@ import {
   FeatureGateService,
 } from "./plans";
 
-export async function getPlanCatalog(): Promise<PlanCatalog> {
-  const rows = await db.select().from(planDefinitionsTable);
+export async function getPlanCatalog(reader: Pick<typeof db, 'select'> = db): Promise<PlanCatalog> {
+  const rows = await reader.select().from(planDefinitionsTable);
   const catalog = structuredClone(PLAN_CATALOG) as PlanCatalog;
   for (const row of rows) {
     if (row.code in catalog) {
@@ -34,8 +34,8 @@ export async function getPlanCatalog(): Promise<PlanCatalog> {
   return catalog;
 }
 
-export async function getStorePlan(storeId: string): Promise<PlanCode> {
-  const [settings] = await db
+export async function getStorePlan(storeId: string, reader: Pick<typeof db, 'select'> = db): Promise<PlanCode> {
+  const [settings] = await reader
     .select({ settings: storeSettingsTable.settings })
     .from(storeSettingsTable)
     .where(eq(storeSettingsTable.storeId, storeId))

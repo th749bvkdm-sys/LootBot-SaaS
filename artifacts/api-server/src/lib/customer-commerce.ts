@@ -156,7 +156,7 @@ export async function assignCustomerCoupon(customer: Customer, couponId: string)
   return db.transaction(async tx => {
     await tx.select().from(storesTable).where(eq(storesTable.id, customer.storeId)).for('update');
     const [settings] = await tx.select().from(storeSettingsTable).where(eq(storeSettingsTable.storeId, customer.storeId)).limit(1);
-    if (!settings?.couponsEnabled || !isFeatureAvailable(readPlanCode(settings.settings), 'coupons.basic', await getPlanCatalog())) throw Error('الكوبونات غير مفعلة.');
+    if (!settings?.couponsEnabled || !isFeatureAvailable(readPlanCode(settings.settings), 'coupons.basic', await getPlanCatalog(tx))) throw Error('الكوبونات غير مفعلة.');
     const [locked] = await tx.select().from(customersTable).where(and(eq(customersTable.id, customer.id), eq(customersTable.storeId, customer.storeId))).for('update');
     if (!locked) throw Error('العميل غير موجود.');
     const [coupon] = await tx.select().from(couponsTable).where(and(eq(couponsTable.id, couponId), eq(couponsTable.storeId, customer.storeId))).limit(1);
@@ -215,7 +215,7 @@ async function awardPoints(tx: Tx, customer: Customer, requested: number, source
 export async function rewardPaidOrder(tx: Tx, order: Order) {
   if (order.paymentStatus !== 'paid' || order.status === 'cancelled' || !order.telegramUserId) return;
   const [settings] = await tx.select().from(storeSettingsTable).where(eq(storeSettingsTable.storeId, order.storeId)).limit(1);
-  const catalog = await getPlanCatalog(); const plan = readPlanCode(settings?.settings);
+  const catalog = await getPlanCatalog(tx); const plan = readPlanCode(settings?.settings);
   const loyalty = !!settings?.pointsEnabled && isFeatureAvailable(plan, 'loyalty.basic', catalog);
   const referrals = !!settings?.referralsEnabled && isFeatureAvailable(plan, 'referrals.basic', catalog);
   const [customer] = await tx.select().from(customersTable).where(and(eq(customersTable.storeId, order.storeId), eq(customersTable.telegramUserId, order.telegramUserId))).for('update');

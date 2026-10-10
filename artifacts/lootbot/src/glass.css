@@ -1,0 +1,48 @@
+/* Quiet, opaque surfaces remain usable without backdrop-filter support. */
+:root, .dark {
+  --background: 225 29% 9%; --foreground: 220 30% 94%;
+  --card: 226 25% 14%; --card-foreground: 220 30% 94%; --card-border: 226 18% 29%;
+  --popover: 226 26% 15%; --popover-foreground: 220 30% 94%; --popover-border: 226 18% 29%;
+  --primary: 249 63% 75%; --primary-foreground: 231 35% 15%;
+  --secondary: 226 20% 21%; --secondary-foreground: 220 30% 94%;
+  --muted: 226 21% 18%; --muted-foreground: 222 16% 70%;
+  --accent: 244 22% 24%; --accent-foreground: 240 50% 88%;
+  --border: 226 18% 29%; --input: 226 18% 29%; --ring: 249 63% 75%;
+  --sidebar: 226 27% 13%; --sidebar-foreground: 220 30% 94%; --sidebar-border: 226 18% 29%;
+  --sidebar-primary: 249 63% 75%; --sidebar-primary-foreground: 231 35% 15%;
+  --sidebar-accent: 244 22% 24%; --sidebar-accent-foreground: 240 50% 88%; --sidebar-ring: 249 63% 75%;
+  --glass-panel: rgb(26 31 49 / .94); --glass-line: rgb(210 219 255 / .15);
+}
+.glass-app, .merchant-console {
+  color: #edf0fb; background-color: #101420;
+  background-image: radial-gradient(ellipse at 85% -20%, #6b5aab23, transparent 60%), radial-gradient(ellipse at 0% 60%, #35436b12, transparent 50%);
+  --console-panel: #1a1f31; --console-line: #3a4157; --console-accent: #b6a8f1;
+}
+.glass-panel, .workspace-card, .merchant-console .console-sidebar, .merchant-console .console-topbar,
+.merchant-console [role="dialog"], .merchant-console .console-content .bg-\[\#171f22\],
+.merchant-console .console-content .bg-\[\#171f27\] {
+  background-color: var(--glass-panel); border-color: var(--glass-line);
+  box-shadow: inset 0 1px 0 #ffffff06, 0 10px 30px #05081220;
+}
+.glass-panel { border: 1px solid var(--glass-line); border-radius: 20px; padding: 24px; }
+@supports (backdrop-filter: blur(12px)) {
+  .glass-panel, .console-sidebar, .console-topbar, .merchant-console [role="dialog"] { background-color: rgb(26 31 49 / .9); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+}
+.glass-app :is(input, select, textarea), .merchant-console :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  background-color: #151b2a; border-color: #414960; color: #edf0fb; border-radius: 12px;
+}
+.glass-app :is(input, select, textarea)::placeholder { color: #929bb6; }
+.glass-app :is(button, a, input, select, textarea):focus-visible { outline: 2px solid #b6a8f1; outline-offset: 3px; }
+.glass-app :is(button, input, select) { min-height: 44px; }
+.glass-app button:not(:disabled) { cursor: pointer; }
+.glass-app button:disabled { opacity: .55; cursor: not-allowed; }
+.glass-app a, .glass-app button { touch-action: manipulation; }
+.brand-mark { filter: drop-shadow(0 3px 8px #655ba321); }
+.console-navigation a[aria-current="page"] { background: linear-gradient(100deg, #7461b530, #485c8b22); border-color: #8b83b94d; }
+.console-welcome { background: linear-gradient(110deg, #39304e70, #26354a50); }
+.merchant-console .bg-\[\#62d6aa\], .glass-app .brand-action, .merchant-console .brand-action { background: #b6a8f1; color: #1c1734; }
+.merchant-console .console-content .bg-\[\#11191b\], .merchant-console .console-content .bg-\[\#11191f\] { background-color: #151b2a; }
+.glass-muted { color: #b0b9d0; }
+.glass-error { padding: 16px; border: 1px solid #bb748480; border-radius: 12px; color: #ffd4dd; background: #512b372c; }
+@media (max-width: 767px) { .glass-panel { padding: 18px; } .glass-app :is(input:not([type="checkbox"]), select, textarea) { font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { .glass-app *, .merchant-console * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

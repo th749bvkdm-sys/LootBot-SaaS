@@ -74,8 +74,8 @@ businessStudioRouter.post('/stores/:storeId/telegram/business-studio/:action', r
     const [row] = await tx.select().from(storeSettingsTable).where(eq(storeSettingsTable.storeId, storeId)).limit(1);
     const studio = readBusinessStudio(row?.settings.telegramBusinessStudio);
     if (studio.revision !== revision) return null;
-    if (!access.isOwner && businessRequiresOwner(action === 'publish' ? studio.draft : configuration!, await financialSegmentIds(storeId))) return { denied: true };
-    if (action === 'publish' && !await validateBusinessReferences(storeId, studio.draft)) return null;
+    if (!access.isOwner && businessRequiresOwner(action === 'publish' ? studio.draft : configuration!, await financialSegmentIds(storeId, tx))) return { denied: true };
+    if (action === 'publish' && !await validateBusinessReferences(storeId, studio.draft, tx)) return null;
     const next = { draft: action === 'draft' ? configuration! : studio.draft, published: action === 'publish' ? studio.draft : studio.published, revision: revision + 1 };
     const settings = { ...row?.settings, telegramBusinessStudio: next, ...(action === 'publish' ? { telegramHomeMode: 'business' } : {}) };
     await tx.insert(storeSettingsTable).values({ storeId, settings }).onConflictDoUpdate({ target: storeSettingsTable.storeId, set: { settings, updatedAt: new Date() } });

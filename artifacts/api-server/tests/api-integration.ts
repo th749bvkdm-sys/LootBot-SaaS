@@ -15,7 +15,10 @@ import { renderStoreScreen } from '../src/lib/telegram-store-screens';
 import { defaultGrowthConfiguration } from '../src/lib/growth-configuration';
 
 test('isolated database and real HTTP protect studio, references, roles, plans and Telegram customer scope', async t=>{
-  assert.equal(new URL(process.env.DATABASE_URL!).hostname,'ep-summer-recipe-b21ls93d-pooler.c-6.eu-central-1.aws.neon.tech');
+  const hostname = new URL(process.env.DATABASE_URL!).hostname;
+  assert.ok(hostname === 'ep-summer-recipe-b21ls93d-pooler.c-6.eu-central-1.aws.neon.tech' ||
+    hostname === '127.0.0.1' && /^teacher_qa_[a-f0-9]{32}$/.test(process.env.TEACHER_TEST_SCHEMA ?? ''),
+    'Only the isolated test branch or disposable local PostgreSQL fixture is permitted.');
   t.after(async()=>{if(!pool.ended)await pool.end();});
   for (const name of ['0002_telegram_health.sql','0003_growth_execution.sql','0004_product_presentation.sql','0005_customer_commerce.sql','0006_store_team.sql','0007_category_presentation.sql']) await pool.query(await readFile(`../../lib/db/migrations/${name}`,'utf8'));
   const owner=randomUUID(),other=randomUUID(),staff=randomUUID(),admin=randomUUID();const stores=[randomUUID(),randomUUID(),randomUUID()];const [business,free,pro]=stores;const customerId=randomUUID(),category=randomUUID(),product=randomUUID(),foreignProduct=randomUUID();

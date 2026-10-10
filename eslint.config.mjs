@@ -1,6 +1,6 @@
 import parser from '@typescript-eslint/parser';
 import reactHooks from 'eslint-plugin-react-hooks';
-export default [{ignores:['**/node_modules/**','**/dist/**','**/.pnpm-store/**','**/.*-integration*.mjs','**/.ui-server.mjs','**/*.d.ts','**/*.tsbuildinfo','lib/api-client-react/src/generated/**','lib/api-zod/src/generated/**']},{
+export default [{ignores:['**/node_modules/**','**/dist/**','**/.pnpm-store/**','**/.*-integration*.mjs','**/.teacher-local-*.mjs','**/.teacher-test-schema-*.mjs','**/.ui-server.mjs','**/*.d.ts','**/*.tsbuildinfo','lib/api-client-react/src/generated/**','lib/api-zod/src/generated/**']},{
   files:['artifacts/api-server/src/**/*.{ts,mjs}','artifacts/lootbot/src/**/*.{ts,tsx}','lib/db/src/**/*.ts'],
   languageOptions:{parser,parserOptions:{ecmaVersion:'latest',sourceType:'module',ecmaFeatures:{jsx:true}}},
   plugins:{'react-hooks':reactHooks},

@@ -1,0 +1,22 @@
+{
+  "passed": 4,
+  "results": [
+    {
+      "name": "existing merchant navigation and modules remain usable",
+      "passed": true
+    },
+    {
+      "name": "theme radio controls preview instantly, save and persist after refresh",
+      "passed": true
+    },
+    {
+      "name": "public themes, category navigation, detail links and product data",
+      "passed": true
+    },
+    {
+      "name": "public catalog responsive RTL keyboard focus and reduced motion",
+      "passed": true
+    }
+  ],
+  "browserErrors": []
+}

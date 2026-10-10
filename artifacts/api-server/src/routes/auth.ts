@@ -141,13 +141,14 @@ router.post("/auth/register", requireCsrf, async (req, res): Promise<void> => {
       name: parsed.data.name.trim(),
       email,
       passwordHash: await passwordHash(parsed.data.password),
+      accountType: null,
     })
     .returning();
   const csrfToken = await issueSession(user.id, res);
   await writeAuditEvent({
     userId: user.id,
     action: "user.registered",
-    summary: "تم إنشاء حساب مالك جديد",
+    summary: "تم إنشاء حساب جديد",
   });
   res.status(201).json(
     RegisterUserResponse.parse({ user: publicUser(user), csrfToken }),

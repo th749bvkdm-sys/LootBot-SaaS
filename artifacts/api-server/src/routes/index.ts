@@ -13,11 +13,17 @@ import { growthRouter } from './growth';
 import { commerceRouter } from './commerce';
 import teamRouter from './team';
 import analyticsRouter from './analytics';
+import { accountRouter } from './account';
+import { teacherRouter } from './teacher';
+import { storefrontRouter } from './storefront';
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(accountRouter);
+router.use(teacherRouter);
+router.use(storefrontRouter);
 router.use(adminRouter);
 router.use(storesRouter);
 router.use(catalogRouter);

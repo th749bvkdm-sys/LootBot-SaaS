@@ -1,0 +1,55 @@
+{
+  "headerPixelChecks": [
+    {
+      "file": "final-20261010-page-1.png",
+      "width": 909,
+      "height": 1287,
+      "headerDarkPixels": 7570,
+      "passed": true
+    },
+    {
+      "file": "final-20261010-page-2.png",
+      "width": 909,
+      "height": 1287,
+      "headerDarkPixels": 7570,
+      "passed": true
+    },
+    {
+      "file": "final-20261010-page-3.png",
+      "width": 909,
+      "height": 1287,
+      "headerDarkPixels": 7570,
+      "passed": true
+    },
+    {
+      "file": "final-20261010-style-formal.png",
+      "width": 909,
+      "height": 1287,
+      "headerDarkPixels": 7570,
+      "passed": true
+    },
+    {
+      "file": "final-20261010-style-minimal.png",
+      "width": 909,
+      "height": 1287,
+      "headerDarkPixels": 6538,
+      "passed": true
+    },
+    {
+      "file": "final-20261010-style-primary.png",
+      "width": 909,
+      "height": 1287,
+      "headerDarkPixels": 7947,
+      "passed": true
+    }
+  ],
+  "pdfSHA256": {
+    "fictional-exam-a4.pdf": "fb81ca6a3382ab40e90ea519ff1b0d634bb2a6f4a586deed4bba5bac47d540ce",
+    "style-formal.pdf": "6ec28cc0115fc0555ccf858699c7ffd039710ea30f5f1c3cd374817085309fdb",
+    "style-minimal.pdf": "f9e12d9492824f193214574415c50f2d6076a2608eba7c6edf2c73f32ab84d48",
+    "style-primary.pdf": "6e528d254e1028b2eb5a869f335108428b10524e165a60269cffc49ee22e4e79"
+  },
+  "browserStagesPassed": 9,
+  "modelTestsPassed": 11,
+  "fictionalDataOnly": true
+}

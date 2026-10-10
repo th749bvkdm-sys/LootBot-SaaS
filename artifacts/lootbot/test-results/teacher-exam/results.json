@@ -1,0 +1,44 @@
+{
+  "passed": 9,
+  "results": [
+    {
+      "name": "editable content and persisted autosave",
+      "passed": true
+    },
+    {
+      "name": "undo, redo, question duplication and ordering",
+      "passed": true
+    },
+    {
+      "name": "save failure remains visible and retry persists",
+      "passed": true
+    },
+    {
+      "name": "version conflict protects saved data and allows an independent copy",
+      "passed": true
+    },
+    {
+      "name": "private image, rotation, crop, adjusted asset and honest manual OCR fallback",
+      "passed": true
+    },
+    {
+      "name": "three print styles preserve editable content and template creation works",
+      "passed": true
+    },
+    {
+      "name": "responsive RTL desktop, iPad and mobile; keyboard and reduced motion",
+      "passed": true
+    },
+    {
+      "name": "real Chromium A4 PDF generation includes multiple ordered pages",
+      "passed": true
+    },
+    {
+      "name": "saved document can be reopened after refresh",
+      "passed": true
+    }
+  ],
+  "runtimeErrors": [],
+  "fixture": "disposable local fictional data",
+  "limitation": "OCR external provider deliberately not configured; actual Safari/iOS hardware not available."
+}

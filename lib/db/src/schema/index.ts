@@ -10,3 +10,4 @@ export * from './commerce';
 
 export * from './staff';
 export * from './migration-ledger';
+export * from './teacher';
