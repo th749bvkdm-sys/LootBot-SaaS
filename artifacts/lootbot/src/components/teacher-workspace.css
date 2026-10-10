@@ -963,6 +963,9 @@
   .tw-print-view .tw-table tbody tr:hover {
     background: #fff !important;
   }
+  .tw-print-view .tw-table tr:last-child td {
+    border-bottom: 1px solid #666;
+  }
 }
 .tw-kpis > .tw-card + .tw-card {
   margin-top: 0;

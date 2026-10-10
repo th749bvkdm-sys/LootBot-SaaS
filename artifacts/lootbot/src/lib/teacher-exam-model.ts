@@ -2,11 +2,12 @@ export type ExamStyle = 'formal' | 'primary' | 'minimal';
 export type ExamQuestion = {
   id: string; text: string; kind: 'written' | 'choice' | 'true-false' | 'blank';
   marks: number; answerLines: number; options: string[]; subquestions: string[];
-  pageBreakBefore: boolean; requiresReview: boolean; reviewNote: string;
+  pageBreakBefore: boolean; requiresReview: boolean; reviewNote: string; answer?: string; explanation?: string; questionVersionId?: string | null;
 };
 export type ExamSection = { id: string; title: string; instructions: string; questions: ExamQuestion[]; pageBreakBefore: boolean };
 export type ImageAdjustments = { rotation: number; straighten: number; brightness: number; contrast: number; crop: { x: number; y: number; width: number; height: number } };
 export type ExamDocument = {
+  outputMode?: 'student' | 'key' | 'teacher' | 'template';
   schemaVersion: 1;
   metadata: { title: string; school: string; teacher: string; subject: string; grade: string; term: string; date: string; duration: string; totalMarks: number; instructions: string; studentNameLine: boolean; studentNumberLine: boolean; schoolLogoAssetId: string | null };
   layout: { style: ExamStyle; paper: 'A4'; marginMm: number; fontSize: number; lineSpacing: number; questionSpacing: number; alignment: 'right' | 'center' | 'left'; accent: string; header: string; footer: string; pageNumbers: boolean; digits: 'arabic' | 'western'; font: 'arabic' | 'sans' };
@@ -16,8 +17,8 @@ export type ExamDocument = {
 export type TeacherExam = { id: string; title: string; document: ExamDocument; sourceAssetId: string | null; version: number; createdAt: string; updatedAt: string; isTemplate: boolean };
 export const EXAM_STYLES: { value: ExamStyle; title: string; description: string }[] = [
   { value: 'formal', title: 'رسمي', description: 'ترويسة مدرسية، حدود واضحة، ومساحة عملية للإجابات.' },
-  { value: 'primary', title: 'مناسب للمرحلة الابتدائية', description: 'عناوين ودودة ونجوم خفيفة، مع نص واضح وزخرفة محدودة.' },
-  { value: 'minimal', title: 'اقتصادي للطباعة', description: 'أبيض وأسود، ترويسة مختصرة، واستهلاك أقل للحبر.' },
+  { value: 'primary', title: 'طفولي', description: 'عناوين ودودة ونجوم خفيفة، مع نص واضح وزخرفة محدودة.' },
+  { value: 'minimal', title: 'بسيط للطباعة', description: 'أبيض وأسود، ترويسة مختصرة، واستهلاك أقل للحبر.' },
 ];
 export function examId() { return globalThis.crypto?.randomUUID?.() ?? `item-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
 export function newQuestion(text = ''): ExamQuestion { return { id: examId(), text, kind: 'written', marks: 1, answerLines: 3, options: [], subquestions: [], pageBreakBefore: false, requiresReview: false, reviewNote: '' }; }

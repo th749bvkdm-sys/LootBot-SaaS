@@ -81,6 +81,7 @@ export const teacherRecordsTable = pgTable(
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
     kind: text("kind").notNull(),
+    revision: integer('revision').notNull().default(1),
     classId: text("class_id"),
     studentId: text("student_id"),
     dedupeKey: text("dedupe_key"),
@@ -101,7 +102,7 @@ export const teacherRecordsTable = pgTable(
     }),
     check(
       "teacher_records_kind_check",
-      sql`${t.kind} IN ('attendance','grades','tasks','lessons','questions','assessments')`,
+      sql`${t.kind} IN ('attendance','grades','tasks','lessons','questions','assessments','blueprints','rubrics','feedback','documents','resources','calendar')`,
     ),
   ],
 );

@@ -1,0 +1,28 @@
+-- Additive learning runtime: published snapshots are never updated by application routes.
+CREATE TABLE IF NOT EXISTS teacher_class_access (class_id text PRIMARY KEY,owner_id text NOT NULL,code_hash text NOT NULL UNIQUE,enabled boolean NOT NULL DEFAULT true,FOREIGN KEY(class_id,owner_id) REFERENCES teacher_classes(id,owner_id) ON DELETE CASCADE);
+CREATE TABLE IF NOT EXISTS teacher_student_access (student_id text PRIMARY KEY,owner_id text NOT NULL,code_hash text NOT NULL,enabled boolean NOT NULL DEFAULT true,FOREIGN KEY(student_id,owner_id) REFERENCES teacher_students(id,owner_id) ON DELETE CASCADE);
+CREATE TABLE IF NOT EXISTS teacher_student_sessions (id text PRIMARY KEY,token_hash text NOT NULL UNIQUE,csrf_hash text NOT NULL,student_id text NOT NULL,class_id text NOT NULL,owner_id text NOT NULL,expires_at timestamptz NOT NULL,FOREIGN KEY(student_id,owner_id) REFERENCES teacher_students(id,owner_id) ON DELETE CASCADE,FOREIGN KEY(class_id,owner_id) REFERENCES teacher_classes(id,owner_id) ON DELETE CASCADE);
+CREATE INDEX IF NOT EXISTS teacher_student_sessions_student_idx ON teacher_student_sessions(student_id,class_id);
+CREATE TABLE IF NOT EXISTS teacher_entry_limits (key text PRIMARY KEY,attempts integer NOT NULL DEFAULT 1,expires_at timestamptz NOT NULL);
+CREATE TABLE IF NOT EXISTS teacher_activities (id text PRIMARY KEY,owner_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,type text NOT NULL CHECK(type IN ('guided_steps','chemistry')),draft jsonb NOT NULL,revision integer NOT NULL DEFAULT 1,current_version_id text,status text NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','published')),created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now(),UNIQUE(id,owner_id));
+CREATE INDEX IF NOT EXISTS teacher_activities_owner_idx ON teacher_activities(owner_id);
+CREATE TABLE IF NOT EXISTS teacher_activity_versions (id text PRIMARY KEY,activity_id text NOT NULL,owner_id text NOT NULL,number integer NOT NULL,content jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),UNIQUE(id,owner_id),UNIQUE(activity_id,number),FOREIGN KEY(activity_id,owner_id) REFERENCES teacher_activities(id,owner_id) ON DELETE CASCADE);
+CREATE TABLE IF NOT EXISTS teacher_activity_assignments (id text PRIMARY KEY,owner_id text NOT NULL,version_id text NOT NULL,class_id text NOT NULL,mode text NOT NULL DEFAULT 'learn' CHECK(mode IN ('learn','assessed')),allowed_attempts integer NOT NULL DEFAULT 3 CHECK(allowed_attempts BETWEEN 1 AND 10),hints boolean NOT NULL DEFAULT true,explanations text NOT NULL DEFAULT 'immediate' CHECK(explanations IN ('immediate','after')),due_at timestamptz,archived boolean NOT NULL DEFAULT false,created_at timestamptz NOT NULL DEFAULT now(),UNIQUE(id,owner_id),FOREIGN KEY(version_id,owner_id) REFERENCES teacher_activity_versions(id,owner_id),FOREIGN KEY(class_id,owner_id) REFERENCES teacher_classes(id,owner_id));
+CREATE INDEX IF NOT EXISTS teacher_activity_assignments_class_idx ON teacher_activity_assignments(owner_id,class_id);
+CREATE TABLE IF NOT EXISTS teacher_activity_progress (id text PRIMARY KEY,assignment_id text NOT NULL,student_id text NOT NULL,owner_id text NOT NULL,run integer NOT NULL DEFAULT 1,current_step_id text NOT NULL,reached_ids jsonb NOT NULL DEFAULT '[]',passed_ids jsonb NOT NULL DEFAULT '[]',started_at timestamptz NOT NULL DEFAULT now(),completed_at timestamptz,UNIQUE(assignment_id,student_id),FOREIGN KEY(assignment_id,owner_id) REFERENCES teacher_activity_assignments(id,owner_id) ON DELETE CASCADE,FOREIGN KEY(student_id,owner_id) REFERENCES teacher_students(id,owner_id));
+CREATE TABLE IF NOT EXISTS teacher_activity_events (id text PRIMARY KEY,assignment_id text NOT NULL,student_id text NOT NULL,owner_id text NOT NULL,step_id text NOT NULL,run integer NOT NULL,type text NOT NULL CHECK(type IN ('attempt','support','advance','restart','complete')),request_key text NOT NULL,payload jsonb NOT NULL DEFAULT '{}',created_at timestamptz NOT NULL DEFAULT now(),UNIQUE(assignment_id,student_id,request_key),FOREIGN KEY(assignment_id,owner_id) REFERENCES teacher_activity_assignments(id,owner_id) ON DELETE CASCADE,FOREIGN KEY(student_id,owner_id) REFERENCES teacher_students(id,owner_id));
+CREATE INDEX IF NOT EXISTS teacher_activity_events_step_student_idx ON teacher_activity_events(assignment_id,step_id,student_id);
+CREATE TABLE IF NOT EXISTS teacher_question_versions (id text PRIMARY KEY,question_id text NOT NULL REFERENCES teacher_records(id) ON DELETE CASCADE,owner_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,number integer NOT NULL,content jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),UNIQUE(question_id,number),UNIQUE(id,owner_id));
+CREATE INDEX IF NOT EXISTS teacher_question_versions_owner_idx ON teacher_question_versions(owner_id,question_id);
+CREATE OR REPLACE FUNCTION teacher_snapshot_question() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.kind='questions' AND (TG_OP='INSERT' OR NEW.data IS DISTINCT FROM OLD.data) THEN
+    INSERT INTO teacher_question_versions(id,question_id,owner_id,number,content)
+    VALUES(gen_random_uuid()::text,NEW.id,NEW.owner_id,coalesce((SELECT max(number) FROM teacher_question_versions WHERE question_id=NEW.id),0)+1,NEW.data);
+  END IF;
+  RETURN NEW;
+END $$;
+DROP TRIGGER IF EXISTS teacher_question_snapshot ON teacher_records;
+CREATE TRIGGER teacher_question_snapshot AFTER INSERT OR UPDATE OF data ON teacher_records FOR EACH ROW EXECUTE FUNCTION teacher_snapshot_question();
+INSERT INTO teacher_question_versions(id,question_id,owner_id,number,content)
+SELECT gen_random_uuid()::text,r.id,r.owner_id,1,r.data FROM teacher_records r WHERE r.kind='questions' AND NOT EXISTS(SELECT 1 FROM teacher_question_versions v WHERE v.question_id=r.id);

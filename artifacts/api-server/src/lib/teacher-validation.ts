@@ -52,6 +52,8 @@ export const teacherProfileSchema = z
     year: text(50).default(""),
     city: text(100).default(""),
     printStyle: z.enum(["formal", "primary", "minimal"]).default("formal"),
+    customTemplateId: nullableId,
+    gradePrecision: z.number().int().min(0).max(3).default(2),
     digits: z.enum(["arabic", "western"]).default("arabic"),
     paperSize: z.literal("A4").default("A4"),
     logoAssetId: nullableId,
@@ -136,6 +138,8 @@ export const gradeSchema = z
     marks: z.number().min(0).nullable().default(null),
     date,
     note: text(2000).default(""),
+    status: z.enum(["graded", "missing", "absent", "exempt"]).default("graded"),
+    weight: z.number().min(0).max(10000).optional(),
     archived: z.boolean().default(false),
   })
   .refine(
@@ -159,6 +163,12 @@ export const lessonSchema = z.object({
   objectives: text(10000).default(""),
   content: text(20000).default(""),
   homework: text(10000).default(""),
+  priorKnowledge: text(10000).default(""),
+  differentiation: text(10000).default(""),
+  assessment: text(10000).default(""),
+  resources: text(10000).default(""),
+  resourceIds: z.array(z.string().uuid()).max(50).default([]),
+  reflection: text(10000).default(""),
   archived: z.boolean().default(false),
 });
 export const questionSchema = z.object({
@@ -171,6 +181,15 @@ export const questionSchema = z.object({
   marks: z.number().min(0).max(10000).default(1),
   tags: z.array(text(60)).max(30).default([]),
   archived: z.boolean().default(false),
+  explanation: text(5000).default(""),
+  difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+  objective: text(300).default(""),
+  unit: text(180).default(""),
+  course: text(180).default(""),
+  term: text(100).default(""),
+  language: z.enum(["ar", "en"]).default("ar"),
+  favorite: z.boolean().default(false),
+  source: text(300).default("manual"),
 });
 export const assessmentSchema = z.object({
   title: required(),
@@ -221,6 +240,9 @@ const questionBlock = z.object({
   pageBreakBefore: z.boolean(),
   requiresReview: z.boolean(),
   reviewNote: text(4000),
+  answer: text(10000).default(""),
+  explanation: text(10000).default(""),
+  questionVersionId: z.string().uuid().nullable().optional(),
 });
 export const examDocumentSchema = z
   .object({

@@ -16,12 +16,18 @@ import analyticsRouter from './analytics';
 import { accountRouter } from './account';
 import { teacherRouter } from './teacher';
 import { storefrontRouter } from './storefront';
+import { learningRouter } from './learning';
+import { teacherToolsRouter } from './teacher-tools';
+import { chemistryRouter } from './chemistry';
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
 router.use(accountRouter);
+router.use(learningRouter);
+router.use(teacherToolsRouter);
+router.use(chemistryRouter);
 router.use(teacherRouter);
 router.use(storefrontRouter);
 router.use(adminRouter);

@@ -32,7 +32,7 @@ async function check(name, action) { console.log(`RUN ${name}`); await action();
 try {
   console.log('RUN fixture login');
   await page.goto(`${base}/login`); await page.locator('input[name=email]').fill('teacher@example.invalid'); await page.locator('input[name=password]').fill('Local-Fixture-Only-2026!'); await page.getByTestId('button-submit').click(); await page.waitForURL('**/teacher');
-  const document = createExamDocument('formal', await api('/teacher/profile')); document.metadata.title = `اختبار قبول مستقل ${suffix}`; document.sections[0].questions = [newQuestion('اكتب ناتج ٢ + ٣.'), newQuestion('اشرح طريقة جمع عددين.')]; document.metadata.totalMarks = 2;
+  const document = createExamDocument('formal', await api('/teacher/profile')); document.metadata.title = `اختبار قبول مستقل ${suffix}`; document.sections[0].questions = [newQuestion('اكتب ناتج ٢ + ٣.'), newQuestion('اشرح طريقة جمع عددين.')]; document.metadata.totalMarks = 2; document.sections[0].questions[0].answer='5'; document.sections[0].questions[0].explanation='نجمع العددين';
   let current = await api('/teacher/exams', 'POST', { title: document.metadata.title, document });
   await page.goto(`${base}/teacher/exams`); await page.locator('.tw-list-item').filter({ hasText: document.metadata.title }).getByRole('button', { name: 'فتح وتعديل' }).click();
   await check('editable content and persisted autosave', async () => {
@@ -89,7 +89,7 @@ try {
     const before = (await api(`/teacher/exams/${current.id}`)).document.sections;
     await page.getByRole('button', { name: 'تصميم الورقة', exact: true }).click();
     const borders = [];
-    for (const [style, label] of [['primary', 'مناسب للمرحلة الابتدائية'], ['minimal', 'اقتصادي للطباعة'], ['formal', 'رسمي']]) {
+    for (const [style, label] of [['primary', 'طفولي'], ['minimal', 'بسيط للطباعة'], ['formal', 'رسمي']]) {
       await page.locator('.exam-edit-panel .exam-style-card').filter({ has: page.getByText(label, { exact: true }) }).click(); await waitSaved();
       const saved = await api(`/teacher/exams/${current.id}`); assert.equal(saved.document.layout.style, style); assert.deepEqual(saved.document.sections, before);
       borders.push(await page.locator('.exam-live-preview .exam-paper-section h2').first().evaluate(element => getComputedStyle(element).borderStyle));
@@ -112,7 +112,12 @@ try {
       assert.ok(layout.scrollWidth <= layout.width + 1, `${name}: unexpected outer overflow ${layout.scrollWidth}/${layout.width}`); assert.equal(layout.direction, 'rtl');
     }
     await page.emulateMedia({ reducedMotion: 'reduce' }); const transition = await page.locator('.exam-edit-panel .exam-style-card').first().evaluate(element => getComputedStyle(element).transitionDuration); assert.equal(transition, '0s'); await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.setViewportSize({ width: 1440, height: 1000 }); await page.getByRole('button', { name: 'المعاينة والطباعة / PDF', exact: true }).click(); await page.getByRole('button', { name: 'إغلاق المعاينة', exact: true }).focus(); await page.keyboard.press('Tab'); assert.equal(await page.locator(':focus').innerText(), 'طباعة / حفظ PDF');
+    await page.setViewportSize({ width: 1440, height: 1000 }); await page.getByRole('button', { name: 'المعاينة والطباعة / PDF', exact: true }).click(); await page.getByRole('button', { name: 'إغلاق المعاينة', exact: true }).focus(); await page.getByLabel('نوع النسخة',{exact:true}).focus();await page.keyboard.press('Tab'); assert.equal(await page.locator(':focus').innerText(), 'طباعة / حفظ PDF');
+  });
+  await check('student, key, teacher and reusable template outputs stay separate',async()=>{
+    const preview=page.locator('.exam-print-root');await page.getByLabel('نوع النسخة',{exact:true}).selectOption('student');await page.waitForFunction(()=>document.querySelectorAll('.exam-print-root .exam-paper-question').length>0);assert.equal(await preview.locator('.exam-paper-answer').count(),0);
+    for(const mode of ['key','teacher']){await page.getByLabel('نوع النسخة',{exact:true}).selectOption(mode);await preview.locator('.exam-a4 .exam-paper-answer').first().waitFor();const questions=await preview.locator('.exam-a4 .exam-paper-question').count(),answers=await preview.locator('.exam-a4 .exam-paper-answer').count();assert.equal(answers,questions);await preview.locator('.exam-a4').first().screenshot({path:path.join(resultDir,'output-'+mode+'.png')});}
+    await page.getByLabel('نوع النسخة',{exact:true}).selectOption('template');await page.waitForFunction(()=>document.querySelectorAll('.exam-print-root .exam-paper-question').length===0);assert.equal(await preview.locator('.exam-scan-background').count(),0);assert.equal(await preview.locator('.exam-paper-answer').count(),0);await preview.locator('.exam-a4').first().screenshot({path:path.join(resultDir,'output-template.png')});await page.getByLabel('نوع النسخة',{exact:true}).selectOption('student');
   });
   await check('real Chromium A4 PDF generation includes multiple ordered pages', async () => {
     await page.locator('.exam-print-root .exam-a4').nth(1).waitFor(); const pages = await page.locator('.exam-print-root .exam-a4').count(); assert.ok(pages >= 2);

@@ -33,6 +33,13 @@ try {
   const teacherMigration = await readFile('../../lib/db/migrations/0010_teacher_room.sql', 'utf8');
   await localDb.exec(teacherMigration);
   await localDb.exec(teacherMigration);
+  const learningMigration = await readFile('../../lib/db/migrations/0011_teacher_learning.sql', 'utf8');
+  await localDb.exec(learningMigration);
+  await localDb.exec(learningMigration);
+  const toolsMigration = await readFile('../../lib/db/migrations/0012_teacher_tools.sql', 'utf8');
+  await localDb.exec(toolsMigration);
+  await localDb.exec(toolsMigration);
+  await localDb.exec(await readFile('../../lib/db/migrations/0013_teacher_simulations.sql','utf8'));
   const preserved = await localDb.query('SELECT account_type FROM users WHERE id=$1', ['legacy-fixture']);
   if (preserved.rows[0]?.account_type !== 'merchant') throw Error('Legacy merchant migration failed.');
   console.log('LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.');

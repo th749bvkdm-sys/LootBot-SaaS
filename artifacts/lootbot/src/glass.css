@@ -46,3 +46,9 @@
 .glass-error { padding: 16px; border: 1px solid #bb748480; border-radius: 12px; color: #ffd4dd; background: #512b372c; }
 @media (max-width: 767px) { .glass-panel { padding: 18px; } .glass-app :is(input:not([type="checkbox"]), select, textarea) { font-size: 16px; } }
 @media (prefers-reduced-motion: reduce) { .glass-app *, .merchant-console * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+html[data-theme="light"] {--background:222 35% 97%;--foreground:225 30% 16%;--card:222 30% 99%;--card-foreground:225 30% 16%;--popover:222 30% 99%;--popover-foreground:225 30% 16%;--border:222 18% 78%;--muted:222 20% 92%;--muted-foreground:222 20% 35%;--glass-panel:rgb(248 250 255 / .95);--glass-line:rgb(66 81 121 / .2)}
+html[data-theme="light"] .teacher-room {--tw-bg:#edf1f8;--tw-panel:rgba(248,250,255,.95);--tw-raised:rgba(222,228,243,.96);--tw-border:rgba(67,84,129,.25);--tw-text:#18243d;--tw-muted:#465671;--tw-accent:#4f4295;color-scheme:light}
+html[data-theme="light"] .teacher-room :is(input,textarea,select) {background:#fff;color:#18243d;border-color:#77859d}
+html[data-theme="light"] .teacher-room .tw-nav a[aria-current=page],html[data-theme="light"] .teacher-room .tw-button {color:#18243d;background:#e1e6f3}
+html[data-theme="light"] .teacher-room .tw-button.primary {background:#5d529b;color:white}
+html[data-theme="light"] .teacher-room :focus-visible {outline-color:#4e458e}

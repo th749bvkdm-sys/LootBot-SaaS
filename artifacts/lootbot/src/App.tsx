@@ -31,11 +31,13 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { BrandMark } from '@/components/brand-mark';
 import { AccountAccess } from '@/components/account-access';
+import {applyAppTheme} from '@/components/app-theme-toggle';
 import { StoreAppearance, PublicStorefront } from '@/components/storefront';
 
 const AccountSelection = lazy(() => import('@/components/teacher-workspace').then(module => ({ default: module.AccountSelection })));
 const TeacherOnboarding = lazy(() => import('@/components/teacher-workspace').then(module => ({ default: module.TeacherOnboarding })));
 const TeacherWorkspace = lazy(() => import('@/components/teacher-workspace').then(module => ({ default: module.TeacherWorkspace })));
+const StudentLearning = lazy(() => import('@/components/teacher-learning').then(module=>({default:module.StudentLearning})));
 
 const TelegramHomeStudio = lazy(() => import('@/components/telegram-home-studio').then(module => ({ default: module.TelegramHomeStudio })));
 const BusinessBotStudio = lazy(() => import('@/components/business-bot-studio').then(module => ({ default: module.BusinessBotStudio })));
@@ -252,10 +254,12 @@ function SeoHead() {
 }
 
 function App() {
-  useEffect(() => { document.documentElement.classList.add('dark'); }, []);
+  useEffect(() => { applyAppTheme(localStorage.getItem('lootbot-app-theme')||'dark'); }, []);
   return <QueryClientProvider client={queryClient}><TooltipProvider>
     <SeoHead />
     <Switch>
+      <Route path="/learn/:id"><Suspense fallback={<LoadingScreen />}><StudentLearning /></Suspense></Route>
+      <Route path="/learn"><Suspense fallback={<LoadingScreen />}><StudentLearning /></Suspense></Route>
       <Route path="/" component={Landing} />
       <Route path="/login"><AuthPage mode="login" /></Route>
       <Route path="/register"><AuthPage mode="register" /></Route>

@@ -187,6 +187,16 @@ teacherRouter.put(
       fail(res, 400, "صورة المدرسة غير موجودة.");
       return;
     }
+    if (parsed.data.customTemplateId) {
+      const template = await pool.query(
+        "SELECT id FROM teacher_exams WHERE id=$1 AND owner_id=$2 AND is_template=true AND archived=false",
+        [parsed.data.customTemplateId, owner(req)],
+      );
+      if (!template.rowCount) {
+        fail(res, 400, "القالب الشخصي غير متاح لحسابك.");
+        return;
+      }
+    }
     await pool.query(
       "INSERT INTO teacher_profiles(owner_id,data,complete) VALUES($1,$2,$3) ON CONFLICT(owner_id) DO UPDATE SET data=$2,complete=$3,updated_at=now()",
       [owner(req), JSON.stringify(parsed.data), parsed.data.complete],
@@ -738,6 +748,10 @@ teacherRouter.post(
               studentId: uuid,
               marks: z.number().min(0).nullable(),
               note: z.string().max(2000).default(""),
+              status: z
+                .enum(["graded", "missing", "absent", "exempt"])
+                .default("graded"),
+              weight: z.number().min(0).max(10000).optional(),
             }),
           )
           .min(1)
@@ -838,11 +852,35 @@ for (const [kind, schema] of Object.entries(teacherRecordSchemas)) {
       return;
     }
     const data = p.data as Record<string, unknown>;
+    if (
+      kind === "lessons" &&
+      Array.isArray(data.resourceIds) &&
+      data.resourceIds.length
+    ) {
+      const found = await pool.query(
+        "SELECT id FROM teacher_records WHERE owner_id=$1 AND kind='resources' AND archived=false AND id=ANY($2::text[])",
+        [owner(req), data.resourceIds],
+      );
+      if (found.rowCount !== new Set(data.resourceIds).size) {
+        fail(res, 400, "أحد موارد الخطة غير متاح لحسابك.");
+        return;
+      }
+    }
     const classId = typeof data.classId === "string" ? data.classId : null;
     const studentId =
       typeof data.studentId === "string" ? data.studentId : null;
-    const previous = req.params.id ? (await pool.query('SELECT class_id,student_id,data FROM teacher_records WHERE id=$1 AND owner_id=$2 AND kind=$3', [pathId(req),owner(req),kind])).rows[0] : undefined;
-    if (req.params.id && !previous) { fail(res,404,'السجل غير موجود.'); return; }
+    const previous = req.params.id
+      ? (
+          await pool.query(
+            "SELECT class_id,student_id,data FROM teacher_records WHERE id=$1 AND owner_id=$2 AND kind=$3",
+            [pathId(req), owner(req), kind],
+          )
+        ).rows[0]
+      : undefined;
+    if (req.params.id && !previous) {
+      fail(res, 404, "السجل غير موجود.");
+      return;
+    }
     if (
       classId &&
       !(await exists(pool, "teacher_classes", classId, owner(req)))
@@ -851,10 +889,11 @@ for (const [kind, schema] of Object.entries(teacherRecordSchemas)) {
       return;
     }
     if (studentId) {
-      const historicalReference = previous?.student_id === studentId && previous?.class_id === classId;
+      const historicalReference =
+        previous?.student_id === studentId && previous?.class_id === classId;
       const s = await pool.query(
         "SELECT id FROM teacher_students WHERE id=$1 AND owner_id=$2 AND ((class_id=$3 AND removed=false) OR $4::boolean=true)",
-        [studentId, owner(req), classId,historicalReference],
+        [studentId, owner(req), classId, historicalReference],
       );
       if (!s.rowCount) {
         fail(res, 404, "الطالب غير موجود في الفصل.");
@@ -869,8 +908,21 @@ for (const [kind, schema] of Object.entries(teacherRecordSchemas)) {
         "SELECT id,class_id FROM teacher_students WHERE owner_id=$1 AND id=ANY($2::text[])",
         [owner(req), data.studentCompletion],
       );
-      const historicalCompletion = new Set(previous?.class_id === classId && Array.isArray(previous?.data.studentCompletion) ? previous.data.studentCompletion : []);
-      if (found.rowCount !== new Set(data.studentCompletion).size || found.rows.some(row => classId && row.class_id !== classId && !historicalCompletion.has(row.id))) {
+      const historicalCompletion = new Set(
+        previous?.class_id === classId &&
+          Array.isArray(previous?.data.studentCompletion)
+          ? previous.data.studentCompletion
+          : [],
+      );
+      if (
+        found.rowCount !== new Set(data.studentCompletion).size ||
+        found.rows.some(
+          (row) =>
+            classId &&
+            row.class_id !== classId &&
+            !historicalCompletion.has(row.id),
+        )
+      ) {
         fail(res, 400, "تحقق من الطلاب المكتملة واجباتهم.");
         return;
       }
@@ -980,6 +1032,21 @@ teacherRouter.post(
       await q.query("SELECT id FROM users WHERE id=$1 FOR UPDATE", [
         owner(req),
       ]);
+      const duplicate = await q.query(
+        "SELECT id FROM teacher_assets WHERE owner_id=$1 AND mime_type=$2 AND content_base64=$3 LIMIT 1",
+        [owner(req), mimeType, req.body.toString("base64")],
+      );
+      if (duplicate.rowCount) {
+        await q.query("COMMIT");
+        res.json({
+          id: duplicate.rows[0].id,
+          url: `/api/teacher/assets/${duplicate.rows[0].id}`,
+          mimeType,
+          size: req.body.length,
+          duplicate: true,
+        });
+        return;
+      }
       const count = await q.query(
         "SELECT count(*)::int AS count FROM teacher_assets WHERE owner_id=$1",
         [owner(req)],
@@ -1093,6 +1160,23 @@ const saveExam: RequestHandler = async (req, res) => {
     p.data.document.metadata.schoolLogoAssetId,
     p.data.document.source.processedAssetId,
   ].filter((id): id is string => Boolean(id));
+  const versions = [
+    ...new Set(
+      p.data.document.sections
+        .flatMap((s) => s.questions.map((q) => q.questionVersionId))
+        .filter(Boolean),
+    ),
+  ];
+  if (versions.length) {
+    const found = await pool.query(
+      "SELECT id FROM teacher_question_versions WHERE owner_id=$1 AND id=ANY($2::text[])",
+      [owner(req), versions],
+    );
+    if (found.rowCount !== versions.length) {
+      fail(res, 400, "نسخة سؤال غير متاحة لحسابك.");
+      return;
+    }
+  }
   for (const id of assets)
     if (!(await exists(pool, "teacher_assets", id, owner(req)))) {
       fail(res, 400, "إحدى صور الاختبار غير موجودة.");

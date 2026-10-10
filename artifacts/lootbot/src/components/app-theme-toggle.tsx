@@ -1,0 +1,3 @@
+import {useState} from 'react';
+export function applyAppTheme(theme:string){document.documentElement.dataset.theme=theme;document.documentElement.classList.toggle('dark',theme!=='light');}
+export function AppThemeToggle(){const [theme,setTheme]=useState(()=>localStorage.getItem('lootbot-app-theme')||'dark');return <button type="button" className="tw-button" aria-label="تبديل مظهر التطبيق" aria-pressed={theme==='light'} onClick={()=>{const next=theme==='light'?'dark':'light';setTheme(next);localStorage.setItem('lootbot-app-theme',next);applyAppTheme(next);}}>{theme==='light'?'مظهر داكن':'مظهر فاتح'}</button>;}

@@ -1,0 +1,86 @@
+.tt-print {
+  position: fixed;
+  inset: 0;
+  background: #e5e7eb;
+  color: #111827;
+  overflow: auto;
+  z-index: 110;
+  padding: 20px;
+}
+.tt-paper {
+  width: 210mm;
+  min-height: 297mm;
+  background: white !important;
+  color: #111 !important;
+  padding: 15mm !important;
+  margin: 20px auto !important;
+  box-sizing: border-box;
+  font-size: 14pt;
+}
+.tt-no-print button,.tt-no-print select,.tt-no-print label{
+  min-height:44px;
+  padding:8px 12px;
+  border:1px solid #738097;
+  border-radius:10px;
+  color:#17243d;
+  background:#fff;
+}
+.tt-paper header {
+  border-bottom: 2px solid #333;
+  padding-bottom: 12px;
+}
+.tt-paper section {
+  break-inside: avoid;
+  padding-block: 10px;
+}
+.tt-paper p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.tt-form {
+  break-before: page;
+}
+.tt-form:first-of-type {
+  break-before: auto;
+}
+.tt-key {
+  break-before: auto;
+  border-top: 1px solid #333;
+}
+@media (max-width: 850px) {
+  .tt-paper {
+    width: 100%;
+    min-height: 0;
+    padding: 20px !important;
+  }
+}
+@media print {
+  .tt-no-print,
+  .tt-print select {
+    display: none !important;
+  }
+  body:has(.tt-print) #root {
+    display: none !important;
+  }
+  .tt-print {
+    position: static;
+    overflow: visible;
+    background: white;
+    padding: 0;
+  }
+  .tt-paper {
+    width: auto;
+    min-height: 0;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+  .tt-paper small {
+    color: #333;
+  }
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+}

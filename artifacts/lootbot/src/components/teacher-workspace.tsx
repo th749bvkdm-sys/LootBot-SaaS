@@ -67,6 +67,10 @@ import {
   type TeacherStudent,
 } from "../lib/teacher-api";
 import { BrandMark } from "./brand-mark";
+import { teacherExtraCopy as extra } from "../lib/teacher-extra-copy";
+import { PlanResourcePicker } from "./teacher-plan-resources";
+import { AppThemeToggle } from "./app-theme-toggle";
+import { TeacherTodayExtras } from "./teacher-today-extras";
 import {
   downloadTeacherCsv,
   normalizeTeacherDigits,
@@ -78,6 +82,21 @@ import "./teacher-workspace.css";
 const TeacherExams = lazy(() =>
   import("./teacher-exam-editor").then((module) => ({
     default: module.TeacherExams,
+  })),
+);
+const TeacherLearning = lazy(() =>
+  import("./teacher-learning").then((module) => ({
+    default: module.TeacherLearning,
+  })),
+);
+const TeacherTools = lazy(() =>
+  import("./teacher-tools").then((module) => ({
+    default: module.TeacherTools,
+  })),
+);
+const TeacherChemistry = lazy(() =>
+  import("./chemistry-lab").then((module) => ({
+    default: module.TeacherChemistry,
   })),
 );
 type Icon = typeof Users;
@@ -128,6 +147,26 @@ const modules: {
     label: "الواجبات والمهام",
     icon: CheckCircle2,
     description: "تابع المواعيد والتسليم والتصحيح.",
+  },
+  {
+    key: "activities",
+    label: "الدروس التفاعلية والأنشطة",
+    icon: BookOpen,
+    description: "دروس خطوة بخطوة، دخول خاص للطلاب، وإسناد ونتائج محفوظة.",
+  },
+  {
+    key: "tools",
+    label: "السجلات والمخطط والتقييم",
+    icon: FileText,
+    description:
+      "مخطط اختبار ونماذج ثابتة ومعايير تقييم ومخطط أسبوعي وموارد خاصة.",
+  },
+  {
+    key: "chemistry",
+    label: "مختبر الكيمياء الافتراضي",
+    icon: Sparkles,
+    description:
+      "نماذج موثقة، توقع وموازنة وحفظ للذرات، دون تعليمات تجربة حقيقية.",
   },
   {
     key: "lessons",
@@ -563,6 +602,13 @@ const initialProfile: TeacherProfile = {
   complete: false,
 };
 function ProfileForm({ onboarding = false }: { onboarding?: boolean }) {
+  const customTemplates = useQuery({
+    queryKey: ["teacher", "profile-templates"],
+    queryFn: () =>
+      teacherApi<{ id: string; title: string }[]>(
+        "/teacher/exams?templates=true",
+      ),
+  });
   const profileQuery = useTeacherData<TeacherProfile>("profile"),
     action = useTeacherAction(),
     [, navigate] = useLocation();
@@ -760,9 +806,25 @@ function ProfileForm({ onboarding = false }: { onboarding?: boolean }) {
                 }
               >
                 <option value="formal">رسمي</option>
-                <option value="primary">مناسب للمرحلة الابتدائية</option>
-                <option value="minimal">اقتصادي للطباعة</option>
+                <option value="primary">طفولي</option>
+                <option value="minimal">بسيط للطباعة</option>
               </select>
+            </Field>
+            <Field label={extra.custom}>
+              <select
+                value={profile.customTemplateId || ""}
+                onChange={(e) =>
+                  patch("customTemplateId", e.target.value || null)
+                }
+              >
+                <option value="">{extra.defaultStyle}</option>
+                {customTemplates.data?.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.title}
+                  </option>
+                ))}
+              </select>
+              <p className="tw-muted">{extra.templateHint}</p>
             </Field>
             <Field label="صيغة الأرقام">
               <select
@@ -777,6 +839,21 @@ function ProfileForm({ onboarding = false }: { onboarding?: boolean }) {
                 <option value="arabic">١٢٣ — أرقام عربية</option>
                 <option value="western">123 — أرقام غربية</option>
               </select>
+            </Field>
+            <Field label={extra.rounding}>
+              <select
+                value={profile.gradePrecision ?? 2}
+                onChange={(e) =>
+                  patch("gradePrecision", Number(e.target.value))
+                }
+              >
+                {[0, 1, 2, 3].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+              <p className="tw-muted">{extra.roundingHint}</p>
             </Field>
             <Field label="مقاس الورق">
               <select value="A4" disabled>
@@ -1024,6 +1101,7 @@ export function TeacherWorkspace({ section }: { section?: string } = {}) {
         </aside>
         <main id="teacher-content" className="tw-content">
           <header className="tw-topbar" style={{ position: "relative" }}>
+            <AppThemeToggle />
             <button
               className="tw-button tw-icon-button tw-menu-button"
               aria-label="فتح القائمة"
@@ -1127,6 +1205,18 @@ export function TeacherWorkspace({ section }: { section?: string } = {}) {
               <Grades />
             ) : key === "tasks" ? (
               <Tasks />
+            ) : key === "activities" ? (
+              <Suspense fallback={<Loading />}>
+                <TeacherLearning />
+              </Suspense>
+            ) : key === "tools" ? (
+              <Suspense fallback={<Loading />}>
+                <TeacherTools />
+              </Suspense>
+            ) : key === "chemistry" ? (
+              <Suspense fallback={<Loading />}>
+                <TeacherChemistry />
+              </Suspense>
             ) : key === "lessons" ? (
               <Lessons />
             ) : key === "questions" ? (
@@ -1197,6 +1287,7 @@ function Dashboard() {
           </section>
         ))}
       </div>
+      <TeacherTodayExtras />
       <div className="tw-quick-actions">
         <Link href="/teacher/classes">
           <Plus size={20} />
@@ -3622,6 +3713,23 @@ function Lessons() {
                   }
                 />
               </Field>
+              {extra.fields.map(([key, label]) => (
+                <Field key={key} label={label} wide>
+                  <textarea
+                    value={editing[key] || ""}
+                    maxLength={10000}
+                    onChange={(e) =>
+                      setEditing({ ...editing, [key]: e.target.value })
+                    }
+                  />
+                </Field>
+              ))}
+              <PlanResourcePicker
+                ids={editing.resourceIds || []}
+                onChange={(resourceIds) =>
+                  setEditing({ ...editing, resourceIds })
+                }
+              />
             </div>
             <Messages action={action} />
             <div className="tw-modal-footer">
@@ -3659,6 +3767,15 @@ function Lessons() {
           <p style={{ whiteSpace: "pre-wrap" }}>{printLesson.content}</p>
           <h2>الواجب</h2>
           <p style={{ whiteSpace: "pre-wrap" }}>{printLesson.homework}</p>
+          {extra.fields.map(([key, label]) =>
+            printLesson[key] ? (
+              <section key={key}>
+                <h2>{label}</h2>
+                <p style={{ whiteSpace: "pre-wrap" }}>{printLesson[key]}</p>
+              </section>
+            ) : null,
+          )}
+          <PlanResourcePicker ids={printLesson.resourceIds || []} />
           <p className="print-note">
             {profile.data?.signature ||
               "توقيع المعلم: .........................."}
@@ -3669,22 +3786,89 @@ function Lessons() {
   );
 }
 
+function QuestionHistory({ id }: { id: string }) {
+  const [open, setOpen] = useState(false);
+  const q = useQuery({
+    queryKey: ["teacher-question-history", id],
+    queryFn: () =>
+      teacherApi<
+        {
+          id: string;
+          number: number;
+          content: TeacherQuestion;
+          createdAt: string;
+        }[]
+      >("/teacher/learning/question-versions/" + id),
+    enabled: open,
+  });
+  return (
+    <div>
+      <button
+        type="button"
+        className="tw-button"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        {extra.history}
+      </button>
+      {open &&
+        (q.isLoading ? (
+          <Loading />
+        ) : q.error ? (
+          <QueryError error={q.error} retry={() => void q.refetch()} />
+        ) : (
+          <ol>
+            {q.data?.map((v) => (
+              <li key={v.id}>
+                <strong>
+                  {v.number} · {formatDate(v.createdAt)}
+                </strong>
+                <p>{v.content.text}</p>
+                <p>{v.content.answer}</p>
+              </li>
+            ))}
+          </ol>
+        ))}
+    </div>
+  );
+}
 function QuestionBank() {
   const query = useTeacherData<TeacherQuestion[]>("questions"),
     profile = useTeacherData<TeacherProfile>("profile"),
     action = useTeacherAction();
   const [editing, setEditing] = useState<Partial<TeacherQuestion> | null>(null),
     [search, setSearch] = useState(""),
-    [subject, setSubject] = useState("");
+    [subject, setSubject] = useState(""),
+    [favorites, setFavorites] = useState(false),
+    [difficulty, setDifficulty] = useState("");
   const list =
     query.data?.filter(
       (item) =>
         !item.archived &&
         (!subject || item.subject === subject) &&
-        [item.text, ...item.tags].join(" ").includes(search),
+        (!favorites || item.favorite) &&
+        (!difficulty || item.difficulty === difficulty) &&
+        [
+          item.text,
+          item.objective,
+          item.unit,
+          item.course,
+          item.term,
+          ...item.tags,
+        ]
+          .join(" ")
+          .includes(search),
     ) ?? [];
   const save = async (event: FormEvent) => {
     event.preventDefault();
+    if (
+      editing &&
+      query.data?.some(
+        (q) => q.id !== editing.id && q.text.trim() === editing.text?.trim(),
+      ) &&
+      !confirm(extra.duplicate)
+    )
+      return;
     if (
       editing &&
       (await action.run(() =>
@@ -3709,6 +3893,25 @@ function QuestionBank() {
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
+        <label className="tw-check">
+          <input
+            type="checkbox"
+            checked={favorites}
+            onChange={(e) => setFavorites(e.target.checked)}
+          />
+          {extra.favorites}
+        </label>
+        <Field label={extra.difficulty}>
+          <select
+            value={difficulty}
+            onChange={(e) => setDifficulty(e.target.value)}
+          >
+            <option value="">{extra.all}</option>
+            <option value="easy">{extra.easy}</option>
+            <option value="medium">{extra.medium}</option>
+            <option value="hard">{extra.hard}</option>
+          </select>
+        </Field>
         <Field label="المادة">
           <select
             value={subject}
@@ -3768,6 +3971,7 @@ function QuestionBank() {
                 </span>
               </div>
               <h2 style={{ whiteSpace: "pre-wrap" }}>{question.text}</h2>
+              <QuestionHistory id={question.id} />
               {question.options.length > 0 && (
                 <ol
                   className="tw-muted tw-small tw-spaced"
@@ -3929,6 +4133,65 @@ function QuestionBank() {
                   maxLength={12000}
                 />
               </Field>
+              {(
+                [
+                  ["explanation", "تفسير الإجابة"],
+                  ["objective", "الهدف التعليمي"],
+                  ["course", "المقرر"],
+                  ["unit", "الوحدة"],
+                  ["term", "الفصل الدراسي"],
+                ] as const
+              ).map(([key, label]) => (
+                <Field key={key} label={label}>
+                  <input
+                    maxLength={key === "explanation" ? 5000 : 180}
+                    value={editing[key] || ""}
+                    onChange={(e) =>
+                      setEditing({ ...editing, [key]: e.target.value })
+                    }
+                  />
+                </Field>
+              ))}
+              <Field label="الصعوبة">
+                <select
+                  value={editing.difficulty || "medium"}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      difficulty: e.target
+                        .value as TeacherQuestion["difficulty"],
+                    })
+                  }
+                >
+                  <option value="easy">سهل</option>
+                  <option value="medium">متوسط</option>
+                  <option value="hard">متقدم</option>
+                </select>
+              </Field>
+              <Field label="لغة السؤال">
+                <select
+                  value={editing.language || "ar"}
+                  onChange={(e) =>
+                    setEditing({
+                      ...editing,
+                      language: e.target.value as "ar" | "en",
+                    })
+                  }
+                >
+                  <option value="ar">العربية</option>
+                  <option value="en">English</option>
+                </select>
+              </Field>
+              <label className="tw-check">
+                <input
+                  type="checkbox"
+                  checked={Boolean(editing.favorite)}
+                  onChange={(e) =>
+                    setEditing({ ...editing, favorite: e.target.checked })
+                  }
+                />
+                إضافة إلى المفضلة
+              </label>
               <Field
                 label="الوسوم"
                 hint="افصلها بفاصلة، مثل: الوحدة الأولى، مراجعة."
@@ -4114,8 +4377,8 @@ function Reports() {
             }
           >
             <option value="formal">رسمي</option>
-            <option value="primary">مناسب للمرحلة الابتدائية</option>
-            <option value="minimal">اقتصادي للطباعة</option>
+            <option value="primary">طفولي</option>
+            <option value="minimal">بسيط للطباعة</option>
           </select>
         </Field>
         <button
@@ -4302,8 +4565,23 @@ function Automations() {
                     </span>
                   </div>
                   <div className="tw-rule-meta">
-                    <span>المحفّز: {rule.type === "upcoming" && rule.config.classId ? "تذكير بمواعيد واجبات الفصل ومهامه" : ruleLabels[rule.type]}</span>
-                    {rule.config.classId && ["upcoming", "absence", "grading", "weekly"].includes(rule.type) && <span>الفصل: {classes.data?.find((item) => item.id === rule.config.classId)?.name || "فصل محفوظ"}</span>}
+                    <span>
+                      المحفّز:{" "}
+                      {rule.type === "upcoming" && rule.config.classId
+                        ? "تذكير بمواعيد واجبات الفصل ومهامه"
+                        : ruleLabels[rule.type]}
+                    </span>
+                    {rule.config.classId &&
+                      ["upcoming", "absence", "grading", "weekly"].includes(
+                        rule.type,
+                      ) && (
+                        <span>
+                          الفصل:{" "}
+                          {classes.data?.find(
+                            (item) => item.id === rule.config.classId,
+                          )?.name || "فصل محفوظ"}
+                        </span>
+                      )}
                     <span>
                       الشروط:{" "}
                       {rule.type === "absence"
@@ -4492,16 +4770,27 @@ function Automations() {
                   ))}
                 </select>
               </Field>
-              {["upcoming", "absence", "grading", "weekly"].includes(editing.type ?? "") && <Field label="الفصل (اختياري)" hint={editing.type === "upcoming" ? "عند اختيار فصل تُفحص واجباته ومهامه فقط. اختر جميع الفصول ليشمل التذكير الاختبارات أيضًا." : undefined}>
-                <ClassSelect
-                  classes={classes.data ?? []}
-                  value={config.classId ?? ""}
-                  setValue={(value) =>
-                    patchConfig({ classId: value || undefined })
+              {["upcoming", "absence", "grading", "weekly"].includes(
+                editing.type ?? "",
+              ) && (
+                <Field
+                  label="الفصل (اختياري)"
+                  hint={
+                    editing.type === "upcoming"
+                      ? "عند اختيار فصل تُفحص واجباته ومهامه فقط. اختر جميع الفصول ليشمل التذكير الاختبارات أيضًا."
+                      : undefined
                   }
-                  allowAll
-                />
-              </Field>}
+                >
+                  <ClassSelect
+                    classes={classes.data ?? []}
+                    value={config.classId ?? ""}
+                    setValue={(value) =>
+                      patchConfig({ classId: value || undefined })
+                    }
+                    allowAll
+                  />
+                </Field>
+              )}
               {editing.type === "absence" ? (
                 <Field label="عدد مرات الغياب">
                   <input
