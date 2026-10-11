@@ -85,13 +85,15 @@ export default function ChemistryScene3D(props: Props) {
     const meniscusMaterial = new THREE.MeshStandardMaterial({ color: '#a5c6cd', roughness: .12, metalness: .3 });
     const powderMaterial = mat('#ede8d6', .85);
     const markMaterial = mat('#527985');
-    const bubbleMaterial = new THREE.MeshPhysicalMaterial({ color: '#effcff', metalness: .1, roughness: .06, transparent: true, opacity: .48, envMapIntensity: 2 });
+    // Opaque reflective highlights are included in the glass transmission pass.
+    // Transparent particles would be hidden behind the transmissive vessel wall.
+    const bubbleMaterial = new THREE.MeshPhysicalMaterial({ color: '#d0e6ed', metalness: .65, roughness: .08, envMapIntensity: 1.5 });
     const bubbleGeometry = new THREE.SphereGeometry(1, 12, 8);
     const bubbles = Array.from({ length: 40 }, (_, i) => {
       const mesh = new THREE.Mesh(bubbleGeometry, bubbleMaterial);
       mesh.scale.setScalar(.015 + (i % 6) * .006); effects.add(mesh); return mesh;
     });
-    const powder = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.035, 0), powderMaterial, 90);
+    const powder = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.023, 0), powderMaterial, 90);
     effects.add(powder);
     const dummy = new THREE.Object3D();
     const rod = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, 3, 12), glass);
@@ -162,6 +164,7 @@ export default function ChemistryScene3D(props: Props) {
       }
       scene.background = new THREE.Color(p.night ? '#101c30' : '#c0ced3');
       scene.fog!.color.copy(scene.background);
+      scene.environmentIntensity = p.night ? .35 : 1;
       ambient.intensity = p.night ? .6 : 1.2; sun.intensity = p.night ? .6 : 2.5;
       const clearing = p.reacted ? Math.max(0, 1 - reactionTime / 7) : 1;
       waterMaterial.color.set(p.solid ? '#e4e1d2' : '#cadfe4');
