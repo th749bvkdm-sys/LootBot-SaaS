@@ -206,7 +206,9 @@ function SeoHead() {
       route === '/login' ||
       route === '/register' ||
       (route !== '/' && !route.startsWith('/store/'));
-    const page = route.startsWith('/teacher')
+    const page = route === '/learn' || route.startsWith('/learn/')
+      ? { ar: ['أنشطة الطالب | LootBot', 'ادخل برمز الفصل ورمزك الخاص لاستكمال أنشطتك التعليمية.'], en: ['Student activities | LootBot', 'Use your class code and private code to resume your learning activities.'] }
+      : route.startsWith('/teacher')
       ? { ar: ['غرفة المعلم | LootBot', 'تنظيم الفصول وكشوف الطلاب والاختبارات والطباعة.'], en: ['Teacher Room | LootBot', 'Organize classes, rosters, exams and printouts.'] }
       : route.startsWith('/store/')
         ? { ar: ['كتالوج المتجر | LootBot', 'استعرض المنتجات المنشورة وتفاصيلها.'], en: ['Store catalog | LootBot', 'Browse published products and their details.'] }
