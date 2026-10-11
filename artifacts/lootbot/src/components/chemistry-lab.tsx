@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { teacherApi } from "../lib/teacher-api";
 import { chemistryCopy as c } from "../lib/chemistry-copy";
 import "./teacher-learning.css";
+import { ChemistryGame } from "./chemistry-game";
 interface Species {
   formula: string;
   coefficient: number;
@@ -54,6 +55,7 @@ export function ChemistryWorkbench({
       <p>{c.scope}</p>
       <p>{c.objective}</p>
       <p>{c.noGrade}</p>
+      <ChemistryGame simulation={simulation} result={result} busy={busy} onRun={onRun} />
       <p>
         {c.reactants}: <bdi>{simulation.reactants.join(" + ")}</bdi>
       </p>
