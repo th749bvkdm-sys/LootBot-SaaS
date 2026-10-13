@@ -1163,8 +1163,8 @@ export function TeacherWorkspace({ section }: { section?: string } = {}) {
             </div>
           </header>
           <Messages action={action} />
-          <div className="tw-page">
-            <header className="tw-heading">
+          <div className={`tw-page${key === "" ? " tw-dashboard-page" : ""}`}>
+            <header className={`tw-heading${key === "" ? " tw-dashboard-hero" : ""}`}>
               <div>
                 <p className="tw-eyebrow">
                   غرفة المعلم / {current?.label ?? "صفحة غير موجودة"}
@@ -1278,7 +1278,7 @@ function Dashboard() {
   );
   return (
     <>
-      <div className="tw-kpis">
+      <div className="tw-kpis tw-dashboard-kpis">
         {kpis.map((item) => (
           <section className="tw-card tw-kpi" key={item.title}>
             <item.icon size={23} />
@@ -1314,7 +1314,7 @@ function Dashboard() {
           </Link>
         </section>
       )}
-      <div className="tw-grid tw-spaced">
+      <div className="tw-grid tw-dashboard-grid tw-spaced">
         <section className="tw-card">
           <h2>المهام والمواعيد القادمة</h2>
           {data.tasks.length ? (

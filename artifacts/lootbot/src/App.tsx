@@ -31,7 +31,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { BrandMark } from '@/components/brand-mark';
 import { AccountAccess } from '@/components/account-access';
-import {applyAppTheme} from '@/components/app-theme-toggle';
+import { applyAppTheme, getAppTheme } from '@/components/app-theme-toggle';
 import { StoreAppearance, PublicStorefront } from '@/components/storefront';
 
 const AccountSelection = lazy(() => import('@/components/teacher-workspace').then(module => ({ default: module.AccountSelection })));
@@ -256,7 +256,7 @@ function SeoHead() {
 }
 
 function App() {
-  useEffect(() => { applyAppTheme(localStorage.getItem('lootbot-app-theme')||'dark'); }, []);
+  useEffect(() => { applyAppTheme(getAppTheme()); }, []);
   return <QueryClientProvider client={queryClient}><TooltipProvider>
     <SeoHead />
     <Switch>

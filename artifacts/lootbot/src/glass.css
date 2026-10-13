@@ -52,3 +52,181 @@ html[data-theme="light"] .teacher-room :is(input,textarea,select) {background:#f
 html[data-theme="light"] .teacher-room .tw-nav a[aria-current=page],html[data-theme="light"] .teacher-room .tw-button {color:#18243d;background:#e1e6f3}
 html[data-theme="light"] .teacher-room .tw-button.primary {background:#5d529b;color:white}
 html[data-theme="light"] .teacher-room :focus-visible {outline-color:#4e458e}
+
+/* Teacher-only glass appearance. The commerce and admin workspaces keep their existing themes. */
+html[data-theme="glass"] .teacher-room {
+  --tw-bg: #080d1c;
+  --tw-panel: rgba(25, 33, 56, 0.66);
+  --tw-raised: rgba(48, 59, 91, 0.62);
+  --tw-border: rgba(197, 207, 242, 0.24);
+  --tw-text: #f4f6ff;
+  --tw-muted: #c2cae0;
+  --tw-accent: #c5b5ff;
+  background:
+    radial-gradient(ellipse at 82% 4%, rgba(131, 107, 236, 0.28), transparent 34%),
+    radial-gradient(ellipse at 8% 62%, rgba(83, 126, 196, 0.16), transparent 38%),
+    linear-gradient(140deg, #080d1c, #11172a 54%, #0a1020);
+  color: var(--tw-text);
+}
+html[data-theme="glass"] .teacher-room .tw-sidebar,
+html[data-theme="glass"] .teacher-room .tw-topbar,
+html[data-theme="glass"] .teacher-room .tw-card,
+html[data-theme="glass"] .teacher-room .tw-search,
+html[data-theme="glass"] .teacher-room .tw-quick-actions a,
+html[data-theme="glass"] .teacher-room .tw-list-item,
+html[data-theme="glass"] .teacher-room .tw-table-wrap,
+html[data-theme="glass"] .teacher-room .tw-modal,
+html[data-theme="glass"] .teacher-room .tw-module-search {
+  background-color: var(--tw-panel);
+  border-color: var(--tw-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 16px 42px rgba(2, 5, 18, 0.28);
+  -webkit-backdrop-filter: blur(20px) saturate(135%);
+  backdrop-filter: blur(20px) saturate(135%);
+}
+html[data-theme="glass"] .teacher-room .tw-sidebar {
+  background-color: rgba(13, 19, 37, 0.78);
+}
+html[data-theme="glass"] .teacher-room .tw-topbar {
+  border-radius: 0 0 20px 20px;
+  padding-inline: 16px;
+}
+html[data-theme="glass"] .teacher-room .tw-nav a {
+  color: #d3daed;
+}
+html[data-theme="glass"] .teacher-room .tw-nav a[aria-current="page"] {
+  color: #fff;
+  background: linear-gradient(105deg, rgba(151, 126, 246, 0.33), rgba(97, 124, 204, 0.18));
+  border-color: rgba(202, 186, 255, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 5px 22px rgba(116, 90, 220, 0.17);
+}
+html[data-theme="glass"] .teacher-room .tw-button {
+  background-color: rgba(58, 68, 101, 0.66);
+  border-color: rgba(204, 211, 242, 0.28);
+}
+html[data-theme="glass"] .teacher-room .tw-button.primary {
+  background: linear-gradient(130deg, #8f7bec, #696fd1);
+  border-color: rgba(221, 211, 255, 0.56);
+  color: #fff;
+  box-shadow: 0 7px 24px rgba(120, 93, 226, 0.28);
+}
+html[data-theme="glass"] .teacher-room .tw-field input,
+html[data-theme="glass"] .teacher-room .tw-field select,
+html[data-theme="glass"] .teacher-room .tw-field textarea,
+html[data-theme="glass"] .teacher-room .tw-search input {
+  background-color: rgba(8, 14, 29, 0.52);
+  color: var(--tw-text);
+  border-color: rgba(195, 205, 239, 0.26);
+}
+html[data-theme="glass"] .teacher-room .tw-table th {
+  color: #e4e7f5;
+  background: rgba(88, 99, 144, 0.3);
+}
+html[data-theme="glass"] .teacher-room .tw-kpi {
+  background: linear-gradient(145deg, rgba(51, 61, 95, 0.72), rgba(24, 32, 54, 0.64));
+}
+html[data-theme="glass"] .teacher-room .tw-kpi > svg {
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  border: 1px solid rgba(201, 188, 255, 0.22);
+  border-radius: 14px;
+  background: rgba(144, 124, 230, 0.2);
+  color: #c6b7ff;
+}
+html[data-theme="glass"] .teacher-room .tw-dashboard-hero {
+  position: relative;
+  min-height: 154px;
+  padding: 24px 30px;
+  overflow: hidden;
+  align-items: center;
+  border: 1px solid rgba(200, 207, 241, 0.32);
+  border-radius: 24px;
+  background:
+    linear-gradient(100deg, rgba(22, 30, 53, 0.92), rgba(34, 43, 72, 0.56) 62%, rgba(36, 32, 69, 0.76)),
+    radial-gradient(ellipse at 78% 40%, rgba(142, 118, 235, 0.28), transparent 45%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 18px 48px rgba(2, 5, 18, 0.32);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+}
+html[data-theme="glass"] .teacher-room .tw-dashboard-hero::after {
+  content: "";
+  position: absolute;
+  inset-block-start: -98px;
+  inset-inline-start: 30%;
+  width: 310px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(206, 197, 255, 0.17);
+  border-radius: 50%;
+  box-shadow: 0 0 0 24px rgba(197, 181, 255, 0.035), 0 0 0 58px rgba(197, 181, 255, 0.025);
+  pointer-events: none;
+}
+html[data-theme="glass"] .teacher-room .tw-dashboard-hero > div,
+html[data-theme="glass"] .teacher-room .tw-dashboard-hero > a {
+  position: relative;
+  z-index: 1;
+}
+html[data-theme="glass"] .teacher-room .tw-dashboard-hero > div > p:last-child {
+  display: inline-flex;
+  padding: 5px 11px;
+  margin-top: 9px;
+  border: 1px solid rgba(199, 204, 238, 0.18);
+  border-radius: 10px;
+  background: rgba(14, 21, 40, 0.4);
+}
+html[data-theme="glass"] .teacher-room .tw-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 18px;
+}
+html[data-theme="glass"] .teacher-room .tw-dashboard-grid > .tw-card:nth-child(1) { grid-column: span 5; }
+html[data-theme="glass"] .teacher-room .tw-dashboard-grid > .tw-card:nth-child(2) { grid-column: span 7; }
+html[data-theme="glass"] .teacher-room .tw-dashboard-grid > .tw-card:nth-child(n + 3) { grid-column: span 6; }
+html[data-theme="glass"] .teacher-room .tw-quick-actions a {
+  min-height: 78px;
+  background: linear-gradient(135deg, rgba(54, 65, 101, 0.66), rgba(31, 40, 67, 0.7));
+}
+html[data-theme="glass"] .teacher-room .tw-progress {
+  background: rgba(151, 164, 205, 0.2);
+}
+html[data-theme="glass"] .teacher-room .tw-progress span {
+  background: linear-gradient(90deg, #a994f7, #77d9c0);
+}
+.teacher-room .tw-theme-select {
+  min-width: 144px;
+  max-width: 172px;
+  color: var(--tw-text);
+  cursor: pointer;
+}
+.teacher-room .tw-theme-select option {
+  background: #182034;
+  color: #edf1fb;
+}
+html[data-theme="light"] .teacher-room .tw-theme-select option {
+  background: #fff;
+  color: #18243d;
+}
+@media (max-width: 1180px) {
+  html[data-theme="glass"] .teacher-room .tw-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-theme="glass"] .teacher-room .tw-dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-theme="glass"] .teacher-room .tw-dashboard-grid > .tw-card { grid-column: span 1; }
+}
+@media (max-width: 800px) {
+  html[data-theme="glass"] .teacher-room .tw-dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+  html[data-theme="glass"] .teacher-room .tw-dashboard-hero { min-height: 0; padding: 22px; }
+  html[data-theme="glass"] .teacher-room .tw-dashboard-hero::after { inset-inline-start: 4%; opacity: 0.7; }
+  .teacher-room .tw-theme-select { min-width: 0; width: 116px; max-width: 116px; flex: 0 0 116px; padding-inline: 7px; font-size: 10px; }
+}
+@media (max-width: 360px) {
+  .teacher-room .tw-topbar {
+    display: grid;
+    grid-template-columns: 116px 38px minmax(0, 1fr) 38px 38px;
+    gap: 4px;
+    padding-inline: 4px;
+  }
+  html[data-theme="glass"] .teacher-room .tw-topbar { padding-inline: 4px; }
+  .teacher-room .tw-topbar .tw-account { width: 38px; margin: 0; }
+  .teacher-room .tw-topbar .tw-search { min-width: 0; padding-inline: 6px; }
+  .teacher-room .tw-topbar .tw-search input { display: none; }
+}
