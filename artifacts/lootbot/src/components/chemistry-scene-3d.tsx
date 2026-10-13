@@ -119,13 +119,13 @@ export default function ChemistryScene3D(props: Props) {
     // Generic, non-chemical safety vignette. It is user-triggered and never
     // inferred from reactants or presented as a real reaction.
     const hazardEffects = new THREE.Group(); scene.add(hazardEffects);
-    const hazardFlashMaterial = new THREE.MeshBasicMaterial({ color: '#fff0c4', transparent: true, opacity: 0, depthWrite: false });
+    const hazardFlashMaterial = new THREE.MeshBasicMaterial({ color: '#fff0c4', transparent: true, opacity: 0, depthWrite: false, depthTest: false, toneMapped: false });
     const hazardFlash = new THREE.Mesh(new THREE.SphereGeometry(.72, 24, 16), hazardFlashMaterial);
     hazardFlash.position.set(0, 1.45, 0); hazardFlash.renderOrder = 20; hazardEffects.add(hazardFlash);
-    const pressureMaterial = new THREE.MeshBasicMaterial({ color: '#ffd99a', transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false });
-    const pressureWave = new THREE.Mesh(new THREE.TorusGeometry(.42, .025, 8, 80), pressureMaterial);
-    pressureWave.rotation.x = Math.PI / 2; pressureWave.position.y = .12; pressureWave.renderOrder = 19; hazardEffects.add(pressureWave);
-    const smokeMaterial = new THREE.MeshStandardMaterial({ color: '#87919a', transparent: true, opacity: 0, roughness: 1, depthWrite: false });
+    const pressureMaterial = new THREE.MeshBasicMaterial({ color: '#ffd99a', transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, depthTest: false, toneMapped: false });
+    const pressureWave = new THREE.Mesh(new THREE.TorusGeometry(.42, .035, 8, 80), pressureMaterial);
+    pressureWave.position.set(0, 1.35, .75); pressureWave.renderOrder = 19; hazardEffects.add(pressureWave);
+    const smokeMaterial = new THREE.MeshStandardMaterial({ color: '#a8b2b8', transparent: true, opacity: 0, roughness: 1, depthWrite: false, depthTest: false });
     const smokeGeometry = new THREE.SphereGeometry(1, 12, 10);
     const smoke = Array.from({ length: 14 }, (_, i) => {
       const puff = new THREE.Mesh(smokeGeometry, smokeMaterial);
@@ -254,7 +254,7 @@ export default function ChemistryScene3D(props: Props) {
       if (hazardActive) {
         const age = motion.matches ? 1.2 : hazardAge;
         hazardFlash.scale.setScalar(.55 + Math.min(age, .55) * 1.3);
-        hazardFlashMaterial.opacity = motion.matches ? .12 : .52 * Math.max(0, 1 - age / .22);
+        hazardFlashMaterial.opacity = motion.matches ? .12 : .56 * Math.max(0, 1 - age / .38);
         pressureWave.scale.set(.4 + age * 2.7, .4 + age * 2.7, 1);
         pressureMaterial.opacity = motion.matches ? .18 : .42 * Math.max(0, 1 - age / 2.7);
         smoke.forEach((puff, i) => {
@@ -263,7 +263,7 @@ export default function ChemistryScene3D(props: Props) {
           puff.position.set(offset.x * (1 + phase), 1.05 + phase * 1.7, offset.z * (1 + phase));
           puff.scale.setScalar(.12 + phase * .32 + (i % 3) * .04);
         });
-        smokeMaterial.opacity = motion.matches ? .12 : .2 * Math.max(0, 1 - age / 3.4);
+        smokeMaterial.opacity = motion.matches ? .14 : .3 * Math.max(0, 1 - age / 3.4);
       } else {
         hazardFlashMaterial.opacity = 0; pressureMaterial.opacity = 0; smokeMaterial.opacity = 0;
       }
