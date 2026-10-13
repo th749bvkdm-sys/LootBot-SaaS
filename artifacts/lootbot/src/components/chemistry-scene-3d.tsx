@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 export type Vessel = 'beaker' | 'flask' | 'tube';
-type Props = { amount: number; solid: boolean; reacted: boolean; gas: boolean; stir: boolean; night: boolean; angle: number; zoom: number; vessel: Vessel; paused: boolean; speed: number; replay: number; onUnavailable: () => void };
+type Props = { amount: number; solid: boolean; reacted: boolean; gas: boolean; stir: boolean; night: boolean; angle: number; zoom: number; vessel: Vessel; paused: boolean; speed: number; replay: number; hazardReplay: number; onUnavailable: () => void };
 
 /** All geometry is local. The server decides the reaction; time here is illustrative. */
 export default function ChemistryScene3D(props: Props) {
@@ -116,6 +116,23 @@ export default function ChemistryScene3D(props: Props) {
     const vesselGroup = new THREE.Group(); scene.add(vesselGroup);
     const waterGroup = new THREE.Group(); scene.add(waterGroup);
     const effects = new THREE.Group(); scene.add(effects);
+    // Generic, non-chemical safety vignette. It is user-triggered and never
+    // inferred from reactants or presented as a real reaction.
+    const hazardEffects = new THREE.Group(); scene.add(hazardEffects);
+    const hazardFlashMaterial = new THREE.MeshBasicMaterial({ color: '#fff0c4', transparent: true, opacity: 0, depthWrite: false });
+    const hazardFlash = new THREE.Mesh(new THREE.SphereGeometry(.72, 24, 16), hazardFlashMaterial);
+    hazardFlash.position.set(0, 1.45, 0); hazardFlash.renderOrder = 20; hazardEffects.add(hazardFlash);
+    const pressureMaterial = new THREE.MeshBasicMaterial({ color: '#ffd99a', transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false });
+    const pressureWave = new THREE.Mesh(new THREE.TorusGeometry(.42, .025, 8, 80), pressureMaterial);
+    pressureWave.rotation.x = Math.PI / 2; pressureWave.position.y = .12; pressureWave.renderOrder = 19; hazardEffects.add(pressureWave);
+    const smokeMaterial = new THREE.MeshStandardMaterial({ color: '#87919a', transparent: true, opacity: 0, roughness: 1, depthWrite: false });
+    const smokeGeometry = new THREE.SphereGeometry(1, 12, 10);
+    const smoke = Array.from({ length: 14 }, (_, i) => {
+      const puff = new THREE.Mesh(smokeGeometry, smokeMaterial);
+      puff.userData.phase = i / 14;
+      puff.userData.offset = new THREE.Vector3(Math.sin(i * 17.3) * .52, (i % 5) * .12, Math.cos(i * 11.7) * .52);
+      puff.renderOrder = 18; hazardEffects.add(puff); return puff;
+    });
     const waterMaterial = new THREE.MeshPhysicalMaterial({ color: '#b6ced6', roughness: .12, metalness: .06, transparent: true, opacity: .38, side: THREE.DoubleSide, depthWrite: false });
     const surfaceMaterial = new THREE.MeshPhysicalMaterial({ color: '#c4e1e7', transparent: true, opacity: .42, roughness: .12, side: THREE.DoubleSide, depthWrite: false });
     const meniscusMaterial = new THREE.MeshStandardMaterial({ color: '#a5c6cd', roughness: .12, metalness: .3 });
@@ -186,6 +203,7 @@ export default function ChemistryScene3D(props: Props) {
     }); observer.observe(element);
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let time = 0, reactionTime = 0, wasReacted = false, replay = props.replay, previous = performance.now();
+    let hazardReplay = props.hazardReplay, hazardStarted = -Infinity;
     let angle = props.angle, zoom = props.zoom;
     let frame = 0, lastRender = 0;
     function animate(now: number) {
@@ -194,6 +212,7 @@ export default function ChemistryScene3D(props: Props) {
       lastRender = now;
       const p = latest.current;
       const dt = Math.min((now - previous) / 1000, .05); previous = now;
+      if (p.hazardReplay !== hazardReplay) { hazardReplay = p.hazardReplay; hazardStarted = now; }
       if (p.vessel !== currentVessel || p.amount !== currentAmount) updateVessel(p);
       if (p.reacted !== wasReacted || p.replay !== replay) { reactionTime = 0; wasReacted = p.reacted; replay = p.replay; }
       if (!p.paused && !motion.matches) { time += dt * p.speed; if (p.reacted) reactionTime += dt * p.speed; }
@@ -229,6 +248,25 @@ export default function ChemistryScene3D(props: Props) {
         ring.visible = p.amount > 0 && !motion.matches && (p.stir || (!!p.gas && reactionTime < 14));
         ring.position.set(0, waterHeight + .005, 0); ring.scale.setScalar(.1 + phase * radius * 2.8);
       });
+      const hazardAge = (now - hazardStarted) / 1000;
+      const hazardActive = hazardAge >= 0 && hazardAge < 2.7;
+      hazardEffects.visible = hazardActive;
+      if (hazardActive) {
+        const age = motion.matches ? 1.2 : hazardAge;
+        hazardFlash.scale.setScalar(.55 + Math.min(age, .55) * 1.3);
+        hazardFlashMaterial.opacity = motion.matches ? .12 : .52 * Math.max(0, 1 - age / .22);
+        pressureWave.scale.set(.4 + age * 2.7, .4 + age * 2.7, 1);
+        pressureMaterial.opacity = motion.matches ? .18 : .42 * Math.max(0, 1 - age / 2.7);
+        smoke.forEach((puff, i) => {
+          const phase = (age / 2.7 + puff.userData.phase) % 1;
+          const offset = puff.userData.offset as THREE.Vector3;
+          puff.position.set(offset.x * (1 + phase), 1.05 + phase * 1.7, offset.z * (1 + phase));
+          puff.scale.setScalar(.12 + phase * .32 + (i % 3) * .04);
+        });
+        smokeMaterial.opacity = motion.matches ? .12 : .2 * Math.max(0, 1 - age / 3.4);
+      } else {
+        hazardFlashMaterial.opacity = 0; pressureMaterial.opacity = 0; smokeMaterial.opacity = 0;
+      }
       controls.update(); renderer.render(scene, camera);
     }
     const contextLost = (event: Event) => { event.preventDefault(); setLost(true); latest.current.onUnavailable(); };
@@ -239,11 +277,12 @@ export default function ChemistryScene3D(props: Props) {
       renderer.domElement.removeEventListener('webglcontextlost', contextLost);
       const materials = new Set<THREE.Material>(); const geometries = new Set<THREE.BufferGeometry>();
       scene.traverse(object => { if (object instanceof THREE.Mesh) { geometries.add(object.geometry); (Array.isArray(object.material) ? object.material : [object.material]).forEach(m => materials.add(m)); } });
-      [glass, glassEdge, waterMaterial, surfaceMaterial, powderMaterial, bubbleMaterial, markMaterial, meniscusMaterial].forEach(m => materials.add(m));
+      [glass, glassEdge, waterMaterial, surfaceMaterial, powderMaterial, bubbleMaterial, markMaterial, meniscusMaterial, hazardFlashMaterial, pressureMaterial, smokeMaterial].forEach(m => materials.add(m));
+      geometries.add(smokeGeometry);
       geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); benchTexture.dispose(); environment.dispose(); renderer.dispose(); renderer.domElement.remove();
     };
     // Scene is persistent; latest props are consumed by the animation loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return <div className="chem-webgl" ref={host} role="img" aria-label="مختبر ثلاثي الأبعاد: وعاء زجاجي وسائل ومواد على طاولة. اسحب لتدوير الكاميرا واستخدم العجلة أو إصبعين للتكبير.">{lost && <p>تعذر استمرار العرض ثلاثي الأبعاد.</p>}</div>;
+  return <div className="chem-webgl" ref={host} role="img" aria-label="مختبر ثلاثي الأبعاد: وعاء زجاجي وسائل ومواد على طاولة. مشهد موجة الضغط تمثيل توعوي عام وليس ناتجًا كيميائيًا. اسحب لتدوير الكاميرا واستخدم العجلة أو إصبعين للتكبير.">{lost && <p>تعذر استمرار العرض ثلاثي الأبعاد.</p>}</div>;
 }
