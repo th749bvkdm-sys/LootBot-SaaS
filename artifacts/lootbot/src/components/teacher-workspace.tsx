@@ -43,6 +43,7 @@ import {
   Settings2,
   ShoppingBag,
   Sparkles,
+  Target,
   Trash2,
   Upload,
   Users,
@@ -99,6 +100,8 @@ const TeacherChemistry = lazy(() =>
     default: module.TeacherChemistry,
   })),
 );
+const TeacherEducation = lazy(() => import('./education-workspace').then(module=>({default:module.TeacherEducation})));
+const TeacherEducationSummary = lazy(() => import('./education-workspace').then(module=>({default:module.TeacherEducationSummary})));
 type Icon = typeof Users;
 const modules: {
   key: string;
@@ -118,6 +121,7 @@ const modules: {
     icon: GraduationCap,
     description: "نظّم الفصول والمواد والفصل الدراسي.",
   },
+  { key:'education', label:'القدرات والربط المدرسي', icon:Target, description:'طلبات الانضمام ومجموعات تدريب ومتابعة طلاب الفصل من محاولاتهم الفعلية.' },
   {
     key: "students",
     label: "كشوف الطلاب",
@@ -493,14 +497,14 @@ export function AccountSelection() {
     if (account.data?.role === "SUPERADMIN") navigate("/admin");
     else if (account.data?.accountType)
       navigate(
-        account.data.accountType === "teacher"
+        account.data.accountType === 'student' ? '/student' : account.data.accountType === "teacher"
           ? account.data.profileComplete
             ? "/teacher"
             : "/teacher/onboarding"
           : "/dashboard",
       );
   }, [account.data, navigate]);
-  const choose = async (accountType: "merchant" | "teacher") => {
+  const choose = async (accountType: "merchant" | "teacher" | "student") => {
     const okay = await action.run(
       () => teacherApi("/account/type", "POST", { accountType }),
       "تم اختيار مساحة العمل.",
@@ -508,7 +512,7 @@ export function AccountSelection() {
     if (!okay) return;
     await qc.invalidateQueries({ queryKey: ["account-workspace"] });
     await qc.invalidateQueries({ queryKey: ["teacher-account"] });
-    navigate(accountType === "teacher" ? "/teacher/onboarding" : "/dashboard");
+    navigate(accountType === 'student' ? '/student' : accountType === "teacher" ? "/teacher/onboarding" : "/dashboard");
   };
   if (
     account.isLoading ||
@@ -551,6 +555,7 @@ export function AccountSelection() {
         </p>
         <Messages action={action} />
         <div className="tw-choice-grid">
+          <button className="tw-choice" disabled={action.busy} onClick={()=>void choose('student')}><Users/><strong>طالب</strong><p>ربط بالمدرسة، أنشطة الفصل، القدرات وخطة تعلم خاصة.</p><span>الدخول إلى غرفة الطلاب <ArrowLeft size={16}/></span></button>
           <button
             className="tw-choice"
             disabled={action.busy}
@@ -1197,6 +1202,8 @@ export function TeacherWorkspace({ section }: { section?: string } = {}) {
               <Dashboard />
             ) : key === "classes" ? (
               <Classes />
+            ) : key === 'education' ? (
+              <Suspense fallback={<Loading/>}><TeacherEducation/></Suspense>
             ) : key === "students" ? (
               <Students />
             ) : key === "attendance" ? (
@@ -1288,6 +1295,7 @@ function Dashboard() {
         ))}
       </div>
       <TeacherTodayExtras />
+      <Suspense fallback={null}><TeacherEducationSummary/></Suspense>
       <div className="tw-quick-actions">
         <Link href="/teacher/classes">
           <Plus size={20} />

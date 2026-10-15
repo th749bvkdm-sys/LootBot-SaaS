@@ -1,0 +1,3 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+LICENSED_QUANT_LOCAL_PREVIEW {"imported":1319,"approved":72,"needsReview":1247,"heldWithoutKey":1,"tests":6,"localOnly":true}
+EDUCATION_PREVIEW_READY http://127.0.0.1:5191/__preview/admin (local disposable data only)

@@ -1,0 +1,42 @@
+$ vite build --config vite.config.ts
+vite v7.3.6 building client environment for production...
+transforming...
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+✓ 2484 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/public/index.html                                 2.53 kB │ gzip:   0.93 kB
+dist/public/assets/teacher-tools-DkdFNbrU.css          1.18 kB │ gzip:   0.53 kB
+dist/public/assets/teacher-learning-CRVR6Kka.css       4.53 kB │ gzip:   1.58 kB
+dist/public/assets/chemistry-lab-CvVH78H6.css          9.59 kB │ gzip:   2.79 kB
+dist/public/assets/education-workspace-h5prP6cB.css   10.72 kB │ gzip:   3.26 kB
+dist/public/assets/teacher-workspace-B79sp2rb.css     15.27 kB │ gzip:   4.01 kB
+dist/public/assets/teacher-exam-editor-CZqwAt18.css   17.54 kB │ gzip:   4.37 kB
+dist/public/assets/index-B3kDVsI3.css                157.97 kB │ gzip:  29.72 kB
+dist/public/assets/download-BgGkIv1b.js                0.23 kB │ gzip:   0.19 kB
+dist/public/assets/plan-usage-CRQW8chv.js              0.92 kB │ gzip:   0.55 kB
+dist/public/assets/teacher-extra-copy-DiMHFom_.js      3.41 kB │ gzip:   1.56 kB
+dist/public/assets/plans-workspace-DbLY-Zbg.js         4.47 kB │ gzip:   2.02 kB
+dist/public/assets/customer-rule-editor-BD7PpXOA.js    6.19 kB │ gzip:   2.31 kB
+dist/public/assets/team-workspace-Cb__0PZy.js          7.76 kB │ gzip:   3.37 kB
+dist/public/assets/overview-workspace-rgayprYg.js      8.73 kB │ gzip:   3.53 kB
+dist/public/assets/studio-target-picker-CnGbpcSL.js    9.11 kB │ gzip:   3.72 kB
+dist/public/assets/commerce-workspace-BIlcouuz.js     11.67 kB │ gzip:   3.96 kB
+dist/public/assets/telegram-home-studio-DF48pjPa.js   15.50 kB │ gzip:   4.94 kB
+dist/public/assets/business-bot-studio-_ZO8ZFbM.js    23.10 kB │ gzip:   7.16 kB
+dist/public/assets/chemistry-lab-9KSugxCU.js          27.20 kB │ gzip:   9.12 kB
+dist/public/assets/growth-workspace-DXVxjrMh.js       28.39 kB │ gzip:   8.86 kB
+dist/public/assets/teacher-learning-6ee27WVo.js       32.95 kB │ gzip:   9.95 kB
+dist/public/assets/teacher-tools-Ce_tUxo8.js          43.17 kB │ gzip:  12.06 kB
+dist/public/assets/teacher-exam-editor-2tUHwOwm.js    61.17 kB │ gzip:  18.15 kB
+dist/public/assets/education-workspace-CMtQ9DIQ.js    96.92 kB │ gzip:  29.30 kB
+dist/public/assets/teacher-workspace-4CTqNHlr.js     100.41 kB │ gzip:  25.66 kB
+dist/public/assets/analytics-workspace-g9dbinm_.js   401.82 kB │ gzip: 111.56 kB
+dist/public/assets/index-Drn9NMaP.js                 512.25 kB │ gzip: 156.15 kB
+dist/public/assets/chemistry-scene-3d-Ce5tHO-z.js    568.01 kB │ gzip: 143.31 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 11.15s

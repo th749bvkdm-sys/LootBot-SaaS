@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { startGrowthWorker, stopGrowthWorker } from "./lib/growth-service";
 import { startTeacherWorker, stopTeacherWorker } from './lib/teacher-worker';
+import { startQuantWorker, stopQuantWorker } from './lib/quant';
 import {
   startActiveStoreBots,
   stopAllBots,
@@ -30,12 +31,14 @@ void startActiveStoreBots().catch((error: unknown) => {
 });
 startGrowthWorker();
 startTeacherWorker();
+startQuantWorker();
 
 function shutdown(signal: string): void {
   logger.info({ signal }, "Shutting down LootBot API.");
   stopAllBots({ shutdown: true });
   stopGrowthWorker();
   stopTeacherWorker();
+  stopQuantWorker();
   server.close((error) => {
     if (error) {
       logger.error(

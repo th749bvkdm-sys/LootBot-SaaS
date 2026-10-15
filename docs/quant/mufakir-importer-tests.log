@@ -1,0 +1,23 @@
+✔ authored pack has 30 verified calculations, 13 real skills and stable unique references (2.2945ms)
+✔ changing a key away from the computed answer is rejected (20.5081ms)
+✔ duplicate choices, moved source references and unsupported skills are rejected (1.1668ms)
+✔ equation, sequence and constant-comparison verifier rejects incorrect models (3.0021ms)
+✔ registering authored source writes metadata only without approving a license (1.0388ms)
+✔ draft import rejects unverified, restricted, rejected and empty-proof sources before question writes (1.0746ms)
+✔ verified import writes 30 drafts, is idempotent, never approves and never creates tests (3.5218ms)
+✔ reviewed pack accepts reviewed questions with exact source pages and existing skills (2.2878ms)
+✔ unconfirmed structural drafts remain needs_review while incomplete review metadata is rejected (1.1398ms)
+✔ choices, answer keys, references and taxonomy are validated (0.5928ms)
+✔ whole-page paths, external URLs and unsupported figure metadata cannot be imported (0.6081ms)
+✔ inactive operator and unverified/rejected/restricted source block writes (1.5277ms)
+✔ source mismatch or page outside registered PDF range is rejected (0.9768ms)
+✔ licensed import creates versioned needs_review drafts, provenance and no published tests (1.1017ms)
+✔ changed stable reference and existing stem never overwrite or automatically attach sources (1.1257ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 260.1119

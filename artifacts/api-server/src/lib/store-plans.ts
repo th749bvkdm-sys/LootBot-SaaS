@@ -20,7 +20,16 @@ import {
   readPlanCode,
   readPlanDefinition,
   FeatureGateService,
+  FeatureAccessError,
+  isFeatureAvailable,
+  type PlanFeature,
 } from "./plans";
+
+/** Keep permission reads on the caller's transaction instead of leasing a second connection. */
+export async function requireStoreFeature(storeId: string, feature: PlanFeature, reader: Pick<typeof db, 'select'> = db) {
+  const [plan, catalog] = await Promise.all([getStorePlan(storeId, reader), getPlanCatalog(reader)]);
+  if (!isFeatureAvailable(plan, feature, catalog)) throw new FeatureAccessError(feature);
+}
 
 export async function getPlanCatalog(reader: Pick<typeof db, 'select'> = db): Promise<PlanCatalog> {
   const rows = await reader.select().from(planDefinitionsTable);

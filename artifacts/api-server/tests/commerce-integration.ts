@@ -1,3 +1,4 @@
+import { assertTestDatabase } from './assert-test-db';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
@@ -7,7 +8,7 @@ import { db, pool, usersTable, storesTable, storeSettingsTable, customersTable, 
 import { assignCustomerCoupon, placeCartOrder, recordReview, registerCustomerReferral, rewardPaidOrder, reverseOrderRewards, productReviewSummary, renderCommerce } from '../src/lib/customer-commerce';
 
 test('commerce database transactions prevent double redemption, stock races, rewards and referral replay', async () => {
-  assert.ok(/^ep-summer-recipe-b21ls93d(?:-pooler)?\.[a-z0-9.-]+\.neon\.tech$/.test(new URL(process.env.DATABASE_URL!).hostname));
+  assertTestDatabase();
   // Additive schema migration, only on the isolated test branch.
   await pool.query(await readFile(new URL('../../../lib/db/migrations/0005_customer_commerce.sql', import.meta.url), 'utf8').catch(() => readFile('../../lib/db/migrations/0005_customer_commerce.sql', 'utf8')));
   const ownerId = randomUUID(); const storeId = randomUUID(); const otherStoreId = randomUUID();

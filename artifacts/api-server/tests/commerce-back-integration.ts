@@ -1,3 +1,4 @@
+import { assertTestDatabase } from './assert-test-db';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { randomUUID } from 'node:crypto';
@@ -9,7 +10,7 @@ import { parseNavigationCallback, type BotButton } from '../src/lib/telegram-nav
 import { productButtons } from '../src/lib/telegram-product-buttons';
 
 test('real database commerce Back preserves favorites pages, support orders and account notifications', async t => {
-  assert.ok(/^ep-summer-recipe-b21ls93d(?:-pooler)?\.[a-z0-9.-]+\.neon\.tech$/.test(new URL(process.env.DATABASE_URL!).hostname), 'Only the isolated V2 branch is permitted');
+  assertTestDatabase();
   const ownerId = randomUUID(); const storeId = randomUUID(); const customerId = randomUUID(); const orderId = randomUUID();
   const messages: { text: string; buttons: BotButton[][] }[] = [];
   const context: ScreenContext = {

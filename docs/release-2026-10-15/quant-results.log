@@ -1,0 +1,15 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+✔ answer-key placeholders and original prose do not become sourced explanations (5.5064ms)
+✔ results show exact wrong/unanswered outcomes, selected/source answers and safe source references (8.482ms)
+✔ legacy attempt snapshots cannot leak their unauthenticated placeholder explanation (0.2737ms)
+✔ never and withheld deadline policies omit keys and explanation metadata (0.3984ms)
+✔ active tests withhold result and after-each feedback only includes answered questions (2.1169ms)
+✔ only verified publisher explanation is returned, with safe provenance and live source license (1.3094ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 504.918

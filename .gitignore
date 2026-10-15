@@ -50,7 +50,10 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+__pycache__/
+*.py[cod]
 
 # Local package cache and bundled integration runners
 /.pnpm-store/
 /artifacts/api-server/.*.mjs
+/lib/db/.teacher-test-schema-*.mjs

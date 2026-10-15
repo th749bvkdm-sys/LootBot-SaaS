@@ -1,0 +1,14 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ real storefront HTTP retains settings, product data and permission boundaries
+  ✔ public default is disabled; private preview excludes drafts and ownership fields (105.63ms)
+  ✔ CSRF, foreign merchants and teacher attempts are rejected (62.5436ms)
+  ✔ every theme persists, public category/details inherit it and business data remains unchanged (223.9761ms)
+✔ real storefront HTTP retains settings, product data and permission boundaries (452.1957ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1138.8618

@@ -30,6 +30,7 @@ import { LockedWorkspace, UpgradeDialog, workspaceRequest } from '@/components/w
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { BrandMark } from '@/components/brand-mark';
+import {PublicLanding,StudentCodeEntry} from '@/components/public-portal';
 import { AccountAccess } from '@/components/account-access';
 import { applyAppTheme, getAppTheme } from '@/components/app-theme-toggle';
 import { StoreAppearance, PublicStorefront } from '@/components/storefront';
@@ -38,6 +39,7 @@ const AccountSelection = lazy(() => import('@/components/teacher-workspace').the
 const TeacherOnboarding = lazy(() => import('@/components/teacher-workspace').then(module => ({ default: module.TeacherOnboarding })));
 const TeacherWorkspace = lazy(() => import('@/components/teacher-workspace').then(module => ({ default: module.TeacherWorkspace })));
 const StudentLearning = lazy(() => import('@/components/teacher-learning').then(module=>({default:module.StudentLearning})));
+const EducationWorkspace = lazy(() => import('@/components/education-workspace').then(module=>({default:module.EducationWorkspace})));
 
 const TelegramHomeStudio = lazy(() => import('@/components/telegram-home-studio').then(module => ({ default: module.TelegramHomeStudio })));
 const BusinessBotStudio = lazy(() => import('@/components/business-bot-studio').then(module => ({ default: module.BusinessBotStudio })));
@@ -206,14 +208,20 @@ function SeoHead() {
       route === '/login' ||
       route === '/register' ||
       (route !== '/' && !route.startsWith('/store/'));
-    const page = route === '/learn' || route.startsWith('/learn/')
+    const page = route === '/student-entry'
+      ? {ar:['التسجيل كطالب | LootBot','ادخل برمز الدخول الشخصي الذي أعطاك معلمك أو مدرستك.'],en:['Student access | LootBot','Enter your personal student access code.']}
+      : route === '/student'
+      ? {ar:['غرفة الطالب | LootBot','مدرستي وفصلي وأنشطتي وخطتي التعليمية ومركز القدرات.'],en:['Student room | LootBot','Your classroom, assignments and learning progress.']}
+      : route === '/education' || route === '/admin/education'
+      ? {ar:['إدارة التعليم | LootBot','إدارة المدارس والطلاب والمحتوى والصلاحيات.'],en:['Education administration | LootBot','Manage schools, learning content and permissions.']}
+      : route === '/learn' || route.startsWith('/learn/')
       ? { ar: ['أنشطة الطالب | LootBot', 'ادخل برمز الفصل ورمزك الخاص لاستكمال أنشطتك التعليمية.'], en: ['Student activities | LootBot', 'Use your class code and private code to resume your learning activities.'] }
       : route.startsWith('/teacher')
       ? { ar: ['غرفة المعلم | LootBot', 'تنظيم الفصول وكشوف الطلاب والاختبارات والطباعة.'], en: ['Teacher Room | LootBot', 'Organize classes, rosters, exams and printouts.'] }
       : route.startsWith('/store/')
         ? { ar: ['كتالوج المتجر | LootBot', 'استعرض المنتجات المنشورة وتفاصيلها.'], en: ['Store catalog | LootBot', 'Browse published products and their details.'] }
         : route === '/login'
-      ? { ar: ['دخول آمن إلى لوحة متجرك | LootBot', 'سجّل الدخول لإدارة متجرك ومنتجاتك على LootBot.'], en: ['Sign in to your store dashboard | LootBot', 'Sign in to manage your LootBot store and product catalog.'] }
+      ? { ar: ['تسجيل الدخول | LootBot', 'دخول المعلم والمتجر، والتسجيل كطالب باستخدام رمز شخصي.'], en: ['Sign in | LootBot', 'Teacher and store sign in, plus personal student code access.'] }
       : route === '/register'
         ? { ar: ['أنشئ حساب متجرك على LootBot', 'أنشئ حسابًا لبدء إعداد متجر Telegram وإدارة منتجاتك باللغة العربية.'], en: ['Create your LootBot store account', 'Create an account to set up your Telegram store and manage your product catalog.'] }
         : route === '/admin'
@@ -223,7 +231,7 @@ function SeoHead() {
         : route === '/onboarding'
           ? { ar: ['إعداد متجرك | LootBot', 'خطوات إعداد متجر Telegram.'], en: ['Set up your store | LootBot', 'Set up your Telegram store.'] }
         : route === '/'
-          ? { ar: ['LootBot | أنشئ متجرك على Telegram', 'أنشئ كتالوج منتجاتك بالعربية، واربط بوت Telegram، وأدر المنتجات والتصنيفات من لوحة تحكم واحدة آمنة تدعم العربية والإنجليزية.'], en: ['LootBot | Build your Telegram storefront', 'Create a product catalog, connect a Telegram bot, and manage products and categories from one secure dashboard with Arabic and English support.'] }
+          ? { ar: ['LootBot | مساحتك للتعلم والتنظيم', 'غرفة الطالب والمعلم، مركز القدرات، وإدارة متجرك في مساحات مترابطة.'], en: ['LootBot | Learn, teach and organize', 'Connected workspaces for students, teachers and store owners.'] }
           : { ar: ['صفحة غير موجودة | LootBot', 'الصفحة التي تبحث عنها غير متاحة في LootBot.'], en: ['Page not found | LootBot', 'The page you requested is not available in LootBot.'] };
     const [title, description] = page[locale];
     const canonicalUrl = new URL(route, window.location.origin).href;
@@ -264,8 +272,11 @@ function App() {
       <Route path="/learn"><Suspense fallback={<LoadingScreen />}><StudentLearning /></Suspense></Route>
       <Route path="/" component={Landing} />
       <Route path="/login"><AuthPage mode="login" /></Route>
+      <Route path="/student-entry"><StudentEntryPage /></Route>
       <Route path="/register"><AuthPage mode="register" /></Route>
       <Route path="/account/continue"><AccountAccess kind="continue" /></Route>
+      <Route path="/student"><AccountAccess kind="student"><Suspense fallback={<LoadingScreen />}><EducationWorkspace /></Suspense></AccountAccess></Route>
+      <Route path="/education"><AccountAccess kind="education"><Suspense fallback={<LoadingScreen />}><EducationWorkspace /></Suspense></AccountAccess></Route>
       <Route path="/account/select"><Suspense fallback={<LoadingScreen />}><AccountSelection /></Suspense></Route>
       <Route path="/teacher/onboarding"><AccountAccess kind="teacher-setup"><Suspense fallback={<LoadingScreen />}><TeacherOnboarding /></Suspense></AccountAccess></Route>
       <Route path="/teacher"><AccountAccess kind="teacher"><Suspense fallback={<LoadingScreen />}><TeacherWorkspace /></Suspense></AccountAccess></Route>
@@ -276,6 +287,7 @@ function App() {
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/dashboard"><Dashboard /></Route>
       <Route path="/admin"><SuperAdminDashboard /></Route>
+      <Route path="/admin/education"><AccountAccess kind="education"><Suspense fallback={<LoadingScreen />}><EducationWorkspace /></Suspense></AccountAccess></Route>
       <Route path="/dashboard/stores"><Dashboard><StoresPage locale="ar" t={copy.ar} /></Dashboard></Route>
       <Route path="/dashboard/products"><Dashboard><ProductsPage locale="ar" t={copy.ar} /></Dashboard></Route>
       <Route path="/dashboard/categories"><Dashboard><CategoriesPage locale="ar" t={copy.ar} /></Dashboard></Route>
@@ -294,7 +306,9 @@ function App() {
   </TooltipProvider></QueryClientProvider>;
 }
 
-function Landing() {
+function Landing(){const [locale,toggleLocale]=useLocale();return <PublicLanding locale={locale} toggleLocale={toggleLocale}/>;}
+function StudentEntryPage(){const [locale,toggleLocale]=useLocale();return <StudentCodeEntry locale={locale} toggleLocale={toggleLocale}/>;}
+function LegacyLanding() {
   const [locale, toggleLocale] = useLocale();
   const t = copy[locale];
   const rtl = locale === 'ar';
@@ -387,18 +401,19 @@ function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const login=useLoginUser({request:{headers:csrfHeader}}); const register=useRegisterUser({request:{headers:csrfHeader}});
   const [error,setError]=useState(''); const [showPassword,setShowPassword]=useState(false);
   const submit=(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();setError('');const fd=new FormData(e.currentTarget);const email=String(fd.get('email'));const password=String(fd.get('password'));
-    if(mode==='login') login.mutate({data:{email,password}},{onSuccess:(data)=>{qc.setQueryData(getGetCsrfTokenQueryKey(),{token:data.csrfToken});qc.setQueryData(getGetCurrentUserQueryKey(),data.user);void qc.invalidateQueries({queryKey:getGetCurrentUserQueryKey()});qc.removeQueries({queryKey:['account-workspace']});navigate(data.user.role==='SUPERADMIN'?'/admin':'/account/continue');},onError:(err)=>setError(authErrorMessage(err,locale))});
-    else register.mutate({data:{name:String(fd.get('name')),email,password}},{onSuccess:(data)=>{qc.setQueryData(getGetCsrfTokenQueryKey(),{token:data.csrfToken});void qc.invalidateQueries({queryKey:getGetCurrentUserQueryKey()});qc.removeQueries({queryKey:['account-workspace']});navigate('/account/select');},onError:(err)=>setError(authErrorMessage(err,locale))});
+    if(mode==='login') login.mutate({data:{email,password}},{onSuccess:(data)=>{qc.clear();qc.setQueryData(getGetCsrfTokenQueryKey(),{token:data.csrfToken});qc.setQueryData(getGetCurrentUserQueryKey(),data.user);void qc.invalidateQueries({queryKey:getGetCurrentUserQueryKey()});qc.removeQueries({queryKey:['account-workspace']});navigate(data.user.role==='SUPERADMIN'?'/admin':'/account/continue');},onError:(err)=>setError(authErrorMessage(err,locale))});
+    else register.mutate({data:{name:String(fd.get('name')),email,password}},{onSuccess:(data)=>{qc.clear();qc.setQueryData(getGetCsrfTokenQueryKey(),{token:data.csrfToken});void qc.invalidateQueries({queryKey:getGetCurrentUserQueryKey()});qc.removeQueries({queryKey:['account-workspace']});navigate('/account/select');},onError:(err)=>setError(authErrorMessage(err,locale))});
   };
   const pending=login.isPending||register.isPending;
-  return <main dir={rtl?'rtl':'ltr'} className="grid min-h-[100dvh] bg-[#11171c] text-[#e8efee] glass-app md:grid-cols-[1fr_.9fr]">
+  return <main dir={rtl?'rtl':'ltr'} className="grid min-h-[100dvh] bg-[#11171c] text-[#e8efee] glass-app portal-auth md:grid-cols-[1fr_.9fr]">
     <aside className="relative hidden flex-col justify-between overflow-hidden border-e border-[#273436] bg-[#151e20] p-10 md:flex"><Link href="/" className="flex items-center gap-3"><BrandMark/><span className="text-lg font-bold">lootbot<span className="text-[#64d7ae]">.</span></span></Link>
-      <div className="relative z-10 max-w-lg"><p className="text-xs uppercase tracking-[.16em] text-[#66d8af]">{t.heroEyebrow}</p><h1 className="mt-5 text-5xl font-semibold leading-tight">{rtl?'مساحة منظمة لعملك.':'A workspace for your work.'}</h1><p className="mt-5 max-w-md leading-7 text-[#9baaaa]">{t.heroSub}</p><div className="mt-10 space-y-4">{[t.featureOne,t.featureTwo,t.featureThree].map(x=><p key={x} className="flex items-center gap-3 text-sm text-[#c1cbca]"><Check className="h-4 w-4 text-[#67d8af]"/>{x}</p>)}</div></div>
-      <div className="absolute -bottom-24 -left-20 h-96 w-96 rounded-full bg-[#66d8af]/[.06] blur-3xl" /><p className="text-xs text-[#758485]">© LootBot · {t.footer}</p>
+      <div className="relative z-10 max-w-lg"><p className="text-xs uppercase tracking-[.16em] text-[#a998df]">{rtl?'مساحات مترابطة':'CONNECTED WORKSPACES'}</p><h1 className="mt-5 text-5xl font-semibold leading-tight">{rtl?'مساحتك، في مكان واحد.':'Your space, in one place.'}</h1><p className="mt-5 max-w-md leading-7 text-[#b6bfd6]">{rtl?'سجّل الدخول لحساب المعلم أو المتجر. إذا كنت طالبًا، اختر التسجيل كطالب وأدخل رمزك الشخصي.':'Sign in to your teacher or store account. Students can choose student access and enter their personal code.'}</p><div className="mt-10 space-y-4">{(rtl?['تنظيم الفصول والأنشطة','تدريب ومتابعة من نتائج فعلية','إدارة المتاجر وبوت تيليجرام']:['Classes and learning activities','Practice and actual learning progress','Store and Telegram bot management']).map(x=><p key={x} className="flex items-center gap-3 text-sm text-[#c1cbca]"><Check className="h-4 w-4 text-[#b39aeb]"/>{x}</p>)}</div></div>
+      <div className="absolute -bottom-24 -left-20 h-96 w-96 rounded-full bg-[#a18cd7]/[.08] blur-3xl" /><p className="text-xs text-[#9ca9c5]">© LootBot · {rtl?'التعلّم والتنظيم يبدأان بخطوة.':'Learning and organization start with a step.'}</p>
     </aside>
     <section className="flex min-h-[100dvh] flex-col px-5 py-6 md:px-12"><header className="flex items-center justify-between"><Link href="/" className="flex items-center gap-2 md:hidden"><BrandMark small/><b>lootbot</b></Link><span className="md:ms-auto" /><button onClick={toggleLocale} className="text-xs text-[#9aa8a8] hover:text-white" data-testid="button-language">{rtl?'EN':'العربية'}</button></header>
       <div className="mx-auto my-auto w-full max-w-[420px] py-10 fade-up"><Link href="/" className="hidden items-center gap-2 text-xs text-[#94a3a4] hover:text-white md:inline-flex"><ArrowRight className="h-4 w-4"/>{rtl?'العودة إلى الرئيسية':'Back to home'}</Link>
-        <p className="mt-8 text-xs font-semibold uppercase tracking-[.17em] text-[#66d8af]">{t.account}</p><h1 className="mt-3 text-3xl font-semibold">{mode==='login'?t.enter:t.createAccount}</h1>
+        <p className="mt-8 text-xs font-semibold uppercase tracking-[.17em] text-[#b6a1eb]">{t.account}</p><h1 className="mt-3 text-3xl font-semibold">{mode==='login'?t.login:t.register}</h1>
+        <Link href="/student-entry" className="student-access-link"><div><b>{rtl?'التسجيل كطالب':'Student access'}</b><small>{rtl?'رمز شخصي فقط، دون بريد أو كلمة مرور':'Just your personal code. No email or password.'}</small></div><ArrowUpRight className="h-5 w-5"/></Link>
         <form className="mt-8 space-y-5" onSubmit={submit}>
           {mode==='register'&&<Field label={t.fullName} name="name" autoComplete="name" required placeholder={rtl?'مثال: سارة أحمد':'e.g. Sara Ahmed'}/>}
           <Field label={t.email} name="email" type="email" autoComplete="email" required placeholder="you@shop.com"/>
@@ -408,7 +423,7 @@ function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           {csrf.isError&&<p className="text-xs text-[#869494]">{rtl?'تعذر الحصول على رمز الحماية. أعد تحميل الصفحة ثم حاول مجددًا.':'Could not load the security token. Reload the page and try again.'}</p>}
         </form>
         <p className="mt-7 text-center text-sm text-[#9aa8a8]">{mode==='login'?t.noAccount:t.haveAccount} <Link href={mode==='login'?'/register':'/login'} className="font-semibold text-[#70dcb5] hover:text-[#a1efd1]">{mode==='login'?t.register:t.login}</Link></p>
-        <div className="mt-9 flex items-center justify-center gap-2 text-[11px] text-[#758485]"><ShieldCheck className="h-4 w-4 text-[#61c99f]"/>{rtl?'بيانات متجرك تبقى خاصة وآمنة.':'Your store credentials stay private.'}</div>
+        <div className="mt-9 flex items-center justify-center gap-2 text-[11px] text-[#9eaac4]"><ShieldCheck className="h-4 w-4 text-[#9edbc8]"/>{rtl?'كل حساب يصل إلى مساحته وبياناته المسموحة.':'Each account accesses its own authorized workspace.'}</div>
       </div>
     </section>
   </main>;
@@ -503,6 +518,7 @@ function SuperAdminDashboard() {
       <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-3">{labels.map(([label, value]) => <article key={String(label)} className="rounded-2xl border border-[#293638] bg-[#171f22] p-5"><p className="text-xs text-[#94a2a2]">{label}</p><p className="mt-3 font-mono text-3xl font-bold">{overview.isLoading ? '—' : value ?? '—'}</p></article>)}</div>
       {overview.isError && <ErrorPanel message={rtl ? 'تعذر تحميل بيانات الإدارة.' : 'Could not load admin data.'} onRetry={() => void overview.refetch()} />}
       <PlanMatrix rtl={rtl} csrfToken={csrf.data?.token}/>
+      <Link href="/admin/education" className="mt-6 inline-flex rounded-xl border border-[#b7a0ec] bg-[#64508f] px-5 py-3 text-sm text-white">إدارة التعليم والمدارس والقدرات</Link>
       <section className="mt-8 rounded-2xl border border-[#293638] bg-[#171f22] p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">{rtl ? 'صحة النظام' : 'System health'}</h2><button onClick={() => void health.refetch()} className="rounded-lg border border-[#354344] px-3 py-2 text-xs">{rtl ? 'تحديث' : 'Refresh'}</button></div>{health.isError ? <ErrorPanel message={rtl ? 'تعذر فحص صحة النظام.' : 'Could not check system health.'} onRetry={() => void health.refetch()} /> : <div className="mt-4 grid gap-3 sm:grid-cols-3"><StatusPill value={`API ${health.data?.api ?? '…'}`}/><StatusPill value={`DB ${health.data?.database ?? '…'}`}/><p className="text-xs text-[#a7b2b1]">{rtl ? 'بوتات متصلة' : 'Connected bots'}: {health.data?.telegramBots.connected ?? '—'} · {rtl ? 'أخطاء البوتات' : 'Bot errors'}: {health.data?.telegramBots.withErrors ?? '—'}</p></div>}{!!health.data?.recentErrors.length && <div className="mt-4 space-y-2">{health.data.recentErrors.slice(0, 5).map((error, index) => <p key={`${error.occurredAt}-${index}`} className="text-xs text-[#df9a91]">{error.method} {error.path} · {error.errorType} · {new Date(error.occurredAt).toLocaleString(rtl ? 'ar' : 'en')}</p>)}</div>}</section>
       {!!overview.data?.recordedRevenueByCurrency.length && <section className="mt-8"><h2 className="mb-3 text-lg font-semibold">{rtl ? 'إيرادات مسجلة حسب العملة' : 'Recorded revenue by currency'}</h2><div className="flex flex-wrap gap-3">{overview.data.recordedRevenueByCurrency.map((item) => <p key={item.currency} className="rounded-xl border border-[#293638] bg-[#171f22] px-4 py-3 font-mono text-sm">{new Intl.NumberFormat(rtl ? 'ar-SA' : 'en', { style: 'currency', currency: item.currency }).format(item.amount)}</p>)}</div></section>}
       <section className="mt-8"><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-lg font-semibold"><Users className="h-5 w-5 text-[#70dcb5]"/>{rtl ? 'المستخدمون (الأحدث 50)' : 'Recent users (latest 50)'}</h2><input type="search" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder={rtl ? 'ابحث بالاسم أو البريد' : 'Search name or email'} className="h-10 rounded-xl border border-[#2f3c3e] bg-[#171f22] px-3 text-sm outline-none focus:border-[#61d5a9]" /></div><div className="overflow-x-auto rounded-2xl border border-[#293638]"><table className="w-full min-w-[600px] text-start text-sm"><thead className="bg-[#1b2527] text-xs text-[#899898]"><tr>{(rtl ? ['الاسم', 'البريد الإلكتروني', 'الدور', 'تاريخ التسجيل'] : ['Name', 'Email', 'Role', 'Joined']).map(x => <th key={x} className="px-4 py-3 text-start font-medium">{x}</th>)}</tr></thead><tbody className="divide-y divide-[#293638]">{visibleUsers.map(item => <tr key={item.id} className="bg-[#171f22]"><td className="px-4 py-3 font-medium">{item.name}</td><td className="px-4 py-3 text-[#9aa8a7]">{item.email}</td><td className="px-4 py-3"><StatusPill value={item.role}/></td><td className="px-4 py-3 text-xs text-[#899898]">{new Date(item.createdAt).toLocaleDateString(rtl ? 'ar' : 'en')}</td></tr>)}{!overview.isLoading && !visibleUsers.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-[#899898]">{rtl ? 'لا توجد نتائج.' : 'No matching users.'}</td></tr>}</tbody></table></div></section>

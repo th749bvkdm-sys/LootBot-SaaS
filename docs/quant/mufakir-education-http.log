@@ -1,0 +1,16 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ education platform: real HTTP, PostgreSQL persistence and role/school/student isolation
+  ✔ schools, role grants, class reuse and server-side authorization (349.1997ms)
+  ✔ join code hashing, expiry, pause, revoke, atomic limits and pending approval (310.3921ms)
+  ✔ managed categories, content review, versions, redaction and duplicate prevention (219.1758ms)
+  ✔ real attempts, no forged grading, answer idempotency and student privacy (352.3534ms)
+  ✔ assignments, announcements, help, flags, revocation and audit (1369.9899ms)
+✔ education platform: real HTTP, PostgreSQL persistence and role/school/student isolation (2663.8923ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3726.3473

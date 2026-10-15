@@ -1,0 +1,43 @@
+{
+  "phone": {
+    "header": [
+      {
+        "rect": {
+          "height": 46,
+          "width": 273,
+          "x": 16,
+          "y": 198
+        },
+        "text": null
+      },
+      {
+        "rect": {
+          "height": 45,
+          "width": 131.03125,
+          "x": 157.96875,
+          "y": 252
+        },
+        "text": "المظهر الداكنالمظهر الفاتحالمظهر الزجاجي"
+      },
+      {
+        "rect": {
+          "height": 36,
+          "width": 76.03125,
+          "x": 73.9375,
+          "y": 256.5
+        },
+        "text": "مدير النظام"
+      }
+    ],
+    "scrollWidth": 305,
+    "width": 320
+  },
+  "tablet": {
+    "width": 768,
+    "scrollWidth": 753
+  },
+  "desktop": {
+    "width": 1280,
+    "maxDocumentWidth": 1280
+  }
+}

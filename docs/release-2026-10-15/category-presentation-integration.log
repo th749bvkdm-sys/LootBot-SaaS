@@ -1,0 +1,16 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ category presentation roundtrip is persisted and scoped by store, role and plan
+  ✔ existing category defaults and owner persistence roundtrip (166.5741ms)
+  ✔ anonymous, other owner, missing CSRF and Free writes are denied (59.4833ms)
+  ✔ malformed presentation never updates stored category metadata (96.8426ms)
+  ✔ staff scopes explicitly separate reading and writing and never cross stores (102.1579ms)
+  ✔ deleted categories and revoked memberships reject stale requests (39.5676ms)
+✔ category presentation roundtrip is persisted and scoped by store, role and plan (564.4426ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1126.9473

@@ -1,0 +1,77 @@
+$ pnpm run typecheck && pnpm -r --if-present run build
+$ pnpm run typecheck:libs && pnpm -r --filter "./artifacts/**" --filter "./scripts" --if-present run typecheck
+$ tsc --build
+Scope: 4 of 9 workspace projects
+artifacts/api-server typecheck$ tsc -p tsconfig.json --noEmit
+artifacts/lootbot typecheck$ tsc -p tsconfig.json --noEmit
+scripts typecheck$ tsc -p tsconfig.json --noEmit
+artifacts/mockup-sandbox typecheck$ tsc -p tsconfig.json --noEmit
+scripts typecheck: Done
+artifacts/mockup-sandbox typecheck: Done
+artifacts/lootbot typecheck: Done
+artifacts/api-server typecheck: Done
+Scope: 8 of 9 workspace projects
+artifacts/mockup-sandbox build$ vite build
+artifacts/lootbot build$ vite build --config vite.config.ts
+artifacts/api-server build$ node ./build.mjs
+artifacts/lootbot build: vite v7.3.6 building client environment for production...
+artifacts/api-server build:   dist\index.mjs                   3.0mb
+artifacts/api-server build:   dist\pino-worker.mjs           153.6kb
+artifacts/api-server build:   dist\pino-file.mjs             142.2kb
+artifacts/api-server build:   dist\pino-pretty.mjs           115.3kb
+artifacts/api-server build:   dist\thread-stream-worker.mjs    7.4kb
+artifacts/api-server build:   ...and 5 more output files...
+artifacts/api-server build: Done in 1927ms
+artifacts/lootbot build: transforming...
+artifacts/api-server build: Done
+artifacts/mockup-sandbox build: vite v7.3.6 building client environment for production...
+artifacts/mockup-sandbox build: transforming...
+artifacts/mockup-sandbox build: ✓ 30 modules transformed.
+artifacts/mockup-sandbox build: rendering chunks...
+artifacts/mockup-sandbox build: computing gzip size...
+artifacts/mockup-sandbox build: dist/index.html                   4.45 kB │ gzip:  1.24 kB
+artifacts/mockup-sandbox build: dist/assets/index-C4GxwS3y.css   88.37 kB │ gzip: 14.82 kB
+artifacts/mockup-sandbox build: dist/assets/index-CqOx4XgY.js   187.72 kB │ gzip: 59.51 kB
+artifacts/mockup-sandbox build: ✓ built in 2.75s
+artifacts/mockup-sandbox build: Done
+artifacts/lootbot build: src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+artifacts/lootbot build: ✓ 2441 modules transformed.
+artifacts/lootbot build: rendering chunks...
+artifacts/lootbot build: computing gzip size...
+artifacts/lootbot build: dist/public/index.html                                 2.53 kB │ gzip:   0.93 kB
+artifacts/lootbot build: dist/public/assets/teacher-tools-DkdFNbrU.css          1.18 kB │ gzip:   0.53 kB
+artifacts/lootbot build: dist/public/assets/teacher-learning-CRVR6Kka.css       4.53 kB │ gzip:   1.58 kB
+artifacts/lootbot build: dist/public/assets/chemistry-lab-CvVH78H6.css          9.59 kB │ gzip:   2.79 kB
+artifacts/lootbot build: dist/public/assets/education-workspace-wWEvGxk3.css   10.39 kB │ gzip:   3.18 kB
+artifacts/lootbot build: dist/public/assets/teacher-workspace-B79sp2rb.css     15.27 kB │ gzip:   4.01 kB
+artifacts/lootbot build: dist/public/assets/teacher-exam-editor-CZqwAt18.css   17.54 kB │ gzip:   4.37 kB
+artifacts/lootbot build: dist/public/assets/index-Cu5zG30k.css                146.15 kB │ gzip:  27.06 kB
+artifacts/lootbot build: dist/public/assets/arrow-up-right-BiPSWazv.js          0.17 kB │ gzip:   0.16 kB
+artifacts/lootbot build: dist/public/assets/download-DOvwz-a-.js                0.23 kB │ gzip:   0.19 kB
+artifacts/lootbot build: dist/public/assets/target-DwBo3PSM.js                  0.74 kB │ gzip:   0.41 kB
+artifacts/lootbot build: dist/public/assets/plan-usage-CkCbi05i.js              0.92 kB │ gzip:   0.56 kB
+artifacts/lootbot build: (!) Some chunks are larger than 500 kB after minification. Consider:
+artifacts/lootbot build: - Using dynamic import() to code-split the application
+artifacts/lootbot build: - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+artifacts/lootbot build: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+artifacts/lootbot build: dist/public/assets/teacher-extra-copy-DiMHFom_.js      3.41 kB │ gzip:   1.56 kB
+artifacts/lootbot build: dist/public/assets/plans-workspace-CJijlQ49.js         4.46 kB │ gzip:   2.02 kB
+artifacts/lootbot build: dist/public/assets/customer-rule-editor-C36HZT4s.js    6.19 kB │ gzip:   2.31 kB
+artifacts/lootbot build: dist/public/assets/team-workspace-BC0GwdaS.js          7.76 kB │ gzip:   3.37 kB
+artifacts/lootbot build: dist/public/assets/overview-workspace-1KZCk5QO.js      8.59 kB │ gzip:   3.43 kB
+artifacts/lootbot build: dist/public/assets/studio-target-picker-Bw-cJhvN.js    9.11 kB │ gzip:   3.72 kB
+artifacts/lootbot build: dist/public/assets/commerce-workspace-D2aSgfC4.js     11.67 kB │ gzip:   3.96 kB
+artifacts/lootbot build: dist/public/assets/telegram-home-studio-C-D5GKDp.js   15.50 kB │ gzip:   4.94 kB
+artifacts/lootbot build: dist/public/assets/business-bot-studio-BNhZJAVI.js    23.10 kB │ gzip:   7.16 kB
+artifacts/lootbot build: dist/public/assets/chemistry-lab-Deb2oKUN.js          27.20 kB │ gzip:   9.12 kB
+artifacts/lootbot build: dist/public/assets/growth-workspace-Bpt7DVT0.js       28.39 kB │ gzip:   8.86 kB
+artifacts/lootbot build: dist/public/assets/teacher-learning-DpB_j7bP.js       32.95 kB │ gzip:   9.95 kB
+artifacts/lootbot build: dist/public/assets/teacher-tools-BPkMRLgm.js          43.20 kB │ gzip:  12.08 kB
+artifacts/lootbot build: dist/public/assets/teacher-exam-editor-bwow-9fL.js    61.21 kB │ gzip:  18.17 kB
+artifacts/lootbot build: dist/public/assets/education-workspace-CfEzvwoo.js    71.33 kB │ gzip:  20.38 kB
+artifacts/lootbot build: dist/public/assets/teacher-workspace-BloFX_84.js     100.60 kB │ gzip:  25.77 kB
+artifacts/lootbot build: dist/public/assets/analytics-workspace-B5gCLFAN.js   401.81 kB │ gzip: 111.55 kB
+artifacts/lootbot build: dist/public/assets/index-D9CTqHSl.js                 507.57 kB │ gzip: 154.58 kB
+artifacts/lootbot build: dist/public/assets/chemistry-scene-3d-BppWctCc.js    568.01 kB │ gzip: 143.31 kB
+artifacts/lootbot build: ✓ built in 15.51s
+artifacts/lootbot build: Done

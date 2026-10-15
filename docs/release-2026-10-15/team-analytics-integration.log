@@ -1,0 +1,17 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ real HTTP team and analytics enforce store, membership, plan and financial scopes
+  ✔ team writes require owner, CSRF, Business, existing account and allowlisted scopes (195.8098ms)
+  ✔ scoped staff sees only permitted store and cannot change team, payment or Super Admin (141.9136ms)
+  ✔ real analytics count only paid amounts, owned orders and real variant visits (126.3603ms)
+  ✔ staff analytics and overview redact financial data on server (69.5312ms)
+  ✔ membership edits and revocation apply to an existing session immediately (97.6246ms)
+  ✔ downgrades suspend all staff access but owner can revoke old memberships (69.2944ms)
+✔ real HTTP team and analytics enforce store, membership, plan and financial scopes (960.486ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1748.5275

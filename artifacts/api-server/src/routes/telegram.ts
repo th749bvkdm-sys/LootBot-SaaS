@@ -23,7 +23,7 @@ import {
 } from "../lib/telegram-bot-manager";
 import { decryptBotToken, encryptBotToken, sha256 } from "../lib/security";
 import { createLoginRateLimiter } from "../lib/login-rate-limit";
-import { getPlanCatalog, getStorePlan, featureGate } from "../lib/store-plans";
+import { getPlanCatalog, getStorePlan, featureGate, requireStoreFeature } from "../lib/store-plans";
 import { isFeatureAvailable } from "../lib/plans";
 import { DEFAULT_TELEGRAM_DESIGNER, parseTelegramDesignerSettings } from "../lib/telegram-designer";
 import { parseHomeConfiguration, readHomeStudio, renderConfiguredHome } from "../lib/telegram-home-configuration";
@@ -67,7 +67,7 @@ router.post('/stores/:storeId/telegram/reconnect', requireAuth, requireCsrf, asy
       const saved = await db.transaction(async tx => {
         const [currentStore] = await tx.select({id:storesTable.id}).from(storesTable).where(and(eq(storesTable.id,storeId),eq(storesTable.ownerId,req.auth!.userId),eq(storesTable.isDeleted,false))).for('update');
         if (!currentStore) return null;
-        await featureGate.require(storeId,'telegram.basic');
+        await requireStoreFeature(storeId,'telegram.basic',tx);
         const [current] = await tx.select().from(telegramBotsTable).where(eq(telegramBotsTable.storeId,storeId)).for('update');
         if (!current || current.status==='disconnected' || current.encryptedToken!==snapshot.encryptedToken || current.tokenHash!==snapshot.tokenHash || current.telegramBotId!==snapshot.telegramBotId) return null;
         const [duplicate] = await tx.select({storeId:telegramBotsTable.storeId}).from(telegramBotsTable).where(and(eq(telegramBotsTable.tokenHash,snapshot.tokenHash),ne(telegramBotsTable.storeId,storeId))).limit(1);

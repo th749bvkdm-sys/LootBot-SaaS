@@ -1,0 +1,22 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ quant private figures require owned active enrollment, approved pinned version and current source license
+  ✔ fixture enrollment and audited license establish the same production authorization prerequisites (385.3996ms)
+  ✔ only owner can read the pinned approved crop; unrelated student and teacher cannot (114.5705ms)
+  ✔ active attempt response exposes crop URL without private paths, license proof or answer key (25.7071ms)
+  ✔ revoked source license blocks student and admin figure access immediately (55.566ms)
+  ✔ unapproved version cannot appear to the student but is available to authorized reviewers (49.0021ms)
+  ✔ altered file hash and path traversal fail closed without disclosing server paths (61.1032ms)
+  ✔ new question version clones its own reviewed figure to a new immutable asset ID and remains independently reviewed (270.9544ms)
+  ✔ private crop cannot be laundered into another question, source, page or absolute URL (94.3571ms)
+  ✔ imported question origins cannot expose private footer or bypass quant licensing through legacy education routes (104.6362ms)
+  ✔ admin source page list links an available private question crop and leaves unavailable page previews empty (30.4133ms)
+  ✔ disabled enrollment removes all access to its existing crop (13.6876ms)
+✔ quant private figures require owned active enrollment, approved pinned version and current source license (1301.7024ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1834.2289

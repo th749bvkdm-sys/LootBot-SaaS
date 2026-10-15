@@ -1,0 +1,62 @@
+import { useEffect, useRef, useState } from "react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { Flag, Clock3, CheckCheck, WifiOff, GripVertical, ArrowRight, ArrowLeft } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
+import { Scratchpad } from "./Scratchpad";
+import { useAttempt } from "./useAttempt";
+import { QuestionFigure } from "./QuestionFigure";
+import { number, quantApi, type Row, type Stroke } from "./api";
+const choiceLetters: Record<string, string> = { A: "أ", B: "ب", C: "ج", D: "د", E: "هـ", F: "و" };
+export function Attempt({ id, userId, close, onComplete, reviewOnly = false }: { id: string; userId: string; close: () => void; onComplete: (id: string) => void; reviewOnly?: boolean }) {
+  const state = useAttempt(id, userId), d = state.data, [now, setNow] = useState(Date.now()), [tab, setTab] = useState("question"), [padHidden, setPadHidden] = useState(false), [reviewIndex, setReviewIndex] = useState<number | null>(null);
+  const [submit, setSubmit] = useState(false), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [result, setResult] = useState<Row | null>(null);
+  const [pad, setPad] = useState<{ versionId: string; strokes: Stroke[]; revision: number } | null>(null), [padError, setPadError] = useState("");
+  const closed = !!d && d.attempt.status !== "in_progress", index = closed && reviewIndex !== null ? reviewIndex : d?.attempt.currentIndex || 0, item = d?.items[index];
+  const deadline = d?.attempt.deadlineAt ? new Date(d.attempt.deadlineAt).getTime() : null, remaining = deadline === null ? null : Math.max(0, Math.ceil((deadline - now - state.clockOffset) / 1000));
+  const timeoutRef = useRef(false), padRequest = useRef(0);
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
+  useEffect(() => { if (remaining === 0 && !closed && !timeoutRef.current) { timeoutRef.current = true; void state.refresh(); } }, [remaining, closed, state.refresh]);
+  useEffect(() => { if (closed) void quantApi(`/attempts/${id}/result`).then(setResult).catch(e => setMessage(e.message)); }, [closed, id]);
+  useEffect(() => { if (closed && !reviewOnly) onComplete(id); }, [closed, reviewOnly, id, onComplete]);
+  useEffect(() => { if (!item) return; const n = ++padRequest.current; setPad(null); setPadError(""); void quantApi(`/attempts/${id}/scratchpad/${item.versionId}`).then(r => { if (n === padRequest.current) setPad({ strokes: r.strokes, revision: r.revision, versionId: item.versionId }); }).catch(e => { if (n === padRequest.current) setPadError(e.message); }); }, [item?.versionId, id]);
+  async function navigate(position: number) {
+    if (closed) { setReviewIndex(position); return; }
+    setBusy(true); setMessage("");
+    try { if (!await state.flush(false)) throw Error("احفظ الإجابة أو عالج تعارضها قبل الانتقال."); await quantApi(`/attempts/${id}/navigate`, "POST", { position }); await state.refresh(); setTab("question"); }
+    catch (e) { setMessage(e instanceof Error ? e.message : "تعذر الانتقال."); } finally { setBusy(false); }
+  }
+  async function finish() { setBusy(true); setMessage(""); try { if (!await state.flush()) throw Error("تبقى تغييرات غير محفوظة. أعد الاتصال أو عالج التعارض قبل التسليم."); await quantApi(`/attempts/${id}/submit`, "POST", {}); setSubmit(false); await state.refresh(); } catch (e) { setMessage(e instanceof Error ? e.message : "تعذر التسليم."); } finally { setBusy(false); } }
+  if (!d) return <div className="edu-empty" role={state.error ? "alert" : "status"}>{state.error || "جار تحميل المحاولة…"}{state.error && <button className="edu-button" onClick={() => void state.refresh()}>إعادة المحاولة</button>}</div>;
+  const responseFor = (v: string) => state.queue["answers/" + v]?.body || d.responses.find((r: Row) => r.questionVersionId === v) || { choiceKey: null, flagged: false };
+  const response = item && responseFor(item.versionId), answered = d.items.filter((i: Row) => responseFor(i.versionId).choiceKey !== null).length;
+  const padQueue = item && state.queue["scratchpad/" + item.versionId], conflicts = Object.entries(state.queue).filter(([, q]) => q.conflict);
+  const saveText = state.saving ? "جار الحفظ…" : conflicts.length ? "تعارض في الحفظ؛ اختر النسخة التي تريدها" : state.failure && Object.keys(state.queue).length ? "فشل الحفظ؛ التغييرات مؤقتة على الجهاز. أعد المحاولة." : Object.keys(state.queue).length ? "لم تُحفظ التغييرات بعد؛ محفوظة مؤقتًا على الجهاز" : "تم الحفظ في الخادم";
+  const question = <section className="quant-question" aria-labelledby="quant-question-title">
+    <div className="quant-question-meta"><span>السؤال {number(index + 1)} من {number(d.items.length)}</span><span>{item?.skill}</span></div>
+    <h2 id="quant-question-title" className="quant-stem">{item?.images?.length ? item.stem.split("\n\n")[0] : item?.stem}</h2>
+    {item?.images?.map((url: string) => <QuestionFigure key={url} url={url}/>)}
+    {item?.images?.length > 0 && item.stem.includes("\n\n") && <details className="quant-transcript"><summary>قراءة نص السؤال ووصف الرسم</summary><p>{item.stem.split("\n\n").slice(1).join("\n\n")}</p></details>}
+    {item?.attribution && <p className="quant-attribution">{item.attribution}</p>}
+    <div role="group" aria-label="خيارات الإجابة">{item?.choices.map((c: Row) => <button type="button" className="quant-choice" key={c.key} aria-pressed={response.choiceKey === c.key} disabled={closed || busy} onClick={() => state.answer(item.versionId, { choiceKey: c.key })}><b>{choiceLetters[c.key] || c.key}</b><span>{c.text}</span>{response.choiceKey === c.key && <CheckCheck size={18}/>}</button>)}</div>
+    <div className="edu-actions"><button className="edu-button secondary" disabled={closed || !response.choiceKey} onClick={() => state.answer(item.versionId, { choiceKey: null })}>إلغاء الإجابة</button><button className="edu-button secondary" aria-pressed={response.flagged} disabled={closed} onClick={() => state.answer(item.versionId, { flagged: !response.flagged })}><Flag size={17}/> {response.flagged ? "إزالة علامة المراجعة" : "علّم للمراجعة"}</button></div>
+    {d.test.revealPolicy === "after_each" && !closed && response.choiceKey && !state.queue["answers/" + item.versionId] && <button className="edu-button secondary" onClick={() => void quantApi(`/attempts/${id}/result`).then(setResult).catch(e => setMessage(e.message))}>عرض التغذية الراجعة المحفوظة</button>}
+    {result?.revealed && !closed && result.items?.filter((r: Row) => r.versionId === item.versionId && r.correctKey).map((r: Row) => <div className="edu-notice" key={r.versionId}>الإجابة من مفتاح المصدر: {r.correctKey}{r.explanationAvailable && r.explanation && <p>{r.explanation}</p>}</div>)}
+  </section>;
+  const scratch = <div className="quant-pad-wrap">{padError ? <p role="alert">{padError}</p> : !pad ? <p role="status">جار استعادة المسودة…</p> : <Scratchpad key={item.versionId} value={padQueue?.body.strokes || pad.strokes} disabled={closed || padQueue?.conflict} onChange={strokes => { setPad(p => p && { ...p, strokes }); state.scratchpad(item.versionId, strokes, pad.revision); }}/>}</div>;
+  return <div className="quant-attempt">
+    <div className="quant-exam-top"><div><span className="edu-eyebrow">الكمي • {closed ? "محاولة مغلقة" : "محاولة محفوظة"}</span><h1>{d.test.title}</h1></div><div className="quant-clock" aria-live={remaining !== null && remaining < 30 ? "polite" : "off"}><Clock3 size={20}/>{remaining === null ? "بلا مؤقت" : `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`}</div><button className="edu-button secondary" onClick={() => { if (Object.keys(state.queue).length) { setMessage("احفظ تغييراتك قبل العودة إلى الأقسام."); return; } close(); }}>العودة للأقسام</button></div>
+    <div className="quant-status-line"><span>{number(answered)} / {number(d.items.length)} إجابات</span><span role="status" className={Object.keys(state.queue).length ? "quant-pending" : "quant-saved"}>{Object.keys(state.queue).length > 0 && !state.saving && <WifiOff size={15}/>} {saveText}</span><button className="quant-text-button" onClick={() => void state.flush()}>إعادة الحفظ</button></div>
+    {state.storageError && <p role="alert" className="edu-notice edu-error">التخزين المحلي غير متاح أو ممتلئ. أبقِ الصفحة مفتوحة وأعد الاتصال؛ لم نتأكد من حفظ التغييرات على الجهاز.</p>}
+    {(message || state.error) && <p role="alert" className="edu-notice edu-error">{message || state.error}</p>}
+    {conflicts.map(([target]) => <div className="edu-notice" key={target}><p>تغيرت نسخة السؤال أو المسودة من جلسة أخرى. لن نستبدلها تلقائيًا.</p><div className="edu-actions"><button className="edu-button secondary" onClick={() => void state.resolve(target, false).then(() => { padRequest.current++; setPad(null); return quantApi(`/attempts/${id}/scratchpad/${item.versionId}`); }).then(r => setPad({ strokes: r.strokes, revision: r.revision, versionId: item.versionId })).catch(e => setMessage(e.message))}>استعادة نسخة الخادم</button><button className="edu-button" onClick={() => void state.resolve(target, true).catch(e => setMessage(e.message))}>استبدالها بتغييري المحلي</button></div></div>)}
+    {closed && <div className="edu-notice"><p>هذه نسخة للمراجعة فقط. الإجابات ومسودة الحل مغلقة بعد التسليم.</p><button className="edu-button" onClick={() => onComplete(id)}>النتيجة وتفاصيل الأخطاء</button></div>}
+    <div className="quant-mobile-tabs" role="group" aria-label="لوحات الاختبار"><button aria-pressed={tab === "question"} onClick={() => setTab("question")}>السؤال</button><button aria-pressed={tab === "scratch"} onClick={() => setTab("scratch")}>الحل بالقلم</button></div>
+    <button className="quant-text-button quant-fold" onClick={() => setPadHidden(!padHidden)}>{padHidden ? "إظهار مساحة الحل" : "طي مساحة الحل"}</button>
+    <div className="quant-desktop-panels"><PanelGroup direction="horizontal"><Panel defaultSize={55} minSize={35}>{question}</Panel>{!padHidden && <><PanelResizeHandle className="quant-resize" aria-label="تعديل عرض مساحة الحل"><GripVertical size={16}/></PanelResizeHandle><Panel defaultSize={45} minSize={30}>{scratch}</Panel></>}</PanelGroup></div>
+    <div className="quant-mobile-panel">{tab === "question" ? question : scratch}</div>
+    <nav className="quant-question-grid" aria-label="شبكة أسئلة الاختبار">{d.items.map((i: Row, pos: number) => { const r = responseFor(i.versionId); return <button key={i.versionId} aria-label={`السؤال ${pos + 1}${r.choiceKey ? "؛ أجيب" : r.visited ? "؛ زاره الطالب" : "؛ لم يجب"}${r.flagged ? "؛ للمراجعة" : ""}`} aria-current={index === pos ? "step" : undefined} className={`${r.choiceKey ? "answered" : r.visited ? "visited" : ""} ${r.flagged ? "flagged" : ""}`} disabled={busy || index === pos || !closed && !d.test.allowReturn && pos < index} onClick={() => void navigate(pos)}>{number(pos + 1)}{r.flagged && <Flag size={10}/>}</button>; })}</nav>
+    <div className="quant-grid-key"><span>◉ الحالي</span><span>● أُجيب</span><span>○ زاره الطالب</span><span>⚑ للمراجعة</span></div>
+    <footer className="quant-exam-footer"><button className="edu-button secondary" disabled={busy || index === 0 || !closed && !d.test.allowReturn} onClick={() => void navigate(index - 1)}><ArrowRight size={17}/> السابق</button><button className="edu-button" disabled={busy || index >= d.items.length - 1} onClick={() => void navigate(index + 1)}>{closed ? "التالي" : "حفظ والتالي"} <ArrowLeft size={17}/></button><button className="edu-button secondary" disabled={busy || closed} onClick={() => setSubmit(true)}>تسليم الاختبار</button></footer>
+    <Dialog open={submit} onOpenChange={setSubmit}><DialogContent dir="rtl"><DialogTitle>تسليم المحاولة؟</DialogTitle><DialogDescription>أجبت عن {number(answered)} من {number(d.items.length)}. {number(d.items.length - answered)} أسئلة دون إجابة؛ تظهر منفصلة في النتيجة. بعد التسليم لا يمكن تعديل الإجابات أو المسودات.</DialogDescription><DialogFooter><button className="edu-button secondary" disabled={busy} onClick={() => setSubmit(false)}>العودة للاختبار</button><button className="edu-button" disabled={busy} onClick={() => void finish()}>{busy ? "جار التسليم…" : "تأكيد التسليم"}</button></DialogFooter></DialogContent></Dialog>
+  </div>;
+}

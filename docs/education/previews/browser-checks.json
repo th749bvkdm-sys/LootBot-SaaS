@@ -1,0 +1,120 @@
+{
+  "student": [
+    {
+      "errors": [],
+      "scrollWidth": 1265,
+      "title": "مركز القدرات",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1265,
+      "title": "خريطة مهاراتي",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1280,
+      "title": "تدريباتي السابقة",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1280,
+      "title": "دفتر أخطائي",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1280,
+      "title": "أسئلتي المحفوظة",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1265,
+      "title": "الأهداف والخطة",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1265,
+      "title": "المساعدة",
+      "width": 1280
+    }
+  ],
+  "admin": [
+    {
+      "errors": [],
+      "scrollWidth": 1265,
+      "title": "المستخدمون",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1265,
+      "title": "الفصول والإسناد",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1280,
+      "title": "رموز الانضمام",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1265,
+      "title": "الانضمام والمتابعة",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1265,
+      "title": "التصنيفات",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1265,
+      "title": "محتوى القدرات",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1265,
+      "title": "الأدوار والصلاحيات",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1265,
+      "title": "غرفة المعلم",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1265,
+      "title": "غرفة الطلاب",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1265,
+      "title": "إعدادات المنصة",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1265,
+      "title": "المساعدة والبلاغات",
+      "width": 1280
+    },
+    {
+      "errors": [],
+      "scrollWidth": 1280,
+      "title": "سجل التدقيق",
+      "width": 1280
+    }
+  ]
+}

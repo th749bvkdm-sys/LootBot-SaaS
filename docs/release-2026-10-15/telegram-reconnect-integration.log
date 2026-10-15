@@ -1,0 +1,23 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ saved Telegram reconnect uses isolated HTTP/database and abort-aware mock transport only
+  ✔ session, CSRF and owner checks reject before any credential use (63.3116ms)
+  ✔ diagnostic testing stays diagnostic; owner reconnect resumes saved offset and audits without exposing credentials (69.8178ms)
+  ✔ missing, disconnected, unreadable and invalid saved credentials cannot start reception (55.3308ms)
+  ✔ webhook and active duplicate-token conflicts remain explicit and preserve saved state (35.9255ms)
+  ✔ credentials changed or store archived during validation cannot resume stale snapshot (60.2554ms)
+  ✔ retry rate is bounded and later disconnect removes worker and credential (120.6395ms)
+  ✔ actual polling conflict records actionable status while transport never sends (31.7502ms)
+  ✔ delayed error and successful update from replaced same-token workers cannot overwrite the current worker (253.4198ms)
+  ✔ queued disconnect and archive complete before reconnect and cannot recreate reception (8153.7058ms)
+  ✔ startup validation completed after a stop cannot launch a worker or persist a late failure (81.2378ms)
+  ✔ a reconnect queued before a lifecycle stop returns conflict instead of restarting afterward (2034.0634ms)
+  ✔ shutdown drains in-flight new connections and future resume requests without changing valid saved connections (50.2848ms)
+✔ saved Telegram reconnect uses isolated HTTP/database and abort-aware mock transport only (11119.0907ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11620.163

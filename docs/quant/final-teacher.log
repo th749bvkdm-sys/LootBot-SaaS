@@ -1,0 +1,22 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ teacher account, privacy, roster, exam and scheduled rules persist through real HTTP
+  ✔ actual registration begins without a role and the selected teacher role survives logout and login (355.2185ms)
+  ✔ server enforces separate account type and CSRF while preserving merchant access (128.3225ms)
+  ✔ saveable setup validates completion and scopes private school details (126.4019ms)
+  ✔ class and import preview prevent malformed and duplicate roster writes (380.3864ms)
+  ✔ attendance and grade records are safe, editable and retain history on a class move (538.1086ms)
+  ✔ private validated images support honest manual OCR and ownership protection (185.5654ms)
+  ✔ editable exams, optimistic save and reusable templates preserve the source (192.1285ms)
+  ✔ real scheduled rules are idempotent and use saved counts without guardian messaging (283.4273ms)
+  ✔ bulk grading rolls back invalid entries and persists default class templates (192.5822ms)
+  ✔ all other scheduled rule types execute against saved data and pause or duplicate safely (330.7281ms)
+  ✔ class-scoped upcoming rules remind only tasks while global rules include saved exams (182.0593ms)
+✔ teacher account, privacy, roster, exam and scheduled rules persist through real HTTP (3244.9726ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3873.5895

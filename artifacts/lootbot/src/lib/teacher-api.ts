@@ -1,5 +1,5 @@
-export type AccountType = 'merchant' | 'teacher';
-export interface AccountWorkspace { accountType: AccountType | null; role: string; profileComplete: boolean }
+export type AccountType = 'merchant' | 'teacher' | 'student';
+export interface AccountWorkspace { accountType: AccountType | null; role: string; profileComplete: boolean; educationRole?: string|null }
 export interface TeacherProfile { teacherName: string; schoolName: string; stage: string; subjects: string[]; classes: string[]; term: string; year: string; city: string; printStyle: 'formal' | 'primary' | 'minimal'; customTemplateId?:string|null; gradePrecision?:number; digits: 'arabic' | 'western'; paperSize: 'A4'; logoAssetId: string | null; signature: string; onboardingStep: number; complete: boolean }
 export interface TeacherClass { id: string; name: string; grade: string; section: string; subject: string; year: string; term: string; notes: string; archived: boolean; gradebookTemplate?: {title:string;totalMarks:number}[]; createdAt: string; updatedAt: string }
 export interface TeacherStudent { id: string; classId: string; name: string; internalId: string; notes: string; archived: boolean; removed?: boolean; createdAt: string; updatedAt: string }

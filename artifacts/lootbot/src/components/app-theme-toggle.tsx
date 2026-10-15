@@ -6,9 +6,7 @@ export type AppTheme = "dark" | "light" | "glass";
 
 export function getAppTheme(): AppTheme {
   const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-  return savedTheme === "light" || savedTheme === "glass"
-    ? savedTheme
-    : "dark";
+  return savedTheme === "light" || savedTheme === "glass" ? savedTheme : "dark";
 }
 
 export function applyAppTheme(theme: AppTheme) {
@@ -16,7 +14,9 @@ export function applyAppTheme(theme: AppTheme) {
   document.documentElement.classList.toggle("dark", theme !== "light");
 }
 
-export function AppThemeToggle() {
+export function AppThemeToggle({
+  label = "مظهر غرفة المعلم",
+}: { label?: string } = {}) {
   const [theme, setTheme] = useState<AppTheme>(() => getAppTheme());
 
   const changeTheme = (nextTheme: AppTheme) => {
@@ -28,7 +28,7 @@ export function AppThemeToggle() {
   return (
     <select
       className="tw-button tw-theme-select"
-      aria-label="مظهر غرفة المعلم"
+      aria-label={label}
       value={theme}
       onChange={(event) => changeTheme(event.currentTarget.value as AppTheme)}
     >

@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { pool, type PoolClient } from "@workspace/db";
 import { chemistryPack, chemistryCheck } from "../lib/chemistry";
+import { settings, permission } from "../lib/education";
 import {
   requireAuth,
   requireTeacher,
@@ -502,7 +503,81 @@ type StudentIdentity = {
   csrfHash: string;
 };
 const identities = new WeakMap<Request, StudentIdentity>();
+async function educationStudentPolicy(classId: string, studentId: string) {
+  const linked = (
+    await pool.query(
+      `SELECT sc.school_id,school.status,
+    EXISTS(SELECT 1 FROM education_enrollments e JOIN users u ON u.id=e.user_id
+      WHERE e.roster_id=$2 AND (e.status<>'active' OR u.suspended)) AS blocked
+    FROM education_school_classes sc JOIN education_schools school ON school.id=sc.school_id
+    WHERE sc.class_id=$1`,
+      [classId, studentId],
+    )
+  ).rows[0];
+  if (!linked) return; // Existing standalone class access remains supported.
+  const policy = await settings(linked.school_id);
+  if (
+    linked.blocked ||
+    linked.status !== "active" ||
+    policy.maintenance ||
+    !policy.studentRoom
+  )
+    deny("دخول أنشطة هذا الفصل غير متاح حاليًا.", 403);
+}
 const studentAuth = route(async (req, res, next) => {
+  const policy = await settings();
+  if (policy.maintenance || !policy.studentRoom)
+    deny("غرفة الطلاب موقوفة حاليًا.", 403);
+  if (req.cookies?.lootbot_session && !req.cookies?.[SESSION]) {
+    let authError: unknown;
+    await requireAuth(req, res, (error?: unknown) => {
+      authError = error;
+    });
+    if (authError) throw authError;
+    if (res.headersSent || !req.auth) return;
+    if (req.auth.accountType !== "student")
+      deny("هذه الصفحة لحساب الطالب.", 403);
+    if (
+      !(await permission(
+        req,
+        req.method === "GET" ? "practice.read" : "practice.write",
+      ))
+    )
+      deny("لا تملك صلاحية تنفيذ هذه العملية.", 403);
+    const enrollmentId =
+      typeof req.query.enrollmentId === "string"
+        ? req.query.enrollmentId
+        : null;
+    const assignmentId =
+      req.path.match(/\/assignments\/([a-f0-9-]{36})/)?.[1] || null;
+    const account = await pool.query(
+      `SELECT e.roster_id,e.class_id,c.owner_id FROM education_enrollments e JOIN education_schools s ON s.id=e.school_id JOIN teacher_classes c ON c.id=e.class_id JOIN teacher_students st ON st.id=e.roster_id WHERE e.user_id=$1 AND e.status='active' AND s.status='active' AND NOT c.archived AND NOT st.archived AND NOT st.removed AND ($2::text IS NULL OR e.id=$2) AND ($3::text IS NULL OR EXISTS(SELECT 1 FROM teacher_activity_assignments a WHERE a.id=$3 AND a.class_id=e.class_id)) ORDER BY e.created_at DESC LIMIT 1`,
+      [req.auth.userId, enrollmentId, assignmentId],
+    );
+    if (!account.rowCount) deny("انضم إلى فصل صالح لفتح أنشطتك.", 403);
+    const member = account.rows[0];
+    await educationStudentPolicy(member.class_id, member.roster_id);
+    identities.set(req, {
+      id: req.auth.sessionId,
+      studentId: member.roster_id,
+      classId: member.class_id,
+      ownerId: member.owner_id,
+      csrfHash: req.auth.csrfHash,
+    });
+    if (req.method !== "GET") {
+      const cookie = req.cookies?.lootbot_csrf,
+        header = req.get("x-student-csrf") || req.get("x-csrf-token");
+      if (
+        typeof cookie !== "string" ||
+        typeof header !== "string" ||
+        !safeStringEqual(cookie, header) ||
+        !safeStringEqual(sha256(cookie), req.auth.csrfHash)
+      )
+        deny("تعذر التحقق من الطلب.", 403);
+    }
+    next();
+    return;
+  }
   const token = req.cookies?.[SESSION];
   if (typeof token !== "string" || token.length < 32)
     deny("أدخل رمزي الدخول لفتح أنشطتك.", 401);
@@ -512,6 +587,7 @@ const studentAuth = route(async (req, res, next) => {
   );
   if (!r.rowCount) deny("انتهت الجلسة أو أُلغي رمز الدخول.", 401);
   const a = r.rows[0];
+  await educationStudentPolicy(a.class_id, a.student_id);
   identities.set(req, {
     id: a.id,
     studentId: a.student_id,
@@ -536,6 +612,13 @@ learningRouter.post(
   "/student/entry",
   route(async (req, res) => {
     if (req.get("x-student-entry") !== "1") deny("تعذر التحقق من الطلب.", 403);
+    const policy = await settings();
+    if (
+      process.env.EDUCATION_DISABLED === "true" ||
+      policy.maintenance ||
+      !policy.studentRoom
+    )
+      deny("غرفة الطلاب موقوفة حاليًا.", 403);
     const input = z
       .object({
         classCode: z.string().min(8).max(40),
@@ -570,6 +653,7 @@ learningRouter.post(
     const token = newOpaqueToken(),
       csrf = newOpaqueToken(),
       s = r.rows[0];
+    await educationStudentPolicy(s.class_id, s.id);
     await pool.query(
       "DELETE FROM teacher_student_sessions WHERE expires_at<now()",
     );
@@ -592,17 +676,27 @@ learningRouter.use("/student", studentAuth);
 learningRouter.get(
   "/student/session",
   route(async (req, res) => {
-    res.json({ authenticated: true, csrf: req.cookies[CSRF] });
+    res.json({
+      authenticated: true,
+      csrf: req.auth ? req.cookies.lootbot_csrf : req.cookies[CSRF],
+    });
   }),
 );
 learningRouter.post(
   "/student/logout",
   route(async (req, res) => {
-    await pool.query("DELETE FROM teacher_student_sessions WHERE id=$1", [
-      identities.get(req)!.id,
-    ]);
+    await pool.query(
+      req.auth
+        ? "DELETE FROM sessions WHERE id=$1"
+        : "DELETE FROM teacher_student_sessions WHERE id=$1",
+      [identities.get(req)!.id],
+    );
     res.clearCookie(SESSION, { path: "/" });
     res.clearCookie(CSRF, { path: "/" });
+    if (req.auth) {
+      res.clearCookie("lootbot_session", { path: "/" });
+      res.clearCookie("lootbot_csrf", { path: "/" });
+    }
     res.json({ ok: true });
   }),
 );

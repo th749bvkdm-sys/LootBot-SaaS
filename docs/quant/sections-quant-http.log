@@ -1,0 +1,29 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+✔ quantitative source gate and normalization do not infer permissions from a free filename (6.5035ms)
+▶ quantitative exams: versioned content, deadlines, private drafts and actual analytics
+  ✔ student membership and permission boundaries are enforced by the server (384.0701ms)
+  ✔ unverified PDF metadata cannot be extracted or licensed by a student (159.0915ms)
+  ✔ question validation, review and immutable versions exclude unapproved content (142.9828ms)
+  ✔ publication requires reviewed versions and frozen test items (402.9177ms)
+  ✔ student catalog uses source identity, numeric section order and only publisher practice while retaining old history (764.5483ms)
+  ✔ attempt deadlines come from the server and active payloads contain no solutions (215.1041ms)
+  ✔ answers can change or clear with revisions; navigation and review state persist (357.8633ms)
+  ✔ per-question strokes restore privately and stale revisions cannot overwrite them (331.9352ms)
+  ✔ editing a bank question leaves a started attempt pinned to its original version (48.3533ms)
+  ✔ server grading separates correct, wrong and unanswered; repeated submission is idempotent (126.3043ms)
+  ✔ expired attempts close and grade on the server without a client submit (173.9293ms)
+  ✔ return restrictions and reveal policies are enforced independently of the browser (720.8905ms)
+  ✔ actual analytics protect small samples and exclude another student history (141.7409ms)
+  ✔ deleting an owned attempt cascades private strokes; another student cannot delete it (112.4757ms)
+QUANT_BANK_BENCHMARK originalQuestions=2000 metadataRequestMs=62 adminPageSize=500
+  ✔ indexed bank queries handle 2000 original local fixtures and preserve bounded payloads (1126.6786ms)
+  ✔ revoking a source prevents new attempts and publishing linked versions (63.6593ms)
+✔ quantitative exams: versioned content, deadlines, private drafts and actual analytics (5364.1656ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5955.2763

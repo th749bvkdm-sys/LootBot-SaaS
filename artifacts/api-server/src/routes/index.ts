@@ -19,12 +19,20 @@ import { storefrontRouter } from './storefront';
 import { learningRouter } from './learning';
 import { teacherToolsRouter } from './teacher-tools';
 import { chemistryRouter } from './chemistry';
+import { educationRouter } from './education';
+import { quantContentRouter } from './quant-content';
+import { quantRouter } from './quant';
+import { quantAssetsRouter } from './quant-assets';
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
 router.use(accountRouter);
+router.use(educationRouter);
+router.use(quantContentRouter);
+router.use(quantRouter);
+router.use(quantAssetsRouter);
 router.use(learningRouter);
 router.use(teacherToolsRouter);
 router.use(chemistryRouter);

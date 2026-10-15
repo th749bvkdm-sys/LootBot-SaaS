@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "policy": "Metadata registry. Almufakir120 is authorized from owner-provided written evidence; only that source may now be processed. Other PDFs remain unverified. DB activation requires an audited administrator operation.",
+  "sources": [
+    {
+      "title": "الأقسام الحمراء 1–40",
+      "fileName": "_الاقسام_الحمراء_كامله_1_40_دعواتكم_لي_.pdf",
+      "fileHash": "598111922c1e729c3c4a2150d57ba52fdbbf0b00591609525b42ad57a4b497c5",
+      "fileSize": 40243747,
+      "licenseStatus": "unverified",
+      "licenseNote": "",
+      "pageCount": null,
+      "attribution": "اسم العرض مؤقت؛ يعتمد الاسم النهائي ونسب المصدر وفق مستند الترخيص.",
+      "sourceUrl": "",
+      "pagesProcessed": 0,
+      "questionsDiscovered": 0,
+      "questionsApproved": 0
+    },
+    {
+      "title": "المفكر 120 تحديث (١)",
+      "fileName": "__المفكر 120 تحديث (١)_ (1).pdf",
+      "fileHash": "3d7c9c2034b8e326d7242b0ffea44e08b58d7f5b40db765a4697f3adeea35c2b",
+      "fileSize": 42155103,
+      "licenseStatus": "verified",
+      "licenseNote": "إذن كتابي قدمه مالك LootBot بتاريخ 2026-10-14: «نعم مسموح ل متجر لوت البوت الاستخدام الكامل». الإثبات محفوظ محليًا بشكل خاص؛ SHA-256: e9cb7d634d2844cc52e5d2fa6f0615a6d95517d1ba4d2d451bcefcf7585026fa",
+      "pageCount": null,
+      "attribution": "يُستكمل نسب المصدر وشروط استعماله بعد تقديم الترخيص.",
+      "sourceUrl": "https://t.me/AlmufakirGD",
+      "pagesProcessed": 0,
+      "questionsDiscovered": 0,
+      "questionsApproved": 0
+    },
+    {
+      "title": "محدث (٢) الإصدارات المجانية",
+      "fileName": "محدث (٢) الاصدارات المجانية.pdf",
+      "fileHash": "ee22a294343e507da39ba965df7c84f4b0e26063cb9f8bc6d276e653b1b69299",
+      "fileSize": 72644275,
+      "licenseStatus": "unverified",
+      "licenseNote": "",
+      "pageCount": null,
+      "attribution": "عنوان «مجاني» ليس إذنًا بإعادة النشر أو تحويل المحتوى إلى بنك أسئلة.",
+      "sourceUrl": "",
+      "pagesProcessed": 0,
+      "questionsDiscovered": 0,
+      "questionsApproved": 0
+    }
+  ]
+}

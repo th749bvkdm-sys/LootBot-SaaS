@@ -1,0 +1,22 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ guided steps persist, isolate identities, protect answers and immutable versions
+  ✔ teacher/merchant permissions and CSRF (1272.7571ms)
+  ✔ author, validate, publish, assign immutable snapshot (221.6754ms)
+  ✔ hashed revocable codes and roster-free entry (189.8575ms)
+  ✔ no correctness leaks, no cross-class access, double submission is idempotent (128.3889ms)
+  ✔ three synthetic students retry, request help, finish and resume by step id (1279.1548ms)
+  ✔ results use real attempts, distinct help and ownership (38.1131ms)
+  ✔ editing/publishing keeps assigned content and results fixed (87.4377ms)
+  ✔ students cannot open another class assignment and chemistry exploration is not marked as a failed attempt (121.7419ms)
+  ✔ later checks show only the same owned class/objective with real first attempts (64.3135ms)
+  ✔ chemistry result resumes from persisted exploration events (29.2717ms)
+  ✔ restarting retains events; renewing codes revokes live sessions (115.5657ms)
+✔ guided steps persist, isolate identities, protect answers and immutable versions (3959.8356ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7276.9922

@@ -1,0 +1,13 @@
+test_changed_proof_bytes_rejected (__main__.LicenseGateTests.test_changed_proof_bytes_rejected) ... ok
+test_matching_synthetic_verified_metadata (__main__.LicenseGateTests.test_matching_synthetic_verified_metadata) ... ok
+test_missing_license_note_rejected (__main__.LicenseGateTests.test_missing_license_note_rejected) ... ok
+test_missing_proof_rejected (__main__.LicenseGateTests.test_missing_proof_rejected) ... ok
+test_proof_for_different_pdf_rejected (__main__.LicenseGateTests.test_proof_for_different_pdf_rejected) ... ok
+test_unverified_registry_rejected (__main__.LicenseGateTests.test_unverified_registry_rejected) ... ok
+test_unverified_written_record_rejected (__main__.LicenseGateTests.test_unverified_written_record_rejected) ... ok
+test_wrong_source_hash_rejected (__main__.LicenseGateTests.test_wrong_source_hash_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.062s
+
+OK

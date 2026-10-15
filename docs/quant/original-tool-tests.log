@@ -1,0 +1,15 @@
+✔ authored pack has 30 verified calculations, 13 real skills and stable unique references (2.1082ms)
+✔ changing a key away from the computed answer is rejected (17.5848ms)
+✔ duplicate choices, moved source references and unsupported skills are rejected (1.1002ms)
+✔ equation, sequence and constant-comparison verifier rejects incorrect models (2.2132ms)
+✔ registering authored source writes metadata only without approving a license (1.0712ms)
+✔ draft import rejects unverified, restricted, rejected and empty-proof sources before question writes (0.6373ms)
+✔ verified import writes 30 drafts, is idempotent, never approves and never creates tests (5.1009ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 217.7271

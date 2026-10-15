@@ -1,0 +1,22 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+✖ durable growth execution deduplicates events, preserves order, assigns coupons and records delivery failures (10593.6436ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11796.3415
+
+✖ failing tests:
+
+test at .teacher-local-25752.mjs:28283:1
+✖ durable growth execution deduplicates events, preserves order, assigns coupons and records delivery failures (10593.6436ms)
+  Error: SESSION_SECRET must contain at least 32 characters.
+      at botEncryptionKey (file:///C:/Users/kh7bw/OneDrive/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D9%86%D8%AF%D8%A7%D8%AA/GitHub/LootBot-SaaS-glass-release/artifacts/api-server/.teacher-local-25752.mjs:26975:11)
+      at encryptBotToken (file:///C:/Users/kh7bw/OneDrive/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D9%86%D8%AF%D8%A7%D8%AA/GitHub/LootBot-SaaS-glass-release/artifacts/api-server/.teacher-local-25752.mjs:26989:48)
+      at TestContext.<anonymous> (file:///C:/Users/kh7bw/OneDrive/%D8%A7%D9%84%D9%85%D8%B3%D8%AA%D9%86%D8%AF%D8%A7%D8%AA/GitHub/LootBot-SaaS-glass-release/artifacts/api-server/.teacher-local-25752.mjs:28362:74)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)

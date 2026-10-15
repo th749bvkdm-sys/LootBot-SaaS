@@ -4,7 +4,7 @@ import { createId, decryptBotToken } from './security';
 import { evaluateRule, type CustomerFacts } from './customer-rules';
 import { actionMatches, audienceMatches, parseGrowthConfiguration, renderGrowthText, type GrowthAction, type GrowthTrigger } from './growth-configuration';
 import { couponDiscount } from './commerce-validation';
-import { featureGate, getStorePlan } from './store-plans';
+import { featureGate, getStorePlan, requireStoreFeature } from './store-plans';
 import { logger } from './logger';
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -144,7 +144,7 @@ async function runJob(job: typeof growthJobsTable.$inferSelect) {
       const [currentJob] = await tx.select().from(growthJobsTable).where(eq(growthJobsTable.id, job.id)).for('update');
       if (!locked || currentJob?.status === 'completed') return;
       if (action.type.includes('POINTS')) {
-        await featureGate.require(job.storeId, 'loyalty.basic');
+        await requireStoreFeature(job.storeId, 'loyalty.basic', tx);
         const delta = action.type === 'ADD_POINTS' ? action.amount : -action.amount;
         if (locked.points + delta < 0 || locked.points + delta > 2000000000) throw new Error('رصيد النقاط غير كافٍ أو يتجاوز الحد.');
         await tx.insert(customerLedgerTable).values({ id: createId(), storeId: job.storeId, customerId: customer.id, jobId: job.id, amount: delta, reason: resource.name });

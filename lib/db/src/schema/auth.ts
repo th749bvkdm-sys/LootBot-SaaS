@@ -1,7 +1,8 @@
 import { createInsertSchema } from "drizzle-zod";
-import { boolean, check, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, check, integer, pgTable, text, timestamp, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { sql } from 'drizzle-orm';
 import { z } from "zod/v4";
+import { educationStudentAccessTable } from './education';
 
 export const usersTable = pgTable("users", {
   id: text("id").primaryKey(),
@@ -14,9 +15,11 @@ export const usersTable = pgTable("users", {
   failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
   lockedUntil: timestamp("locked_until", { withTimezone: true }),
   isDeleted: boolean("is_deleted").notNull().default(false),
+  suspended: boolean("suspended").notNull().default(false),
+  studentCodeManaged: boolean("student_code_managed").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-}, t => [check('users_account_type_check', sql`${t.accountType} IS NULL OR ${t.accountType} IN ('merchant','teacher')`)]);
+}, t => [check('users_account_type_check', sql`${t.accountType} IS NULL OR ${t.accountType} IN ('merchant','teacher','student')`)]);
 
 export const sessionsTable = pgTable("sessions", {
   id: text("id").primaryKey(),
@@ -25,6 +28,7 @@ export const sessionsTable = pgTable("sessions", {
     .references(() => usersTable.id, { onDelete: "cascade" }),
   tokenHash: text("token_hash").notNull().unique(),
   csrfHash: text("csrf_hash").notNull(),
+  studentAccessId: text("student_access_id").references((): AnyPgColumn => educationStudentAccessTable.id),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),

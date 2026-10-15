@@ -1,3 +1,4 @@
+import { assertTestDatabase } from './assert-test-db';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { randomUUID } from 'node:crypto';
@@ -8,7 +9,7 @@ import { defaultGrowthConfiguration, parseGrowthConfiguration, type GrowthAction
 import { encryptBotToken, sha256 } from '../src/lib/security';
 
 test('durable growth execution deduplicates events, preserves order, assigns coupons and records delivery failures', async () => {
-  assert.equal(new URL(process.env.DATABASE_URL!).hostname, 'ep-summer-recipe-b21ls93d-pooler.c-6.eu-central-1.aws.neon.tech');
+  assertTestDatabase();
   const ownerId = randomUUID(); const storeId = randomUUID(); const outsiderStore = randomUUID(); const couponId = randomUUID(); const resourceId = randomUUID();
   const originalFetch = globalThis.fetch; let deliveryMode = 'ok'; const sent: Record<string, unknown>[] = [];
   globalThis.fetch = async (url, init) => {

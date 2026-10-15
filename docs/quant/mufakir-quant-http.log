@@ -1,0 +1,28 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+✔ quantitative source gate and normalization do not infer permissions from a free filename (3.1593ms)
+▶ quantitative exams: versioned content, deadlines, private drafts and actual analytics
+  ✔ student membership and permission boundaries are enforced by the server (537.0992ms)
+  ✔ unverified PDF metadata cannot be extracted or licensed by a student (217.3902ms)
+  ✔ question validation, review and immutable versions exclude unapproved content (197.232ms)
+  ✔ publication requires reviewed versions and frozen test items (458.2765ms)
+  ✔ attempt deadlines come from the server and active payloads contain no solutions (176.4457ms)
+  ✔ answers can change or clear with revisions; navigation and review state persist (260.5564ms)
+  ✔ per-question strokes restore privately and stale revisions cannot overwrite them (233.1516ms)
+  ✔ editing a bank question leaves a started attempt pinned to its original version (44.9107ms)
+  ✔ server grading separates correct, wrong and unanswered; repeated submission is idempotent (126.4803ms)
+  ✔ expired attempts close and grade on the server without a client submit (138.1261ms)
+  ✔ return restrictions and reveal policies are enforced independently of the browser (429.7898ms)
+  ✔ actual analytics protect small samples and exclude another student history (45.8379ms)
+  ✔ deleting an owned attempt cascades private strokes; another student cannot delete it (48.9374ms)
+QUANT_BANK_BENCHMARK originalQuestions=2000 metadataRequestMs=59 adminPageSize=500
+  ✔ indexed bank queries handle 2000 original local fixtures and preserve bounded payloads (858.5898ms)
+  ✔ revoking a source prevents new attempts and publishing linked versions (33.1851ms)
+✔ quantitative exams: versioned content, deadlines, private drafts and actual analytics (3908.6717ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5222.544

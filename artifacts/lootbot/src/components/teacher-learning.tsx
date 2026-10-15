@@ -1355,7 +1355,8 @@ async function studentApi<T>(
   method = "GET",
   body?: unknown,
 ): Promise<T> {
-  const response = await fetch("/api/student" + path, {
+  const enrollment=new URLSearchParams(window.location.search).get('enrollmentId');
+  const response = await fetch("/api/student" + path + (enrollment ? (path.includes('?')?'&':'?')+'enrollmentId='+encodeURIComponent(enrollment) : ''), {
     credentials: "include",
     method,
     headers: {

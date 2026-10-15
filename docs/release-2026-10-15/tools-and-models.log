@@ -1,0 +1,43 @@
+✔ Arabic and Persian digits normalize without changing connected Arabic names (0.9382ms)
+✔ CSV supports Arabic BOM, quoted commas, escaped quotes, and quoted line breaks (0.9737ms)
+✔ unclosed quoting and excessive imports fail visibly (3.2533ms)
+✔ preview detects duplicate names, blank fields, matched IDs and never changes originals (3.1278ms)
+✔ export neutralizes formulas, including hidden leading whitespace, and quotes all values (0.4141ms)
+✔ profile values prefill a real A4 document without inventing questions (7.2301ms)
+✔ duplicate questions receive new identities and independent nested options (0.4188ms)
+✔ design styles remain independent of editable document content and source (0.8435ms)
+✔ OCR blocks are editable, always require review, and never guess marks or answers (0.3409ms)
+✔ manual fallback preserves every nonempty Arabic and English line without an invented answer (0.3742ms)
+✔ large extraction is divided into bounded sections without losing lines (2.1875ms)
+✔ review detects absent fields, empty questions, choices, marks, and unreviewed OCR (1.0469ms)
+✔ all allocated marks are counted and question ordering boundaries are safe (0.6433ms)
+✔ measured pagination honors manual page breaks and retains headings with their question (1.3581ms)
+✔ pagination flags a question too tall for A4 instead of silently truncating it (0.6739ms)
+✔ digit formatting supports Arabic and Western display and preserves numerical storage (106.8932ms)
+✔ authored pack has 30 verified calculations, 13 real skills and stable unique references (1.5872ms)
+✔ changing a key away from the computed answer is rejected (19.7582ms)
+✔ duplicate choices, moved source references and unsupported skills are rejected (4.1245ms)
+✔ equation, sequence and constant-comparison verifier rejects incorrect models (3.4868ms)
+✔ registering authored source writes metadata only without approving a license (0.7778ms)
+✔ draft import rejects unverified, restricted, rejected and empty-proof sources before question writes (1.0873ms)
+✔ verified import writes 30 drafts, is idempotent, never approves and never creates tests (5.5177ms)
+✔ reviewed pack accepts reviewed questions with exact source pages and existing skills (4.181ms)
+✔ unconfirmed structural drafts remain needs_review while incomplete review metadata is rejected (0.8032ms)
+✔ choices, answer keys, references and taxonomy are validated (0.357ms)
+✔ whole-page paths, external URLs and unsupported figure metadata cannot be imported (0.4296ms)
+✔ inactive operator and unverified/rejected/restricted source block writes (1.7485ms)
+✔ source mismatch or page outside registered PDF range is rejected (1.1888ms)
+✔ licensed import creates versioned needs_review drafts, provenance and no published tests (1.3543ms)
+✔ changed stable reference and existing stem never overwrite or automatically attach sources (1.0518ms)
+✔ Render builds use migrations even without production NODE_ENV (1.2885ms)
+✔ production builds never run Drizzle push (0.1579ms)
+✔ local development preserves push then migrate (0.1791ms)
+✔ plans are fresh values and cannot affect a subsequent invocation (0.1192ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 504.8444

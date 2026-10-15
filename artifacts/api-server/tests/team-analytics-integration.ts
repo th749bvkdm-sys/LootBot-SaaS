@@ -1,3 +1,4 @@
+import { assertTestDatabase } from './assert-test-db';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { randomUUID } from 'node:crypto';
@@ -8,7 +9,7 @@ import { storeMembersTable } from '../../../lib/db/src/schema/staff';
 import { passwordHash, sha256 } from '../src/lib/security';
 
 test('real HTTP team and analytics enforce store, membership, plan and financial scopes', async t => {
-  assert.equal(new URL(process.env.DATABASE_URL!).hostname, 'ep-summer-recipe-b21ls93d-pooler.c-6.eu-central-1.aws.neon.tech');
+  assertTestDatabase();
   const owner=randomUUID(),staff=randomUUID(),other=randomUUID(),business=randomUUID(),free=randomUUID();
   const stores=[business,free],userIds=[owner,staff,other]; const cookies=new Map<string,{cookie:string;csrf:string}>();
   const now=new Date(),yesterday=new Date(Date.now()-86400000); const product=randomUUID(),secondProduct=randomUUID();

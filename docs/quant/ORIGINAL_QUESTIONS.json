@@ -1,0 +1,1323 @@
+{
+  "schemaVersion": 1,
+  "packId": "lootbot-quant-original-v1",
+  "title": "بداية الكمي • ثلاثون مسألة أصلية",
+  "version": 1,
+  "authoredOn": "2026-10-14",
+  "attribution": "محتوى أصلي صيغ داخل مشروع LootBot-SaaS استجابة لطلب مالك المشروع. ليس اقتباسًا من ملفات PDF المرفقة.",
+  "rightsStatement": "أذن مالك المشروع بإعداد أسئلة أصلية للقسم الكمي. تُراجع الصياغة والحلول قبل الاعتماد، ويُثبت المسؤول الأعلى سياسة استخدام الحزمة ونسبتها في سجل المصدر.",
+  "sourceReferencePolicy": "sourcePage هو رقم المدخل المؤلف الثابت داخل هذه الحزمة، وليس رقم صفحة مستخرجة من PDF.",
+  "reviewStatus": "draft",
+  "questions": [
+    {
+      "ref": "LBQ-ORIGINAL-V1-001",
+      "sourcePage": 1,
+      "skill": "الحساب والعمليات الأساسية",
+      "stem": "ما ناتج (18 + 6) ÷ 3؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "6"
+        },
+        {
+          "key": "B",
+          "text": "8"
+        },
+        {
+          "key": "C",
+          "text": "10"
+        },
+        {
+          "key": "D",
+          "text": "12"
+        }
+      ],
+      "correctKey": "B",
+      "explanation": "نحسب داخل القوس أولًا: 18 + 6 = 24، ثم نقسم 24 على 3، فيكون الناتج 8.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "div",
+          "args": [
+            {
+              "op": "add",
+              "args": [
+                18,
+                6
+              ]
+            },
+            3
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-002",
+      "sourcePage": 2,
+      "skill": "الحساب والعمليات الأساسية",
+      "stem": "ما ناتج 7 × 8 − 9؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "49"
+        },
+        {
+          "key": "B",
+          "text": "56"
+        },
+        {
+          "key": "C",
+          "text": "47"
+        },
+        {
+          "key": "D",
+          "text": "63"
+        }
+      ],
+      "correctKey": "C",
+      "explanation": "للضرب أولوية على الطرح: 7 × 8 = 56، ثم 56 − 9 = 47.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                7,
+                8
+              ]
+            },
+            9
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-003",
+      "sourcePage": 3,
+      "skill": "الحساب والعمليات الأساسية",
+      "stem": "احسب 156 ÷ 12 + 5.",
+      "choices": [
+        {
+          "key": "A",
+          "text": "13"
+        },
+        {
+          "key": "B",
+          "text": "17"
+        },
+        {
+          "key": "C",
+          "text": "20"
+        },
+        {
+          "key": "D",
+          "text": "18"
+        }
+      ],
+      "correctKey": "D",
+      "explanation": "نقسم أولًا: 156 ÷ 12 = 13، ثم نضيف 5، فيكون الناتج 18.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "add",
+          "args": [
+            {
+              "op": "div",
+              "args": [
+                156,
+                12
+              ]
+            },
+            5
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-004",
+      "sourcePage": 4,
+      "skill": "النسب والتناسب",
+      "stem": "في علبة 40 قلمًا أحمر وأزرق، ونسبة الأحمر إلى الأزرق 3 : 5. كم قلمًا أحمر فيها؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "15"
+        },
+        {
+          "key": "B",
+          "text": "24"
+        },
+        {
+          "key": "C",
+          "text": "25"
+        },
+        {
+          "key": "D",
+          "text": "8"
+        }
+      ],
+      "correctKey": "A",
+      "explanation": "مجموع أجزاء النسبة 3 + 5 = 8. قيمة الجزء 40 ÷ 8 = 5 أقلام. عدد الأقلام الحمراء 3 × 5 = 15.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "mul",
+          "args": [
+            3,
+            {
+              "op": "div",
+              "args": [
+                40,
+                {
+                  "op": "add",
+                  "args": [
+                    3,
+                    5
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-005",
+      "sourcePage": 5,
+      "skill": "النسب والتناسب",
+      "stem": "ثمن 4 دفاتر متماثلة 28 ريالًا. ما ثمن 9 دفاتر بالسعر نفسه، دون خصم؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "56"
+        },
+        {
+          "key": "B",
+          "text": "63"
+        },
+        {
+          "key": "C",
+          "text": "72"
+        },
+        {
+          "key": "D",
+          "text": "81"
+        }
+      ],
+      "correctKey": "B",
+      "explanation": "سعر الدفتر الواحد 28 ÷ 4 = 7 ريالات، وسعر 9 دفاتر هو 9 × 7 = 63 ريالًا.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "mul",
+          "args": [
+            9,
+            {
+              "op": "div",
+              "args": [
+                28,
+                4
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-006",
+      "sourcePage": 6,
+      "skill": "النسب والتناسب",
+      "stem": "يمثل كل 2 سم على خريطة مسافة 5 كم في الواقع. ما المسافة الواقعية التي يمثلها 7 سم؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "12.5"
+        },
+        {
+          "key": "B",
+          "text": "15"
+        },
+        {
+          "key": "C",
+          "text": "17.5"
+        },
+        {
+          "key": "D",
+          "text": "20"
+        }
+      ],
+      "correctKey": "C",
+      "explanation": "يمثل السنتيمتر الواحد 5 ÷ 2 = 2.5 كم؛ لذلك يمثل 7 سم مسافة 7 × 2.5 = 17.5 كم.",
+      "difficulty": "medium",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "mul",
+          "args": [
+            7,
+            {
+              "op": "div",
+              "args": [
+                5,
+                2
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-007",
+      "sourcePage": 7,
+      "skill": "النسبة المئوية",
+      "stem": "ثمن حقيبة 240 ريالًا، وعليها خصم 15٪. ما ثمنها بعد الخصم؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "200"
+        },
+        {
+          "key": "B",
+          "text": "210"
+        },
+        {
+          "key": "C",
+          "text": "216"
+        },
+        {
+          "key": "D",
+          "text": "204"
+        }
+      ],
+      "correctKey": "D",
+      "explanation": "قيمة الخصم 240 × 15 ÷ 100 = 36 ريالًا. الثمن بعد الخصم 240 − 36 = 204 ريالات.",
+      "difficulty": "medium",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "sub",
+          "args": [
+            240,
+            {
+              "op": "div",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    240,
+                    15
+                  ]
+                },
+                100
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-008",
+      "sourcePage": 8,
+      "skill": "النسبة المئوية",
+      "stem": "في فصل دراسي موسع 120 طالبًا، اختار 35٪ منهم نادي القراءة. كم طالبًا اختار النادي؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "42"
+        },
+        {
+          "key": "B",
+          "text": "35"
+        },
+        {
+          "key": "C",
+          "text": "48"
+        },
+        {
+          "key": "D",
+          "text": "60"
+        }
+      ],
+      "correctKey": "A",
+      "explanation": "نحسب 35٪ من 120: 120 × 35 ÷ 100 = 42 طالبًا.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "div",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                120,
+                35
+              ]
+            },
+            100
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-009",
+      "sourcePage": 9,
+      "skill": "النسبة المئوية",
+      "stem": "كان سعر اشتراك تدريبي 80 ريالًا، ثم زاد بنسبة 25٪. ما السعر الجديد؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "90"
+        },
+        {
+          "key": "B",
+          "text": "100"
+        },
+        {
+          "key": "C",
+          "text": "105"
+        },
+        {
+          "key": "D",
+          "text": "120"
+        }
+      ],
+      "correctKey": "B",
+      "explanation": "الزيادة 80 × 25 ÷ 100 = 20 ريالًا. السعر الجديد 80 + 20 = 100 ريال.",
+      "difficulty": "medium",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "add",
+          "args": [
+            80,
+            {
+              "op": "div",
+              "args": [
+                {
+                  "op": "mul",
+                  "args": [
+                    80,
+                    25
+                  ]
+                },
+                100
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-010",
+      "sourcePage": 10,
+      "skill": "الكسور والأعداد العشرية",
+      "stem": "ما ناتج 3/4 + 1/8 في أبسط صورة؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "1/2"
+        },
+        {
+          "key": "B",
+          "text": "5/8"
+        },
+        {
+          "key": "C",
+          "text": "7/8"
+        },
+        {
+          "key": "D",
+          "text": "1"
+        }
+      ],
+      "correctKey": "C",
+      "explanation": "نوحد المقام إلى 8: الكسر 3/4 يساوي 6/8، ثم 6/8 + 1/8 = 7/8.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "add",
+          "args": [
+            {
+              "op": "div",
+              "args": [
+                3,
+                4
+              ]
+            },
+            {
+              "op": "div",
+              "args": [
+                1,
+                8
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-011",
+      "sourcePage": 11,
+      "skill": "الكسور والأعداد العشرية",
+      "stem": "ما ناتج 0.6 × 0.25؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "0.015"
+        },
+        {
+          "key": "B",
+          "text": "0.12"
+        },
+        {
+          "key": "C",
+          "text": "0.25"
+        },
+        {
+          "key": "D",
+          "text": "0.15"
+        }
+      ],
+      "correctKey": "D",
+      "explanation": "العدد 0.25 يساوي الربع؛ لذلك ربع 0.6 هو 0.6 ÷ 4 = 0.15.",
+      "difficulty": "medium",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "mul",
+          "args": [
+            0.6,
+            0.25
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-012",
+      "sourcePage": 12,
+      "skill": "الكسور والأعداد العشرية",
+      "stem": "كم مرة تحتوي الكمية 2.5 لتر على نصف لتر كامل؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "5"
+        },
+        {
+          "key": "B",
+          "text": "0.5"
+        },
+        {
+          "key": "C",
+          "text": "1.25"
+        },
+        {
+          "key": "D",
+          "text": "2"
+        }
+      ],
+      "correctKey": "A",
+      "explanation": "نقسم الكمية الكلية على نصف لتر: 2.5 ÷ 0.5 = 5 مرات.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "div",
+          "args": [
+            2.5,
+            0.5
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-013",
+      "sourcePage": 13,
+      "skill": "المتوسطات",
+      "stem": "ما المتوسط الحسابي للأعداد 8، 12، 15، 17؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "12"
+        },
+        {
+          "key": "B",
+          "text": "13"
+        },
+        {
+          "key": "C",
+          "text": "14"
+        },
+        {
+          "key": "D",
+          "text": "15"
+        }
+      ],
+      "correctKey": "B",
+      "explanation": "مجموع الأعداد 8 + 12 + 15 + 17 = 52. نقسم المجموع على عددها: 52 ÷ 4 = 13.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "div",
+          "args": [
+            {
+              "op": "add",
+              "args": [
+                8,
+                12,
+                15,
+                17
+              ]
+            },
+            4
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-014",
+      "sourcePage": 14,
+      "skill": "المتوسطات",
+      "stem": "متوسط خمس درجات هو 18. إذا كانت أربع درجات هي 14، 16، 20، 22، فما الدرجة الخامسة؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "16"
+        },
+        {
+          "key": "B",
+          "text": "17"
+        },
+        {
+          "key": "C",
+          "text": "18"
+        },
+        {
+          "key": "D",
+          "text": "20"
+        }
+      ],
+      "correctKey": "C",
+      "explanation": "مجموع الدرجات الخمس 18 × 5 = 90. مجموع الأربع المعروفة 14 + 16 + 20 + 22 = 72، فتكون الخامسة 90 − 72 = 18.",
+      "difficulty": "medium",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                18,
+                5
+              ]
+            },
+            {
+              "op": "add",
+              "args": [
+                14,
+                16,
+                20,
+                22
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-015",
+      "sourcePage": 15,
+      "skill": "المعادلات",
+      "stem": "إذا كان 4س − 7 = 21، فما قيمة س؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "4"
+        },
+        {
+          "key": "B",
+          "text": "5"
+        },
+        {
+          "key": "C",
+          "text": "6"
+        },
+        {
+          "key": "D",
+          "text": "7"
+        }
+      ],
+      "correctKey": "D",
+      "explanation": "نضيف 7 إلى الطرفين، فنحصل على 4س = 28. نقسم على 4، فتكون س = 7.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "equation",
+        "left": {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                4,
+                {
+                  "variable": "x"
+                }
+              ]
+            },
+            7
+          ]
+        },
+        "right": 21
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-016",
+      "sourcePage": 16,
+      "skill": "المعادلات",
+      "stem": "إذا كان (س + 3) ÷ 2 = 9، فما قيمة س؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "15"
+        },
+        {
+          "key": "B",
+          "text": "12"
+        },
+        {
+          "key": "C",
+          "text": "18"
+        },
+        {
+          "key": "D",
+          "text": "21"
+        }
+      ],
+      "correctKey": "A",
+      "explanation": "نضرب الطرفين في 2، فيكون س + 3 = 18. نطرح 3، فتكون س = 15.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "equation",
+        "left": {
+          "op": "div",
+          "args": [
+            {
+              "op": "add",
+              "args": [
+                {
+                  "variable": "x"
+                },
+                3
+              ]
+            },
+            2
+          ]
+        },
+        "right": 9
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-017",
+      "sourcePage": 17,
+      "skill": "الهندسة والقياس",
+      "stem": "مستطيل طوله 9 سم وعرضه 4 سم. ما مساحته بالسنتيمتر المربع؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "26"
+        },
+        {
+          "key": "B",
+          "text": "36"
+        },
+        {
+          "key": "C",
+          "text": "52"
+        },
+        {
+          "key": "D",
+          "text": "18"
+        }
+      ],
+      "correctKey": "B",
+      "explanation": "مساحة المستطيل = الطول × العرض = 9 × 4 = 36 سم². لا نستخدم قانون المحيط هنا.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "mul",
+          "args": [
+            9,
+            4
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-018",
+      "sourcePage": 18,
+      "skill": "الهندسة والقياس",
+      "stem": "مثلث طول قاعدته 10 سم وارتفاعه العمودي على هذه القاعدة 6 سم. ما مساحته بالسنتيمتر المربع؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "16"
+        },
+        {
+          "key": "B",
+          "text": "20"
+        },
+        {
+          "key": "C",
+          "text": "30"
+        },
+        {
+          "key": "D",
+          "text": "60"
+        }
+      ],
+      "correctKey": "C",
+      "explanation": "مساحة المثلث = القاعدة × الارتفاع ÷ 2 = 10 × 6 ÷ 2 = 30 سم².",
+      "difficulty": "medium",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "div",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                10,
+                6
+              ]
+            },
+            2
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-019",
+      "sourcePage": 19,
+      "skill": "الجبر",
+      "stem": "إذا كان أ = 3 و ب = 2، فما قيمة 2أ² − ب؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "10"
+        },
+        {
+          "key": "B",
+          "text": "12"
+        },
+        {
+          "key": "C",
+          "text": "14"
+        },
+        {
+          "key": "D",
+          "text": "16"
+        }
+      ],
+      "correctKey": "D",
+      "explanation": "نعوض أولًا: أ² = 3² = 9. ثم 2 × 9 − 2 = 18 − 2 = 16.",
+      "difficulty": "medium",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                2,
+                {
+                  "op": "pow",
+                  "args": [
+                    3,
+                    2
+                  ]
+                }
+              ]
+            },
+            2
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-020",
+      "sourcePage": 20,
+      "skill": "الجبر",
+      "stem": "عددان صحيحان متتاليان مجموعهما 31. ما العدد الأكبر؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "16"
+        },
+        {
+          "key": "B",
+          "text": "15"
+        },
+        {
+          "key": "C",
+          "text": "17"
+        },
+        {
+          "key": "D",
+          "text": "14"
+        }
+      ],
+      "correctKey": "A",
+      "explanation": "إذا كان الأصغر س، فالأكبر س + 1. إذن 2س + 1 = 31، ومنها س = 15، والعدد الأكبر 16.",
+      "difficulty": "medium",
+      "images": [],
+      "verification": {
+        "kind": "equation",
+        "left": {
+          "op": "add",
+          "args": [
+            {
+              "variable": "x"
+            },
+            {
+              "op": "sub",
+              "args": [
+                {
+                  "variable": "x"
+                },
+                1
+              ]
+            }
+          ]
+        },
+        "right": 31
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-021",
+      "sourcePage": 21,
+      "skill": "الإحصاء والاحتمالات",
+      "stem": "ما وسيط البيانات المرتبة 3، 7، 8، 11، 16؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "7"
+        },
+        {
+          "key": "B",
+          "text": "8"
+        },
+        {
+          "key": "C",
+          "text": "9"
+        },
+        {
+          "key": "D",
+          "text": "11"
+        }
+      ],
+      "correctKey": "B",
+      "explanation": "عدد القيم 5، وهو فردي. الوسيط هو القيمة في الموضع الثالث بعد الترتيب، وهي 8.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "median",
+        "values": [
+          3,
+          7,
+          8,
+          11,
+          16
+        ]
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-022",
+      "sourcePage": 22,
+      "skill": "الإحصاء والاحتمالات",
+      "stem": "كيس فيه كرتان خضراوان و3 كرات صفراء و5 كرات بيضاء. عند سحب كرة واحدة عشوائيًا، مع تساوي فرص الكرات، ما احتمال أن تكون بيضاء؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "1/5"
+        },
+        {
+          "key": "B",
+          "text": "1/3"
+        },
+        {
+          "key": "C",
+          "text": "1/2"
+        },
+        {
+          "key": "D",
+          "text": "3/5"
+        }
+      ],
+      "correctKey": "C",
+      "explanation": "مجموع الكرات 2 + 3 + 5 = 10. احتمال البيضاء = عدد البيضاء ÷ العدد الكلي = 5/10 = 1/2.",
+      "difficulty": "medium",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "div",
+          "args": [
+            5,
+            {
+              "op": "add",
+              "args": [
+                2,
+                3,
+                5
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-023",
+      "sourcePage": 23,
+      "skill": "المسائل اللفظية الكمية",
+      "stem": "اشترى نادر 3 دفاتر بسعر 8 ريالات للدفتر وقلمًا بسعر 5 ريالات. كم دفع إجمالًا دون رسوم إضافية؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "21"
+        },
+        {
+          "key": "B",
+          "text": "24"
+        },
+        {
+          "key": "C",
+          "text": "27"
+        },
+        {
+          "key": "D",
+          "text": "29"
+        }
+      ],
+      "correctKey": "D",
+      "explanation": "ثمن الدفاتر 3 × 8 = 24 ريالًا، ثم نضيف ثمن القلم: 24 + 5 = 29 ريالًا.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "add",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                3,
+                8
+              ]
+            },
+            5
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-024",
+      "sourcePage": 24,
+      "skill": "المسائل اللفظية الكمية",
+      "stem": "في قاعة 8 صفوف، وفي كل صف 12 مقعدًا. إذا شُغل 75 مقعدًا، فكم مقعدًا بقي فارغًا؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "21"
+        },
+        {
+          "key": "B",
+          "text": "23"
+        },
+        {
+          "key": "C",
+          "text": "25"
+        },
+        {
+          "key": "D",
+          "text": "27"
+        }
+      ],
+      "correctKey": "A",
+      "explanation": "عدد المقاعد الكلي 8 × 12 = 96. المقاعد الفارغة 96 − 75 = 21.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "sub",
+          "args": [
+            {
+              "op": "mul",
+              "args": [
+                8,
+                12
+              ]
+            },
+            75
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-025",
+      "sourcePage": 25,
+      "skill": "السرعة والزمن والعمل",
+      "stem": "قطع راكب دراجة 54 كم خلال 3 ساعات، بما فيها أي توقف. ما سرعته المتوسطة بالكيلومتر في الساعة؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "12"
+        },
+        {
+          "key": "B",
+          "text": "18"
+        },
+        {
+          "key": "C",
+          "text": "21"
+        },
+        {
+          "key": "D",
+          "text": "27"
+        }
+      ],
+      "correctKey": "B",
+      "explanation": "السرعة المتوسطة = المسافة الكلية ÷ الزمن الكلي = 54 ÷ 3 = 18 كم/ساعة.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "div",
+          "args": [
+            54,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-026",
+      "sourcePage": 26,
+      "skill": "السرعة والزمن والعمل",
+      "stem": "تطبع آلة 4 صفحات في الدقيقة بمعدل ثابت ودون توقف. كم دقيقة تحتاج لطباعة 48 صفحة؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "8"
+        },
+        {
+          "key": "B",
+          "text": "10"
+        },
+        {
+          "key": "C",
+          "text": "12"
+        },
+        {
+          "key": "D",
+          "text": "16"
+        }
+      ],
+      "correctKey": "C",
+      "explanation": "الزمن = عدد الصفحات ÷ معدل الطباعة = 48 ÷ 4 = 12 دقيقة.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "expression",
+        "expression": {
+          "op": "div",
+          "args": [
+            48,
+            4
+          ]
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-027",
+      "sourcePage": 27,
+      "skill": "المقارنة بين الكميات",
+      "stem": "قارن بين الكميتين: الأولى 3/5، والثانية 0.65.",
+      "choices": [
+        {
+          "key": "A",
+          "text": "الكمية الأولى أكبر"
+        },
+        {
+          "key": "B",
+          "text": "الكمية الثانية أكبر"
+        },
+        {
+          "key": "C",
+          "text": "الكميتان متساويتان"
+        },
+        {
+          "key": "D",
+          "text": "المعطيات لا تكفي للمقارنة"
+        }
+      ],
+      "correctKey": "B",
+      "explanation": "نحوّل 3/5 إلى عدد عشري، فيساوي 0.6. وبما أن 0.65 أكبر من 0.6، فالكمية الثانية أكبر.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "comparison",
+        "left": {
+          "op": "div",
+          "args": [
+            3,
+            5
+          ]
+        },
+        "right": 0.65
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-028",
+      "sourcePage": 28,
+      "skill": "المقارنة بين الكميات",
+      "stem": "إذا كانت س عددًا موجبًا، فقارن بين الكميتين: الأولى س + 4، والثانية س + 1.",
+      "choices": [
+        {
+          "key": "A",
+          "text": "الكمية الأولى أكبر"
+        },
+        {
+          "key": "B",
+          "text": "الكمية الثانية أكبر"
+        },
+        {
+          "key": "C",
+          "text": "الكميتان متساويتان"
+        },
+        {
+          "key": "D",
+          "text": "المعطيات لا تكفي للمقارنة"
+        }
+      ],
+      "correctKey": "A",
+      "explanation": "نطرح الكمية الثانية من الأولى: (س + 4) − (س + 1) = 3، وهو موجب؛ إذن الكمية الأولى أكبر. النتيجة لا تتغير باختلاف قيمة س.",
+      "difficulty": "medium",
+      "images": [],
+      "verification": {
+        "kind": "affine_comparison",
+        "left": {
+          "coefficient": 1,
+          "constant": 4
+        },
+        "right": {
+          "coefficient": 1,
+          "constant": 1
+        }
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-029",
+      "sourcePage": 29,
+      "skill": "الاستدلال الرياضي",
+      "stem": "في المتتالية 4، 9، 14، 19، … تُضاف كمية ثابتة في كل خطوة. ما العدد التالي؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "22"
+        },
+        {
+          "key": "B",
+          "text": "23"
+        },
+        {
+          "key": "C",
+          "text": "24"
+        },
+        {
+          "key": "D",
+          "text": "25"
+        }
+      ],
+      "correctKey": "C",
+      "explanation": "الفروق المتتالية هي 5، 5، 5. نضيف 5 إلى 19، فيكون العدد التالي 24.",
+      "difficulty": "easy",
+      "images": [],
+      "verification": {
+        "kind": "arithmetic_sequence",
+        "terms": [
+          4,
+          9,
+          14,
+          19
+        ]
+      }
+    },
+    {
+      "ref": "LBQ-ORIGINAL-V1-030",
+      "sourcePage": 30,
+      "skill": "الاستدلال الرياضي",
+      "stem": "ما أصغر عدد صحيح موجب يقبل القسمة على 6 وعلى 8 دون باقٍ؟",
+      "choices": [
+        {
+          "key": "A",
+          "text": "12"
+        },
+        {
+          "key": "B",
+          "text": "18"
+        },
+        {
+          "key": "C",
+          "text": "20"
+        },
+        {
+          "key": "D",
+          "text": "24"
+        }
+      ],
+      "correctKey": "D",
+      "explanation": "مضاعفات 6: 6، 12، 18، 24… ومضاعفات 8: 8، 16، 24… أول مضاعف مشترك موجب هو 24.",
+      "difficulty": "medium",
+      "images": [],
+      "verification": {
+        "kind": "lcm",
+        "values": [
+          6,
+          8
+        ]
+      }
+    }
+  ]
+}

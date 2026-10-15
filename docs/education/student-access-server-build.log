@@ -1,0 +1,10 @@
+$ node ./build.mjs
+
+  dist\index.mjs                   3.0mb
+  dist\pino-worker.mjs           153.6kb
+  dist\pino-file.mjs             142.2kb
+  dist\pino-pretty.mjs           115.3kb
+  dist\thread-stream-worker.mjs    7.4kb
+  ...and 5 more output files...
+
+Done in 1332ms

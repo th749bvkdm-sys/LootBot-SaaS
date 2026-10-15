@@ -1,3 +1,4 @@
+import { assertTestDatabase } from './assert-test-db';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { randomUUID } from 'node:crypto';
@@ -9,7 +10,7 @@ import { storeMembersTable } from '../../../lib/db/src/schema/staff';
 import { sha256 } from '../src/lib/security';
 
 test('category presentation roundtrip is persisted and scoped by store, role and plan',async t=>{
-  assert.equal(new URL(process.env.DATABASE_URL!).hostname,'ep-summer-recipe-b21ls93d-pooler.c-6.eu-central-1.aws.neon.tech');
+  assertTestDatabase();
   await pool.query(await readFile('../../lib/db/migrations/0007_category_presentation.sql','utf8'));
   const owner=randomUUID(),other=randomUUID(),staff=randomUUID();const storeIds=[randomUUID(),randomUUID(),randomUUID()];const [business,free,pro]=storeIds;
   const categoryIds=[randomUUID(),randomUUID(),randomUUID()];const userIds=[owner,other,staff];const auth=new Map<string,{cookie:string;csrf:string}>();let server:ReturnType<typeof app.listen>|undefined;

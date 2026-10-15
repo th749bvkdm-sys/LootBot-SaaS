@@ -1,3 +1,4 @@
+import { assertTestDatabase } from './assert-test-db';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { randomUUID } from 'node:crypto';
@@ -10,7 +11,7 @@ import { startBotForStore,startActiveStoreBots,stopBotForStore,stopAllBots } fro
 import { withBotConnectionChange } from '../src/lib/bot-connection-lock';
 
 test('saved Telegram reconnect uses isolated HTTP/database and abort-aware mock transport only',async t=>{
-  assert.equal(new URL(process.env.DATABASE_URL!).hostname,'ep-summer-recipe-b21ls93d-pooler.c-6.eu-central-1.aws.neon.tech');
+  assertTestDatabase();
   await pool.query(await readFile('../../lib/db/migrations/0002_telegram_health.sql','utf8'));
   const owner=randomUUID(),other=randomUUID();const ids=Array.from({length:19},()=>randomUUID());
   t.after(async()=>{if(pool.ended)return;stopAllBots({shutdown:true});await db.delete(storesTable).where(inArray(storesTable.id,ids));await db.delete(usersTable).where(inArray(usersTable.id,[owner,other]));await pool.end();});

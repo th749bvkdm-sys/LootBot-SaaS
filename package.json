@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "lint": "eslint .",
+    "education:preview": "node scripts/run-education-preview.mjs",
     "db:migrate": "node ./scripts/run-pnpm.mjs --filter @workspace/db run migrate",
     "preinstall": "node ./scripts/check-package-manager.mjs",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",

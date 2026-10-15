@@ -1,0 +1,26 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ isolated database and real HTTP protect studio, references, roles, plans and Telegram customer scope
+  ✔ SPA navigation survives malformed Accept while unknown API routes retain JSON 404 (120.1461ms)
+  ✔ login checks real hash and returns valid session; wrong password and SuperAdmin access rejected (262.8443ms)
+  ✔ Super Admin reads actual overview, feature catalog and health while regular accounts are denied (213.0102ms)
+  ✔ session, CSRF, other owner and Free/Pro Business gates (132.6863ms)
+  ✔ Studio selectors search and paginate every owned record, preserve selected labels and enforce private customer access (893.4944ms)
+  ✔ draft isolation, revision conflict and saved-draft publication (101.1121ms)
+  ✔ server preview searches real products, private orders and rejects buying (61.9282ms)
+  ✔ both Studio previews reject malformed customer, callback, search and state inputs as client errors (321.9458ms)
+  ✔ Business references cannot cross stores; full block sources use real records; deleted target blocks publication (168.8039ms)
+  ✔ staff manage grants order preparation while payment and other stores remain protected (83.1707ms)
+  ✔ customer read and marketing staff cannot disclose or infer financial facts (453.3213ms)
+  ✔ scoped staff access remains explicit and revoked with plan/membership (120.5061ms)
+  ✔ paid orders can be fulfilled after real payment update (87.4888ms)
+  ✔ Telegram handler /start, real catalogs and stale callbacks tested with isolated transport (44.0153ms)
+  ✔ published Business callbacks enforce customer, chat, store, current rules, source visibility and publication revision (361.5359ms)
+✔ isolated database and real HTTP protect studio, references, roles, plans and Telegram customer scope (3755.0006ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4764.5694
