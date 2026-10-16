@@ -261,6 +261,73 @@ async function historyRows(req: Request, q: Query = pool) {
   return (await q.query('SELECT * FROM quant_attempts WHERE user_id=$1 ORDER BY started_at DESC LIMIT 300 FOR UPDATE', [actor(req)])).rows
     .filter(a => members.some(m => m.id === a.enrollment_id && m.school_id === a.school_id && (!a.class_id || m.class_id === a.class_id)));
 }
+// The notebook is derived from the student's own revealed history. It stores no
+// extra copy of licensed questions and never upgrades an unrevealed result.
+async function notebookRows(req: Request, q: Query) {
+  const members = await quantStudent(req, false, q), attempts = await historyRows(req, q);
+  for (const a of attempts) await checkpointQuant(q, a);
+  const revealed = attempts.filter(a => a.status !== 'in_progress' && quantRevealed(a))
+    .sort((a, b) => new Date(b.submitted_at || b.started_at).getTime() - new Date(a.submitted_at || a.started_at).getTime());
+  const versionIds = [...new Set(revealed.flatMap(a => (a.snapshot as QuantItem[]).map(item => item.versionId)))];
+  const versions = versionIds.length ? (await q.query(versionQuery + ' WHERE v.id=ANY($1::text[])', [versionIds])).rows : [];
+  const current = versions.length ? (await q.query(versionQuery + ' WHERE q.id=ANY($1::text[]) AND v.number=q.revision', [[...new Set(versions.map(v => v.question_id))]])).rows : [];
+  const entries = new Map<string, any>(), latest = new Map<string, string>();
+  for (const a of revealed) {
+    const member = members.find(m => m.id === a.enrollment_id)!;
+    const result = await quantResult(q, a);
+    for (const item of result.items) {
+      const row = versions.find(v => v.version_id === item.versionId);
+      const frozen = (a.snapshot as QuantItem[]).find(v => v.versionId === item.versionId);
+      if (!row || !frozen || row.source_id !== frozen.sourceId || !approvedVersion(row) || row.source_file_hash !== mufakirSourceHash || !visibleScope(row, member)) continue;
+      if (!latest.has(item.questionId)) latest.set(item.questionId, item.outcome);
+      if (!['wrong', 'unanswered'].includes(item.outcome)) continue;
+      let entry = entries.get(item.questionId);
+      if (!entry) {
+        const retry = current.find(v => v.question_id === item.questionId && approvedVersion(v) && v.source_file_hash === mufakirSourceHash && visibleScope(v, member));
+        entry = { item, attemptId: a.id, testTitle: result.test.title, submittedAt: a.submitted_at || a.started_at,
+          mistakeCount: 0, wrongCount: 0, unansweredCount: 0, mastered: latest.get(item.questionId) === 'correct',
+          retryVersionId: retry?.version_id || null, enrollmentId: member.id };
+        entries.set(item.questionId, entry);
+      }
+      entry.mistakeCount++; if (item.outcome === 'wrong') entry.wrongCount++; else entry.unansweredCount++;
+    }
+  }
+  return { entries: [...entries.values()], members, reviewedAttempts: revealed.length, historyLimit: 300 };
+}
+const notebookFilter = z.object({ categoryId: id.optional(), search: z.string().trim().max(100).default(''), status: z.enum(['all', 'pending', 'mastered']).default('pending') });
+quantRouter.get('/quant/notebook', route(async (req, res) => {
+  const input = notebookFilter.parse(req.query);
+  res.json(await transaction(async q => {
+    const notebook = await notebookRows(req, q), all = notebook.entries;
+    const skills = [...new Map(all.map(e => [e.item.categoryId, { id: e.item.categoryId, name: e.item.skill }])).values()];
+    const search = input.search.normalize('NFKC').toLocaleLowerCase('ar');
+    const items = all.filter(e => (!input.categoryId || e.item.categoryId === input.categoryId) &&
+      (input.status === 'all' || e.mastered === (input.status === 'mastered')) && (!search ||
+        [e.item.stem, e.item.skill, e.testTitle, e.item.source?.section, e.item.source?.questionNumber].join(' ').normalize('NFKC').toLocaleLowerCase('ar').includes(search)))
+      .slice(0, 100).map(({ retryVersionId, enrollmentId: _enrollmentId, ...entry }) => ({ ...entry, retryAvailable: !!retryVersionId }));
+    return { items, skills, summary: { total: all.length, pending: all.filter(e => !e.mastered).length, mastered: all.filter(e => e.mastered).length },
+      reviewedAttempts: notebook.reviewedAttempts, historyLimit: notebook.historyLimit, displayLimit: 100, serverTime: new Date().toISOString() };
+  }));
+}));
+quantRouter.post('/quant/notebook/practice', route(async (req, res) => {
+  const input = z.object({ questionIds: z.array(id).min(1).max(50).optional(), categoryId: id.optional(), count: z.number().int().min(1).max(50).default(10) }).parse(req.body || {});
+  res.status(201).json(await transaction(async q => {
+    await quantStudent(req, true, q);
+    const notebook = await notebookRows(req, q);
+    if (input.questionIds?.some(qid => !notebook.entries.some(e => e.item.questionId === qid))) quantFail();
+    const candidates = notebook.entries.filter(e => e.retryVersionId && (!input.categoryId || e.item.categoryId === input.categoryId) &&
+      (input.questionIds ? input.questionIds.includes(e.item.questionId) : !e.mastered))
+      .sort((a, b) => b.mistakeCount - a.mistakeCount || new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+    if (!candidates.length) quantFail(409, 'NO_NOTEBOOK_QUESTIONS', 'لا توجد أسئلة معتمدة متاحة لإعادة التدريب من دفتر أخطائك الآن.');
+    const member = notebook.members.find(m => m.id === candidates[0].enrollmentId)!;
+    if (input.questionIds && candidates.some(e => e.enrollmentId !== member.id)) quantFail(409, 'NOTEBOOK_SCOPE_MISMATCH', 'اختر أسئلة من فصل واحد لبدء تدريب موحّد.');
+    const selected = candidates.filter(e => e.enrollmentId === member.id).slice(0, input.count);
+    const items = await pinnedItems(q, selected.map(e => e.retryVersionId), [member]);
+    await guardAttemptCount(q, actor(req));
+    return createQuantAttempt(req, q, { title: 'تدريب من دفتر أخطائي', mode: 'practice', timeLimitSec: null, allowReturn: true,
+      revealPolicy: 'after_submit', revealAt: null, classId: member.class_id || null }, items, member, null);
+  }));
+}));
 quantRouter.get('/quant/history', route(async (req, res) => {
   const rows = await transaction(async q => {
     const all = await historyRows(req, q), out = [];

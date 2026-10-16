@@ -94,7 +94,7 @@ export const requireAuth: RequestHandler = async (
     };
     const apiPath = req.originalUrl.split('?')[0].replace(/^\/api/, '');
     if (row.role !== 'SUPERADMIN' && row.accountType !== 'merchant' &&
-        !/^\/(auth|account|teacher|admin|education|student|quant)(\/|$)/.test(apiPath)) {
+        !/^\/(auth|account|teacher|admin|education|student|quant|student-study|student-academy)(\/|$)/.test(apiPath)) {
       res.status(403).json({ error: 'هذه الأدوات متاحة لحساب التاجر فقط.' });
       return;
     }

@@ -146,9 +146,47 @@ educationRouter.post(
       ? null
       : await passwordHash(newOpaqueToken());
     const result = await transaction(async (tx) => {
-      const classroom = await classAccess(req, v.classId, true, tx);
-      if (!classroom.school_id || classroom.archived)
-        fail(400, "اربط فصلًا نشطًا بالمدرسة أولًا.");
+      let classroom = await classAccess(req, v.classId, true, tx);
+      // Serialize preparation and re-read the link after waiting for another issuer.
+      await tx.query("SELECT id FROM teacher_classes WHERE id=$1 FOR UPDATE", [
+        v.classId,
+      ]);
+      classroom = await classAccess(req, v.classId, true, tx);
+      if (classroom.archived)
+        fail(400, "الفصل مؤرشف. اختر فصلًا نشطًا لإصدار الرمز.");
+      if (!classroom.school_id) {
+        // An independent class gets its own isolated education scope, never an
+        // existing school's scope or an administrative grant.
+        if (
+          !root(req) &&
+          !(
+            req.auth!.accountType === "teacher" &&
+            classroom.owner_id === actor(req)
+          )
+        )
+          fail(403);
+        const schoolId = createId();
+        await tx.query(
+          "INSERT INTO education_schools(id,name,data) VALUES($1,$2,$3::jsonb)",
+          [
+            schoolId,
+            "مساحة الفصل · " + classroom.name,
+            JSON.stringify({ independentClassId: v.classId }),
+          ],
+        );
+        await tx.query(
+          "INSERT INTO education_school_classes(class_id,school_id) VALUES($1,$2)",
+          [v.classId, schoolId],
+        );
+        classroom.school_id = schoolId;
+        await audit(
+          tx,
+          req,
+          "class.student-access-prepared",
+          v.classId,
+          schoolId,
+        );
+      }
       const school = (
         await tx.query("SELECT status FROM education_schools WHERE id=$1", [
           classroom.school_id,
@@ -374,7 +412,10 @@ educationRouter.post(
       );
       if (!u.rowCount || u.rows[0].role === "SUPERADMIN") fail(403);
       if (v.active && u.rows[0].student_code_managed)
-        fail(400, "الحساب المدرسي المخصص للطالب لا يقبل صلاحيات إدارة. استخدم حسابًا مستقلاً مسجلًا بالبريد.");
+        fail(
+          400,
+          "الحساب المدرسي المخصص للطالب لا يقبل صلاحيات إدارة. استخدم حسابًا مستقلاً مسجلًا بالبريد.",
+        );
       if (v.role === "TEACHER" && u.rows[0].account_type !== "teacher")
         fail(400, "اختر حساب معلم.");
       await q.query(
@@ -648,7 +689,10 @@ educationRouter.post(
     try {
       const result = await transaction(async (q) => {
         const account = (
-          await q.query("SELECT student_code_managed FROM users WHERE id=$1 AND account_type='student' AND NOT suspended AND NOT is_deleted FOR UPDATE", [actor(req)])
+          await q.query(
+            "SELECT student_code_managed FROM users WHERE id=$1 AND account_type='student' AND NOT suspended AND NOT is_deleted FOR UPDATE",
+            [actor(req)],
+          )
         ).rows[0];
         if (!account) fail(403, "الانضمام غير متاح لهذا الحساب.");
         const r = await q.query(
@@ -665,9 +709,19 @@ educationRouter.post(
           c.used_count >= c.max_uses
         )
           fail(400, "تعذر الانضمام بهذا الرمز. تحقق منه أو راجع المدرسة.");
-        if (account.student_code_managed && (
-          await q.query("SELECT 1 FROM education_enrollments WHERE user_id=$1 AND class_id<>$2", [actor(req), c.class_id])
-        ).rowCount) fail(403, "الحساب المدرسي مرتبط بفصل واحد. اطلب من معلمك نقله بدل إنشاء ارتباط آخر.");
+        if (
+          account.student_code_managed &&
+          (
+            await q.query(
+              "SELECT 1 FROM education_enrollments WHERE user_id=$1 AND class_id<>$2",
+              [actor(req), c.class_id],
+            )
+          ).rowCount
+        )
+          fail(
+            403,
+            "الحساب المدرسي مرتبط بفصل واحد. اطلب من معلمك نقله بدل إنشاء ارتباط آخر.",
+          );
         const previous = (
           await q.query(
             "SELECT * FROM education_enrollments WHERE user_id=$1 AND class_id=$2 FOR UPDATE",
@@ -764,8 +818,14 @@ educationRouter.patch(
       if (!e) fail();
       await classAccess(req, e.class_id, true, q);
       if (v.status === "revoked" || (v.classId && v.classId !== e.class_id)) {
-        await q.query("UPDATE education_student_access SET revoked=true WHERE enrollment_id=$1", [eid]);
-        await q.query("DELETE FROM sessions WHERE student_access_id IN (SELECT id FROM education_student_access WHERE enrollment_id=$1)", [eid]);
+        await q.query(
+          "UPDATE education_student_access SET revoked=true WHERE enrollment_id=$1",
+          [eid],
+        );
+        await q.query(
+          "DELETE FROM sessions WHERE student_access_id IN (SELECT id FROM education_student_access WHERE enrollment_id=$1)",
+          [eid],
+        );
       }
       if (v.classId && v.classId !== e.class_id) {
         const c = await classAccess(req, v.classId, true, q);
@@ -1138,8 +1198,19 @@ async function saveQuestion(
     fail(400, "وثّق إذن الاستخدام.");
   const qid = existing || createId();
   const save = async (q: PoolClient) => {
-    if (existing && (await q.query("SELECT 1 FROM education_question_versions WHERE question_id=$1 AND snapshot->'content' ? 'licensedPackRef' LIMIT 1", [existing])).rowCount)
-      fail(409, "تُدار أسئلة البنك المرخّص بإصداراتها ومصادرها من إدارة الكمي.");
+    if (
+      existing &&
+      (
+        await q.query(
+          "SELECT 1 FROM education_question_versions WHERE question_id=$1 AND snapshot->'content' ? 'licensedPackRef' LIMIT 1",
+          [existing],
+        )
+      ).rowCount
+    )
+      fail(
+        409,
+        "تُدار أسئلة البنك المرخّص بإصداراتها ومصادرها من إدارة الكمي.",
+      );
     const cat = (
       await q.query("SELECT * FROM education_categories WHERE id=$1", [
         v.categoryId,

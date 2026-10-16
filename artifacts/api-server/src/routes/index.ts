@@ -23,6 +23,8 @@ import { educationRouter } from './education';
 import { quantContentRouter } from './quant-content';
 import { quantRouter } from './quant';
 import { quantAssetsRouter } from './quant-assets';
+import { studentStudyRouter } from './student-study';
+import { studentAcademyRouter } from './student-academy';
 
 const router: IRouter = Router();
 
@@ -33,6 +35,8 @@ router.use(educationRouter);
 router.use(quantContentRouter);
 router.use(quantRouter);
 router.use(quantAssetsRouter);
+router.use(studentStudyRouter);
+router.use(studentAcademyRouter);
 router.use(learningRouter);
 router.use(teacherToolsRouter);
 router.use(chemistryRouter);

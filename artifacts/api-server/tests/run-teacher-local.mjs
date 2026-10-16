@@ -51,6 +51,10 @@ try {
   await localDb.exec(quantMigration);await localDb.exec(quantMigration);
   const quantFiguresMigration=await readFile('../../lib/db/migrations/0017_quant_private_figures.sql','utf8');
   await localDb.exec(quantFiguresMigration);await localDb.exec(quantFiguresMigration);
+  for (const file of ['0018_student_study.sql','0019_student_academy.sql']) {
+    const migration = await readFile('../../lib/db/migrations/'+file,'utf8');
+    await localDb.exec(migration);await localDb.exec(migration);
+  }
   const preserved = await localDb.query('SELECT account_type FROM users WHERE id=$1', ['legacy-fixture']);
   if (preserved.rows[0]?.account_type !== 'merchant') throw Error('Legacy merchant migration failed.');
   console.log('LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.');

@@ -21,6 +21,8 @@ import {
   Check,
   Plus,
   Clock,
+  Trophy,
+  Download,
 } from "lucide-react";
 import { BrandMark } from "./brand-mark";
 import { AppThemeToggle } from "./app-theme-toggle";
@@ -35,6 +37,13 @@ import {
 import "./education.css";
 import { QuantWorkspace } from "./quant/QuantWorkspace";
 import { QuantAdmin } from "./quant/QuantAdmin";
+import {
+  StudentAcademy,
+  StudentLaunchpad,
+  AcademyMistakes,
+  StudentDownloads,
+} from "./student-academy";
+import { StudentStudy } from "./student-study";
 type Row = Record<string, any>;
 type Me = {
   accountType: string;
@@ -451,8 +460,15 @@ const sections = [
 const studentSections = [
   ["home", "مساحتي", GraduationCap],
   ["aptitude", "أقسام المفكر", Target],
+  ["academy", "مسارات التأسيس", Layers],
+  ["foundation-history", "نتائج التأسيس", ClipboardList],
+  ["foundation-progress", "تحليل مهاراتي", ChartNoAxesCombined],
   ["mistakes", "دفتر أخطائي", NotebookPen],
   ["bookmarks", "أسئلتي المحفوظة", BookOpen],
+  ["plan", "خطة اليوم والتركيز", Clock],
+  ["rooms", "غرف المذاكرة والتحديات", Users],
+  ["achievements", "السلسلة والأوسمة", Trophy],
+  ["downloads", "مكتبتي دون إنترنت", Download],
   ["goals", "الأهداف والخطة", Check],
   ["help", "المساعدة", LifeBuoy],
 ] as const;
@@ -468,8 +484,21 @@ const sectionCapabilities: Record<string, string> = {
 };
 export function EducationWorkspace() {
   const me = useData<Me>("/me"),
-    [section, setSection] = useState(["quantAttempt", "quantResult", "quantVideos"].some(k => new URLSearchParams(window.location.search).has(k)) ? "aptitude" : "overview"),
-    [search, setSearch] = useState(""), [quantNavigation, setQuantNavigation] = useState(0);
+    [section, setSection] = useState(
+      new URLSearchParams(window.location.search).get("studentTab") ||
+        (new URLSearchParams(window.location.search).has("academyAttempt")
+          ? "academy"
+          : [
+                "quantAttempt",
+                "quantResult",
+                "quantVideos",
+                "quantNotebook",
+              ].some((k) => new URLSearchParams(window.location.search).has(k))
+            ? "aptitude"
+            : "overview"),
+    ),
+    [search, setSearch] = useState(""),
+    [quantNavigation, setQuantNavigation] = useState(0);
   const student = me.data?.accountType === "student";
   const manager = me.data?.grants.some((g) => g.role === "SCHOOL_ADMIN");
   const content = me.data?.grants.some((g) => g.role === "CONTENT_MANAGER");
@@ -493,7 +522,10 @@ export function EducationWorkspace() {
               "help",
               "audit",
             ].includes(key)) ||
-          (content && ["categories", "questions", "quant-content", "help"].includes(key)) ||
+          (content &&
+            ["categories", "questions", "quant-content", "help"].includes(
+              key,
+            )) ||
           (support && ["schools", "help", "audit"].includes(key)),
       );
   const allowed = list.filter(
@@ -501,7 +533,8 @@ export function EducationWorkspace() {
       me.data?.root ||
       student ||
       key === "help" ||
-      key === "quant-content" && me.data?.permissions?.some(p => p.startsWith("quant.")) ||
+      (key === "quant-content" &&
+        me.data?.permissions?.some((p) => p.startsWith("quant."))) ||
       me.data?.permissions?.includes(sectionCapabilities[key] || "never"),
   );
   const visible = allowed.filter(([, label]) => label.includes(search));
@@ -512,9 +545,22 @@ export function EducationWorkspace() {
   function selectSection(key: string) {
     setSection(key);
     if (student) {
-      if (key === "aptitude") setQuantNavigation(current => current + 1);
+      if (key === "aptitude") setQuantNavigation((current) => current + 1);
       const url = new URL(window.location.href);
-      ["quantAttempt", "quantResult", "quantReview", "quantVideos", "quantVideo"].forEach(k => url.searchParams.delete(k));
+      [
+        "quantAttempt",
+        "quantResult",
+        "quantReview",
+        "quantVideos",
+        "quantVideo",
+        "quantNotebook",
+        "academyAttempt",
+        "academyLesson",
+        "academyTrack",
+        "studyRoom",
+      ].forEach((k) => url.searchParams.delete(k));
+      url.searchParams.set("studentTab", key);
+      window.scrollTo(0, 0);
       window.history.replaceState(null, "", url);
     }
   }
@@ -537,14 +583,25 @@ export function EducationWorkspace() {
           <nav aria-label="التنقل التعليمي">
             {visible.map(([key, label, Icon]) => (
               <div key={key} className="edu-nav-item">
-              {student && ["home", "mistakes", "help"].includes(key) && <span className="edu-nav-group-label">{key === "home" ? "التعلّم" : key === "mistakes" ? "أدواتي" : "المساعدة والحساب"}</span>}
-              <button
-                aria-current={effective === key ? "page" : undefined}
-                onClick={() => selectSection(key)}
-              >
-                <Icon size={19} />
-                {label}
-              </button>
+                {student &&
+                  ["home", "mistakes", "plan", "help"].includes(key) && (
+                    <span className="edu-nav-group-label">
+                      {key === "home"
+                        ? "التعلّم"
+                        : key === "mistakes"
+                          ? "المراجعة"
+                          : key === "plan"
+                            ? "تنظيم ومشاركة"
+                            : "المساعدة والحساب"}
+                    </span>
+                  )}
+                <button
+                  aria-current={effective === key ? "page" : undefined}
+                  onClick={() => selectSection(key)}
+                >
+                  <Icon size={19} />
+                  {label}
+                </button>
               </div>
             ))}
             <Link href="/account/continue">
@@ -582,26 +639,35 @@ export function EducationWorkspace() {
                       : "الدعم"}
             </span>
           </header>
-          {!(student && effective === "aptitude") && <section className="edu-hero">
-            <div>
-              <span className="edu-eyebrow">
-                مساحة تعليمية • تقدم محفوظ • خصوصية لكل حساب
-              </span>
-              <h1>{title}</h1>
-              <p>
-                {student
-                  ? "أهداف صغيرة، معرفة أعمق. تابع تعلمك من نتائجك الفعلية، وخذ وقتك في اكتشاف الخطوة التالية."
-                  : "إدارة مترابطة للمدارس والفصول والمحتوى. كل إجراء محفوظ، وكل حساب يصل إلى البيانات المخوّل لها."}
-              </p>
-            </div>
-            <div className="edu-orbit">
-              <Target size={55} />
-            </div>
-          </section>}
+          {!(
+            student && ["home", "aptitude", "academy"].includes(effective)
+          ) && (
+            <section className="edu-hero">
+              <div>
+                <span className="edu-eyebrow">
+                  مساحة تعليمية • تقدم محفوظ • خصوصية لكل حساب
+                </span>
+                <h1>{title}</h1>
+                <p>
+                  {student
+                    ? "أهداف صغيرة، معرفة أعمق. تابع تعلمك من نتائجك الفعلية، وخذ وقتك في اكتشاف الخطوة التالية."
+                    : "إدارة مترابطة للمدارس والفصول والمحتوى. كل إجراء محفوظ، وكل حساب يصل إلى البيانات المخوّل لها."}
+                </p>
+              </div>
+              <div className="edu-orbit">
+                <Target size={55} />
+              </div>
+            </section>
+          )}
           <QueryState query={me}>
             {me.data &&
               (student ? (
-                <StudentWorkspace key={quantNavigation} me={me.data} section={effective} />
+                <StudentWorkspace
+                  key={quantNavigation}
+                  me={me.data}
+                  section={effective}
+                  navigate={selectSection}
+                />
               ) : (
                 <AdminWorkspace me={me.data} section={effective} />
               ))}
@@ -751,7 +817,8 @@ function Timeline({
   );
 }
 function AdminWorkspace({ me, section }: { me: Me; section: string }) {
-  if (section === "quant-content") return <QuantAdmin root={me.root} permissions={me.permissions}/>;
+  if (section === "quant-content")
+    return <QuantAdmin root={me.root} permissions={me.permissions} />;
   if (section === "overview") return <Overview />;
   if (section === "schools") return <Schools me={me} />;
   if (section === "users") return <UsersAdmin />;
@@ -2274,6 +2341,10 @@ export function TeacherEducation() {
     [studentCode, setStudentCode] = useState<Row | null>(null),
     action = useAction();
   useEffect(() => setStudentCode(null), [cid, tab]);
+  useEffect(() => {
+    if (classes.data && !classes.data.some((c) => c.id === cid && !c.archived))
+      setCid(classes.data.find((c) => !c.archived)?.id || "");
+  }, [classes.data, cid]);
   const enroll = useData<Row[]>("/enrollments?classId=" + cid, !!cid),
     reports = useData<Row[]>(
       "/reports?classId=" + cid,
@@ -2296,22 +2367,27 @@ export function TeacherEducation() {
   return (
     <div className="edu-room" style={{ background: "none" }}>
       <Notice action={action} />
-      <Card title="الفصل المرتبط">
-        <select
-          aria-label="فصل المتابعة التعليمية"
-          value={cid}
-          onChange={(e) => {
-            setCid(e.target.value);
-            setStudent("");
-          }}
-        >
-          <option value="">اختر الفصل</option>
-          {classes.data?.map((c) => (
-            <option value={c.id} key={c.id}>
-              {c.name} · {c.school_name || "غير مرتبط بمدرسة"}
-            </option>
-          ))}
-        </select>
+      <Card title="اختر الفصل">
+        <QueryState query={classes}>
+          <select
+            aria-label="فصل المتابعة التعليمية"
+            disabled={action.busy}
+            value={cid}
+            onChange={(e) => {
+              setCid(e.target.value);
+              setStudent("");
+            }}
+          >
+            <option value="">اختر الفصل</option>
+            {classes.data
+              ?.filter((c) => !c.archived)
+              .map((c) => (
+                <option value={c.id} key={c.id}>
+                  {c.name}
+                </option>
+              ))}
+          </select>
+        </QueryState>
         <div className="edu-tabs">
           {[
             ["enrollments", "الطلاب والطلبات"],
@@ -2322,6 +2398,7 @@ export function TeacherEducation() {
             <button
               className="edu-button secondary"
               aria-pressed={tab === key}
+              disabled={action.busy}
               onClick={() => setTab(key)}
               key={key}
             >
@@ -2332,36 +2409,67 @@ export function TeacherEducation() {
       </Card>
       {cid && tab === "enrollments" && (
         <>
-          <Card title="تجهيز طالب للدخول برمز فقط">
+          <Card title="رمز دخول الطالب">
             <p>
-              أدخل اسم الطالب لتجهيز حسابه في هذا الفصل. سلّمه الرمز بشكل خاص؛
-              لا يحتاج إلى بريد أو كلمة مرور.
+              اكتب اسم الطالب، ثم أنشئ رمزه وسلّمه له بشكل خاص. يدخل بالرمز فقط،
+              دون بريد أو كلمة مرور.
             </p>
-            <Form
-              fields={[
-                { name: "name", label: "اسم الطالب الجديد" },
-                {
-                  name: "days",
-                  label: "صلاحية الرمز بالأيام",
-                  type: "number",
-                  min: 1,
-                  max: 90,
-                },
-              ]}
-              initial={{ days: 30 }}
-              action={action}
-              button="تجهيز الحساب وإصدار الرمز"
-              submit={(v) =>
-                action.run(async () => {
+            {!classes.data?.find((c) => c.id === cid)?.school_id && (
+              <p className="edu-note">
+                هذا فصل مستقل. سنجهّزه تلقائيًا عند إنشاء أول رمز، دون خطوات ربط
+                إضافية.
+              </p>
+            )}
+            <form
+              key={cid}
+              className="edu-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = event.currentTarget,
+                  values = new FormData(form);
+                const name = String(values.get("name") || "").trim();
+                if (!name || action.busy) return;
+                void action.run(async () => {
                   const issued = await api<Row>("/student-access", "POST", {
-                    ...v,
                     classId: cid,
+                    name,
+                    days: Number(values.get("days") || 30),
                   });
                   setStudentCode(issued);
+                  form.reset();
                   return issued;
-                }, "تم تجهيز حساب الطالب.")
-              }
-            />
+                }, "رمز الطالب جاهز. انسخه وسلّمه له بشكل خاص.");
+              }}
+            >
+              <label className="edu-wide">
+                اسم الطالب
+                <input
+                  name="name"
+                  required
+                  maxLength={200}
+                  placeholder="مثال: أنس محمد"
+                  autoComplete="off"
+                  disabled={action.busy}
+                />
+              </label>
+              <details className="edu-wide">
+                <summary>خيارات إضافية · الصلاحية الافتراضية 30 يومًا</summary>
+                <label>
+                  صلاحية الرمز
+                  <select name="days" defaultValue="30" disabled={action.busy}>
+                    <option value="7">7 أيام</option>
+                    <option value="30">30 يومًا</option>
+                    <option value="90">90 يومًا</option>
+                  </select>
+                </label>
+              </details>
+              <div className="edu-wide">
+                <button className="edu-button" disabled={action.busy}>
+                  <KeyRound size={16} />
+                  {action.busy ? "جار إنشاء الرمز…" : "إنشاء رمز الدخول"}
+                </button>
+              </div>
+            </form>
           </Card>
           {studentCode && (
             <Card title={"رمز دخول " + studentCode.name}>
@@ -2369,7 +2477,12 @@ export function TeacherEducation() {
                 يظهر هنا مرة واحدة. صالح لمدة {fmt(studentCode.days)} يومًا، وهو
                 شخصي لهذا الطالب. تجديد الرمز يلغي السابق والجلسات المفتوحة.
               </p>
-              <div className="edu-code">
+              <div
+                className="edu-code"
+                dir="ltr"
+                style={{ overflowWrap: "anywhere", userSelect: "all" }}
+                aria-label="رمز دخول الطالب"
+              >
                 {studentCode.code.match(/.{1,4}/g)?.join("-")}
               </div>
               <div className="edu-actions">
@@ -2397,7 +2510,12 @@ export function TeacherEducation() {
         </>
       )}
       {!cid ? (
-        <Empty>اختر فصلًا. مدير المدرسة يربط الفصول ويصدر رموز الانضمام.</Empty>
+        <Empty>
+          أضف فصلًا أولًا لتتمكن من إنشاء رموز الطلاب.{" "}
+          <Link className="edu-button secondary" href="/teacher/classes">
+            إضافة فصل
+          </Link>
+        </Empty>
       ) : tab === "enrollments" ? (
         <Card title="حسابات الطلاب وطلبات الانضمام">
           <QueryState query={enroll}>
@@ -2974,7 +3092,15 @@ function EnrollmentImport({ classId }: { classId: string }) {
     </Card>
   );
 }
-function StudentWorkspace({ me, section }: { me: Me; section: string }) {
+function StudentWorkspace({
+  me,
+  section,
+  navigate,
+}: {
+  me: Me;
+  section: string;
+  navigate: (key: string) => void;
+}) {
   const action = useAction(),
     [session, setSession] = useState("");
   useEffect(() => setSession(""), [section]);
@@ -3019,11 +3145,69 @@ function StudentWorkspace({ me, section }: { me: Me; section: string }) {
         close={() => setSession("")}
       />
     );
-  if (section === "home") return <StudentHome start={setSession} />;
-  if (section === "aptitude") return <QuantWorkspace/>;
+  if (section === "home")
+    return (
+      <>
+        <StudentLaunchpad navigate={navigate} />
+        <h2 className="sa-school-heading">مدرستي وأنشطتي</h2>
+        <StudentHome start={setSession} />
+      </>
+    );
+  if (section === "academy") return <StudentAcademy key="academy" />;
+  if (section === "foundation-history")
+    return <StudentAcademy key="foundation-history" view="history" />;
+  if (section === "foundation-progress")
+    return <StudentAcademy key="foundation-progress" view="analytics" />;
+  if (section === "downloads") return <StudentDownloads />;
+  if (section === "plan" || section === "rooms" || section === "achievements")
+    return <StudentStudy key={section} view={section} />;
+  if (section === "mistakes")
+    return (
+      <>
+        <StudentMistakeHub />
+        <details className="edu-card" style={{ marginTop: 25 }}>
+          <summary>ملاحظات أخطاء الأنشطة السابقة</summary>
+          <Personal section="mistakes" />
+        </details>
+      </>
+    );
+  if (section === "aptitude") return <QuantWorkspace />;
   if (section === "progress" || section === "history")
-    return <QuantWorkspace key={section} initialTab={section === "history" ? "history" : "analytics"}/>;
+    return (
+      <QuantWorkspace
+        key={section}
+        initialTab={section === "history" ? "history" : "analytics"}
+      />
+    );
   return <Personal section={section} />;
+}
+function StudentMistakeHub() {
+  const [source, setSource] = useState("mufakir");
+  return (
+    <div className="sa-workspace">
+      <div className="edu-tabs" role="group" aria-label="مصدر أخطاء المراجعة">
+        <button
+          className="edu-button secondary"
+          aria-pressed={source === "mufakir"}
+          onClick={() => setSource("mufakir")}
+        >
+          أسئلة المفكر
+        </button>
+        <button
+          className="edu-button secondary"
+          aria-pressed={source === "academy"}
+          onClick={() => setSource("academy")}
+        >
+          تدريبات التأسيس
+        </button>
+      </div>
+      {source === "mufakir" ? (
+        <QuantWorkspace key="notebook" initialTab="notebook" compact />
+      ) : (
+        <AcademyMistakes />
+      )}
+    </div>
+  );
 }
 function StudentHome({ start }: { start: (id: string) => void }) {
   const q = useData<Row>("/student-home"),

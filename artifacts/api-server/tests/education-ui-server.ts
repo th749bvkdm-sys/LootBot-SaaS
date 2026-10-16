@@ -118,6 +118,11 @@ await pool.query(
   "INSERT INTO education_school_classes(class_id,school_id) VALUES($1,$2)",
   [classId, school],
 );
+// Reproduce student code issuance on a teacher-owned class without a school link.
+await pool.query(
+  "INSERT INTO teacher_classes(id,owner_id,name,data) VALUES($1,$2,$3,$4::jsonb)",
+  [randomUUID(), people.teacher, "فصل مستقل • تجربة الرموز المحلية", JSON.stringify({ grade: "الثالث", stage: "ثانوي", subject: "القدرات" })],
+);
 for (const name of ["student", "pending"] as const) {
   const roster = randomUUID();
   await pool.query(
@@ -446,9 +451,10 @@ preview.get("/__preview/:role", (req, res) => {
   );
 });
 preview.use(app);
-const server = preview.listen(5191, "127.0.0.1", () =>
+const previewPort = Number(process.env.EDUCATION_PREVIEW_PORT || 5191);
+const server = preview.listen(previewPort, "127.0.0.1", () =>
   console.log(
-    "EDUCATION_PREVIEW_READY http://127.0.0.1:5191/__preview/admin (local disposable data only)",
+    `EDUCATION_PREVIEW_READY http://127.0.0.1:${previewPort}/__preview/admin (local disposable data only)`,
   ),
 );
 let closing = false;
