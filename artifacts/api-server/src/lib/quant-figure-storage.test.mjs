@@ -48,3 +48,19 @@ test('symlink path escaping private storage is rejected when OS permits symlink 
 test('figure default project root works from repository root or API workspace', () => {
   const repository = path.resolve('..', '..'); assert.equal(quantProjectRoot(path.join(repository, 'artifacts/api-server')), repository); assert.equal(quantProjectRoot(repository), repository);
 });
+
+test('database figure bytes retain integrity checks and never fall back on corrupt stored data', async () => {
+  const { readStoredQuantFigure, validatePrivateQuantFigureBytes } = await import('./quant-figure-storage.mjs');
+  const bytes = png(), fileHash = hash(bytes);
+  const asset = { file_hash: fileHash, relative_path: 'fixture/figures/Q-0002.png', width: 16, height: 16 };
+  const query = { async query(sql, values) {
+    assert.match(sql, /FROM quant_figure_blobs WHERE file_hash=\$1/);
+    assert.deepEqual(values, [fileHash]);
+    return { rows: [{ png_data: bytes, width: 16, height: 16 }] };
+  } };
+  assert.deepEqual((await readStoredQuantFigure(query, asset)).bytes, bytes);
+  assert.throws(() => validatePrivateQuantFigureBytes(bytes, 'a'.repeat(64)), /PRIVATE_FIGURE_UNAVAILABLE/);
+  await assert.rejects(() => readStoredQuantFigure(query, { ...asset, width: 32 }), /PRIVATE_FIGURE_UNAVAILABLE/);
+  const corrupt = Buffer.from(bytes); corrupt[40] ^= 1;
+  await assert.rejects(() => readStoredQuantFigure({ async query() { return { rows: [{ png_data: corrupt, width: 16, height: 16 }] }; } }, asset), /PRIVATE_FIGURE_UNAVAILABLE/);
+});

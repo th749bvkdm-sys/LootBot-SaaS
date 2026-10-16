@@ -45,6 +45,25 @@ export function validateFigureMetadata(figure, sourcePage) {
     fail();
   return { relativePath: figure.relativePath, fileHash: figure.fileHash.toLowerCase(), fileName: figure.fileName, sourcePage: figure.sourcePage, reviewNote: figure.review.note };
 }
+export function validatePrivateQuantFigureBytes(bytes, expectedHash) {
+  if (!Buffer.isBuffer(bytes) || bytes.length < 33 || bytes.length > 12 * 1024 * 1024 ||
+      !/^[0-9a-f]{64}$/i.test(expectedHash || '') || !bytes.subarray(0, 8).equals(signature) ||
+      bytes.toString('ascii', 12, 16) !== 'IHDR' || bytes.readUInt32BE(8) !== 13 ||
+      createHash('sha256').update(bytes).digest('hex') !== expectedHash.toLowerCase()) fail();
+  const width = bytes.readUInt32BE(16), height = bytes.readUInt32BE(20);
+  if (width < 16 || height < 16 || width > 4000 || height > 4000 || width * height > 8_000_000) fail();
+  validatePngData(bytes, width, height);
+  return { bytes, width, height, size: bytes.length };
+}
+// Authorization and source/version checks remain the caller's responsibility.
+export async function readStoredQuantFigure(query, asset) {
+  if (!/^[0-9a-f]{64}$/i.test(asset.file_hash || '')) fail();
+  const row = (await query.query('SELECT png_data,width,height FROM quant_figure_blobs WHERE file_hash=$1', [asset.file_hash])).rows[0];
+  if (!row) return readPrivateQuantFigure(quantFigureStorageRoot(), asset.relative_path, asset.file_hash);
+  const figure = validatePrivateQuantFigureBytes(row.png_data, asset.file_hash);
+  if (figure.width !== asset.width || figure.height !== asset.height || figure.width !== row.width || figure.height !== row.height) fail();
+  return figure;
+}
 export async function readPrivateQuantFigure(storageRoot, relativePath, expectedHash, projectRoot = quantProjectRoot()) {
   if (!/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_.-]+)*\.png$/.test(relativePath || '') || relativePath.split('/').some(part => part.includes('..')) || !/^[0-9a-f]{64}$/i.test(expectedHash || '')) fail();
   const actualRoot = await realpath(path.resolve(storageRoot));

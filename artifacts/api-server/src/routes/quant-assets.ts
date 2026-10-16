@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { requireAuth } from '../lib/auth-middleware';
 import { actor, authorize, EducationError } from '../lib/education';
 import { QuantError, quantStudent, quantFail } from '../lib/quant';
-import { readPrivateQuantFigure, quantFigureStorageRoot } from '../lib/quant-figure-storage.mjs';
+import { readStoredQuantFigure } from '../lib/quant-figure-storage.mjs';
 
 export const quantAssetsRouter = Router();
 const assetQuery = `SELECT f.*,r.review_status,r.source_id AS review_source_id,s.license_status,s.license_note
@@ -25,7 +25,7 @@ quantAssetsRouter.get(['/quant/figures/:id', '/quant/admin/figures/:id'], requir
       if (!attempts.some(attempt => members!.some(member => member.id === attempt.enrollment_id && member.school_id === attempt.school_id && (!attempt.class_id || member.class_id === attempt.class_id)))) quantFail();
     }
     let figure;
-    try { figure = await readPrivateQuantFigure(quantFigureStorageRoot(), asset.relative_path, asset.file_hash); }
+    try { figure = await readStoredQuantFigure(pool, asset); }
     catch { quantFail(); }
     res.type('png').send(figure!.bytes);
   } catch (error) {

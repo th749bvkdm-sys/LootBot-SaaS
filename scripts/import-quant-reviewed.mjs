@@ -77,7 +77,7 @@ function questionSignature(question) {
     skill: question.skill, difficulty: question.difficulty, sourcePage: question.sourcePage, sourceQuestionNumber: question.sourceQuestionNumber || '', images: question.images }));
 }
 
-export async function importReviewedDrafts(connection, actorId, reviewed) {
+export async function importReviewedDrafts(connection, actorId, reviewed, { storeFiguresInDb = false } = {}) {
   const { pack } = reviewed;
   validateReviewedPack(pack);
   if (!/^[0-9a-f-]{36}$/i.test(actorId || '')) problem('SUPERADMIN_ACTOR_REQUIRED');
@@ -118,6 +118,7 @@ export async function importReviewedDrafts(connection, actorId, reviewed) {
       for (const [position, supplied] of question.images.entries()) {
         const metadata = validateFigureMetadata(supplied, question.sourcePage);
         const data = await readPrivateQuantFigure(quantFigureStorageRoot(rootPath), metadata.relativePath, metadata.fileHash, rootPath);
+        if (storeFiguresInDb) await connection.query('INSERT INTO quant_figure_blobs(file_hash,png_data,width,height) VALUES($1,$2,$3,$4) ON CONFLICT(file_hash) DO NOTHING', [metadata.fileHash, data.bytes, data.width, data.height]);
         figures.push({ ...metadata, id: randomUUID(), position, width: data.width, height: data.height });
       }
       const content = { options: question.choices.map(choice => ({ text: choice.text, explanation: '' })), answer: question.choices.findIndex(choice => choice.key === question.correctKey),
@@ -155,7 +156,7 @@ async function main() {
   const require = createRequire(path.join(rootPath, 'lib/db/package.json')), { Pool } = require('pg');
   const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
   let connection;
-  try { connection = await pool.connect(); console.log(JSON.stringify({ ...await importReviewedDrafts(connection, actorId, reviewed), pdfPagesRead: 0 })); }
+  try { connection = await pool.connect(); console.log(JSON.stringify({ ...await importReviewedDrafts(connection, actorId, reviewed, { storeFiguresInDb: args.includes('--store-figures-in-db') }), pdfPagesRead: 0 })); }
   finally { connection?.release(); await pool.end(); }
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main().catch(error => {

@@ -7,7 +7,7 @@ import { createId } from "../lib/security";
 import { readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { readPrivateQuantFigure, quantFigureStorageRoot } from "../lib/quant-figure-storage.mjs";
+import { readStoredQuantFigure } from "../lib/quant-figure-storage.mjs";
 import { assertSourceCanBeImported, normalizedQuestionHash, questionJson, sourceJson, validateQuestion, QuantContentError, quantLicenseStatuses, quantReviewStatuses } from "../lib/quant-content";
 
 export const quantContentRouter = Router();
@@ -140,7 +140,7 @@ async function save(req: Request, v: QuestionBody, qid?: string) {
         JOIN education_question_versions old_version ON old_version.id=f.version_id WHERE f.id=$1`, [figureId])).rows[0];
       if (!figure || figure.question_id !== qid || figure.source_id !== v.sourceId || figure.source_page !== v.sourcePage)
         throw new QuantContentError(400, "PRIVATE_FIGURE_SOURCE_MISMATCH", "لا يمكن نقل رسم خاص من سؤال أو مصدر أو صفحة مختلفة.");
-      try { await readPrivateQuantFigure(quantFigureStorageRoot(), figure.relative_path, figure.file_hash); }
+      try { await readStoredQuantFigure(q, figure); }
       catch { throw new QuantContentError(409, "PRIVATE_FIGURE_UNAVAILABLE", "تحقق من وجود الرسم الخاص وسلامته قبل إنشاء إصدار جديد."); }
       const cloned = { ...figure, id: createId(), position: clonedFigures.length };
       clonedFigures.push(cloned); images.push("/api/quant/figures/" + cloned.id);
