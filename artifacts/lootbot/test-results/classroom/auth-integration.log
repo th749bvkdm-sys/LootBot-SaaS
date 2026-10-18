@@ -1,0 +1,19 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ all login methods, roles, student credentials and session revocation use real HTTP
+  ✔ merchant, teacher, Super Admin and school manager retain their roles and permissions (568.1261ms)
+  ✔ registration starts without privileges, forbids duplicate email and requires CSRF (136.5289ms)
+  ✔ wrong, malformed, deleted and suspended credentials do not create sessions (186.5781ms)
+  ✔ password lockout and IP throttling reject repeated attempts (566.7252ms)
+  ✔ personal student code signs into the correct account without email or password (343.8431ms)
+  ✔ independent teacher classes issue codes without manual school setup and stay isolated (316.7447ms)
+  ✔ rotating/revoking student credentials immediately invalidates old sessions and codes (152.8121ms)
+  ✔ expired and forged sessions fail; logout requires CSRF and destroys the valid session (133.8484ms)
+✔ all login methods, roles, student credentials and session revocation use real HTTP (2474.6929ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3637.6769

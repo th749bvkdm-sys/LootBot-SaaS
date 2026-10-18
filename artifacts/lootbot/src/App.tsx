@@ -37,6 +37,7 @@ import { StoreAppearance, PublicStorefront } from '@/components/storefront';
 
 const AccountSelection = lazy(() => import('@/components/teacher-workspace').then(module => ({ default: module.AccountSelection })));
 const TeacherOnboarding = lazy(() => import('@/components/teacher-workspace').then(module => ({ default: module.TeacherOnboarding })));
+const TeacherProjectorScreen = lazy(()=>import('@/components/teacher-classroom-hub').then(m=>({default:m.TeacherProjectorScreen})));
 const TeacherWorkspace = lazy(() => import('@/components/teacher-workspace').then(module => ({ default: module.TeacherWorkspace })));
 const StudentLearning = lazy(() => import('@/components/teacher-learning').then(module=>({default:module.StudentLearning})));
 const EducationWorkspace = lazy(() => import('@/components/education-workspace').then(module=>({default:module.EducationWorkspace})));
@@ -280,6 +281,7 @@ function App() {
       <Route path="/account/select"><Suspense fallback={<LoadingScreen />}><AccountSelection /></Suspense></Route>
       <Route path="/teacher/onboarding"><AccountAccess kind="teacher-setup"><Suspense fallback={<LoadingScreen />}><TeacherOnboarding /></Suspense></AccountAccess></Route>
       <Route path="/teacher"><AccountAccess kind="teacher"><Suspense fallback={<LoadingScreen />}><TeacherWorkspace /></Suspense></AccountAccess></Route>
+      <Route path="/teacher/projector"><AccountAccess kind="teacher"><Suspense fallback={<LoadingScreen/>}><TeacherProjectorScreen/></Suspense></AccountAccess></Route>
       <Route path="/teacher/:section"><AccountAccess kind="teacher"><Suspense fallback={<LoadingScreen />}><TeacherWorkspace /></Suspense></AccountAccess></Route>
       <Route path="/store/:slug/products/:productId"><PublicStorefront /></Route>
       <Route path="/store/:slug/categories/:categoryId"><PublicStorefront /></Route>

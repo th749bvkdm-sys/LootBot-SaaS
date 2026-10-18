@@ -15,3 +15,4 @@ export * from './learning';
 export * from './education';
 export * from './quant';
 export * from './quant-assets';
+export * from "./teacher-classroom";

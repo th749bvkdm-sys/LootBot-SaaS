@@ -35,6 +35,10 @@ import {
   DialogFooter,
 } from "./ui/dialog";
 import "./education.css";
+import "./workspace-shell.css";
+import {StudentHubNavigation,StudentContextTabs,StudentMobileBottomDock,FloatingFocusBar,DailySmartQuestCard,ClassActivitiesTab,studentHubDestination} from './student-navigation-shell';
+import {useActiveTeacherClass} from './teacher-navigation-shell';
+import {MistakeFlashcardsView} from './student-review-cards';
 import { QuantWorkspace } from "./quant/QuantWorkspace";
 import { QuantAdmin } from "./quant/QuantAdmin";
 import {
@@ -471,6 +475,10 @@ const studentSections = [
   ["downloads", "مكتبتي دون إنترنت", Download],
   ["goals", "الأهداف والخطة", Check],
   ["help", "المساعدة", LifeBuoy],
+  ["class-activities","أنشطة المعلم ومختبر الكيمياء",BookOpen],
+  ["flashcards","البطاقات السريعة",Layers],
+  ["history","سجل محاولاتي",Clock],
+  ["progress","تحليل الكمي",Target],
 ] as const;
 const sectionCapabilities: Record<string, string> = {
   schools: "schools.read",
@@ -538,11 +546,13 @@ export function EducationWorkspace() {
       me.data?.permissions?.includes(sectionCapabilities[key] || "never"),
   );
   const visible = allowed.filter(([, label]) => label.includes(search));
-  const effective = allowed.some(([key]) => key === section)
-    ? section
+  const requested=studentHubDestination(section);
+  const effective = allowed.some(([key]) => key === requested)
+    ? requested
     : allowed[0]?.[0] || "help";
   const title = list.find(([key]) => key === effective)?.[1] || "مركز المساعدة";
   function selectSection(key: string) {
+    key=studentHubDestination(key);
     setSection(key);
     if (student) {
       if (key === "aptitude") setQuantNavigation((current) => current + 1);
@@ -558,12 +568,15 @@ export function EducationWorkspace() {
         "academyLesson",
         "academyTrack",
         "studyRoom",
+        "activity",
+        "enrollmentId",
       ].forEach((k) => url.searchParams.delete(k));
       url.searchParams.set("studentTab", key);
       window.scrollTo(0, 0);
-      window.history.replaceState(null, "", url);
+      window.history.pushState(null, "", url);
     }
   }
+  useEffect(()=>{if(!student)return;const sync=()=>{const params=new URLSearchParams(location.search);setSection(studentHubDestination(params.get('studentTab')||(params.has('academyAttempt')?'academy':['quantAttempt','quantResult','quantReview','quantVideo','quantVideos','quantNotebook'].some(k=>params.has(k))?'aptitude':'home')));setQuantNavigation(v=>v+1);};window.addEventListener('popstate',sync);return()=>window.removeEventListener('popstate',sync);},[student]);
   useEffect(() => {
     document.documentElement.lang = "ar";
     document.documentElement.dir = "rtl";
@@ -581,7 +594,8 @@ export function EducationWorkspace() {
             </div>
           </div>
           <nav aria-label="التنقل التعليمي">
-            {visible.map(([key, label, Icon]) => (
+            {student&&<StudentHubNavigation section={effective} search={search} navigate={selectSection}/>}
+            {!student&&visible.map(([key, label, Icon]) => (
               <div key={key} className="edu-nav-item">
                 {student &&
                   ["home", "mistakes", "plan", "help"].includes(key) && (
@@ -639,6 +653,8 @@ export function EducationWorkspace() {
                       : "الدعم"}
             </span>
           </header>
+          {student&&<StudentContextTabs section={effective} navigate={selectSection}/>}
+          {student&&!!me.data?.memberships.length&&me.data.settings.studentRoom&&!me.data.settings.maintenance&&<FloatingFocusBar/>}
           {!(
             student && ["home", "aptitude", "academy"].includes(effective)
           ) && (
@@ -674,6 +690,7 @@ export function EducationWorkspace() {
           </QueryState>
         </div>
       </div>
+      {student&&<StudentMobileBottomDock section={effective} navigate={selectSection}/>}
     </main>
   );
 }
@@ -2335,7 +2352,7 @@ function Help({ me }: { me: Me }) {
 
 export function TeacherEducation() {
   const classes = useData<Row[]>("/classes"),
-    [cid, setCid] = useState(""),
+    [cid, setCid] = useActiveTeacherClass(),
     [tab, setTab] = useState("enrollments"),
     [student, setStudent] = useState(""),
     [studentCode, setStudentCode] = useState<Row | null>(null),
@@ -3148,9 +3165,9 @@ function StudentWorkspace({
   if (section === "home")
     return (
       <>
-        <StudentLaunchpad navigate={navigate} />
+        <DailySmartQuestCard navigate={navigate} />
         <h2 className="sa-school-heading">مدرستي وأنشطتي</h2>
-        <StudentHome start={setSession} />
+        <StudentHome start={setSession} navigate={navigate} />
       </>
     );
   if (section === "academy") return <StudentAcademy key="academy" />;
@@ -3158,7 +3175,10 @@ function StudentWorkspace({
     return <StudentAcademy key="foundation-history" view="history" />;
   if (section === "foundation-progress")
     return <StudentAcademy key="foundation-progress" view="analytics" />;
+  if (section === "class-activities") return <ClassActivitiesTab/>;
+  if (section === "flashcards") return <MistakeFlashcardsView/>;
   if (section === "downloads") return <StudentDownloads />;
+  if (section === "plan" || section === "goals") return <><StudentStudy view="plan"/><details className="edu-card"><summary>أهدافي وخطتي المسجلة سابقًا</summary><Personal section="goals"/></details></>;
   if (section === "plan" || section === "rooms" || section === "achievements")
     return <StudentStudy key={section} view={section} />;
   if (section === "mistakes")
@@ -3182,10 +3202,11 @@ function StudentWorkspace({
   return <Personal section={section} />;
 }
 function StudentMistakeHub() {
+  const [cards,setCards]=useState(false);
   const [source, setSource] = useState("mufakir");
   return (
     <div className="sa-workspace">
-      <div className="edu-tabs" role="group" aria-label="مصدر أخطاء المراجعة">
+      <div className="edu-tabs" role="group" aria-label="طريقة عرض الأخطاء"><button className="edu-button secondary" aria-pressed={!cards} onClick={()=>setCards(false)}>قائمة الأخطاء</button><button className="edu-button secondary" aria-pressed={cards} onClick={()=>setCards(true)}>بطاقات المراجعة السريعة (Flashcards)</button></div>{cards?<MistakeFlashcardsView/>:<><div className="edu-tabs" role="group" aria-label="مصدر أخطاء المراجعة">
         <button
           className="edu-button secondary"
           aria-pressed={source === "mufakir"}
@@ -3205,11 +3226,11 @@ function StudentMistakeHub() {
         <QuantWorkspace key="notebook" initialTab="notebook" compact />
       ) : (
         <AcademyMistakes />
-      )}
+      )}</>}
     </div>
   );
 }
-function StudentHome({ start }: { start: (id: string) => void }) {
+function StudentHome({ start,navigate }: { start: (id: string) => void;navigate:(key:string)=>void }) {
   const q = useData<Row>("/student-home"),
     p = useData<Row[]>("/personal"),
     action = useAction();
@@ -3219,26 +3240,6 @@ function StudentHome({ start }: { start: (id: string) => void }) {
   return (
     <QueryState query={q}>
       <RoomContent />
-      <div className="edu-kpis">
-        {[
-          [q.data?.memberships?.length, "فصول مرتبطة"],
-          [answers, "إجابات الأنشطة السابقة"],
-          [
-            skills.filter((s: Row) => s.level === "mastered").length,
-            "مهارات متقنة",
-          ],
-          [
-            answers ? Math.round((correct * 100) / answers) + "٪" : "—",
-            "دقة الإجابات",
-          ],
-        ].map(([v, t]) => (
-          <article className="edu-card edu-kpi" key={t}>
-            <GraduationCap />
-            <strong>{String(v ?? 0)}</strong>
-            <span>{t}</span>
-          </article>
-        ))}
-      </div>
       <div className="edu-grid">
         <Card title="مدرستي وفصلي">
           {q.data?.memberships.map((m: Row) => (
@@ -3277,7 +3278,7 @@ function StudentHome({ start }: { start: (id: string) => void }) {
               <p>موعد التسليم: {date(a.due_at)}</p>
               <Link
                 className="edu-button"
-                href={"/learn/" + a.id + "?enrollmentId=" + a.enrollment_id}
+                href={"/student?studentTab=class-activities&activity="+a.id+"&enrollmentId="+a.enrollment_id} onClick={event=>{event.preventDefault();navigate("class-activities");const u=new URL(location.href);u.searchParams.set("activity",a.id);u.searchParams.set("enrollmentId",a.enrollment_id);history.replaceState(history.state,"",u);}}
               >
                 فتح النشاط <ArrowUpRight size={17} />
               </Link>
@@ -3875,6 +3876,7 @@ function Practice({
   );
 }
 function Personal({ section }: { section: string }) {
+  const [cards,setCards]=useState(false);
   const q = useData<Row[]>("/personal"),
     progress = useData<Row>("/progress"),
     action = useAction();
@@ -3893,6 +3895,7 @@ function Personal({ section }: { section: string }) {
   return (
     <>
       <Notice action={action} />
+      {section==="bookmarks"&&<><button className="edu-button secondary" aria-pressed={cards} onClick={()=>setCards(v=>!v)}>{cards?"عرض القائمة":"بطاقات المراجعة السريعة (Flashcards)"}</button>{cards&&<MistakeFlashcardsView initialSource="saved"/>}</>}
       {section === "goals" && (
         <Card title="هدف أسبوعي وخطة قبل الاختبار">
           <Form

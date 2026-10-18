@@ -1,5 +1,6 @@
 import { Children, cloneElement, isValidElement, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactElement, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import {useSearch} from 'wouter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, BookOpen, Check, Copy, FileImage, FilePlus2, FolderOpen, ImagePlus, Loader2, Plus, Printer, Redo2, RotateCw, Save, ScanText, Trash2, Undo2, X } from 'lucide-react';
 import { teacherApi, uploadTeacherAsset, TeacherApiError, type TeacherProfile, type TeacherQuestion } from '../lib/teacher-api';
@@ -28,7 +29,7 @@ export function TeacherExams({ templatesOnly = false }: { templatesOnly?: boolea
       const document = createExamDocument(style, profile.data as unknown as Record<string, unknown>);
       document.metadata.title = templatesOnly ? `قالب ${EXAM_STYLES.find(item => item.value === style)?.title ?? 'اختبار'}` : image ? 'اختبار من صورة' : 'اختبار جديد';
       const exam = await teacherApi<TeacherExam>('/teacher/exams', 'POST', { title: document.metadata.title, document, isTemplate: templatesOnly });
-      setActive(exam); invalidate();
+      setActive(exam);const url=new URL(location.href);if(url.searchParams.get('new')==='1'){url.searchParams.delete('new');url.searchParams.set('exam',exam.id);window.history.replaceState(history.state,'',url);}invalidate();
     } catch (cause) { setError(message(cause)); } finally { setBusy(false); }
   }
   async function open(id: string, fromTemplate = false) {
@@ -40,7 +41,9 @@ export function TeacherExams({ templatesOnly = false }: { templatesOnly?: boolea
     if (!window.confirm(`هل تريد أرشفة «${exam.title}»؟ سيبقى المستند محفوظًا في قاعدة البيانات.`)) return;
     setBusy(true); setError(''); try { await teacherApi(`/teacher/exams/${exam.id}`, 'DELETE'); invalidate(); } catch (cause) { setError(message(cause)); } finally { setBusy(false); }
   }
-  if (active) return <ExamEditor key={active.id} initial={active} onClose={() => { setActive(null); invalidate(); }} onSaved={invalidate} onCopy={exam => { setActive(exam); invalidate(); }} />;
+  const requested=useRef(""),urlSearch=useSearch();
+  useEffect(()=>{const params=new URLSearchParams(urlSearch),id=params.get('exam');if(id&&requested.current!==id){requested.current=id;void open(id);}else if(!id&&params.get('new')==='1'&&requested.current!=='new'){requested.current='new';void create('formal');}},[urlSearch]);
+  if (active) return <ExamEditor key={active.id} initial={active} onClose={() => { setActive(null);requested.current='';const url=new URL(location.href);url.searchParams.delete("exam");url.searchParams.delete('new');history.replaceState(history.state,"",url);invalidate(); }} onSaved={invalidate} onCopy={exam => { setActive(exam);const url=new URL(location.href);if(url.searchParams.has('exam')){url.searchParams.set('exam',exam.id);history.replaceState(history.state,'',url);}invalidate(); }} />;
   const list = query.data?.filter(exam => exam.title.includes(search.trim())) ?? [];
   return <section className="exam-workspace" dir="rtl">
     <header className="tw-heading"><div><p className="tw-eyebrow">غرفة المعلم / مستندات قابلة للتعديل</p><h1>{templatesOnly ? 'القوالب والتصاميم' : 'الاختبارات وتصميم أوراق الأسئلة'}</h1><p>مستندات محفوظة، أسئلة قابلة للتعديل، ومعاينة فعلية بحجم A4. تصميم الورقة مستقل عن مظهر لوحة المعلم.</p></div><button className="tw-button primary" disabled={busy} onClick={() => void create(profile.data?.printStyle ?? 'formal',false,true)}><FilePlus2 size={17}/>{templatesOnly ? 'إنشاء قالب' : 'اختبار جديد'}</button></header>

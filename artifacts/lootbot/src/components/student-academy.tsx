@@ -35,6 +35,8 @@ import {
   type AcademyRow as Row,
 } from "./student-academy-api";
 import "./student-academy.css";
+import {ExamZenMode,QuestionMapFilter,useExamShortcuts} from "./workspace-exam-tools";
+import {MistakeFlashcardsView} from "./student-review-cards";
 import {
   Dialog,
   DialogContent,
@@ -310,6 +312,7 @@ export function StudentAcademy({ view = "tracks" }: { view?: string }) {
     trackId: string,
     lessonId?: string,
     mistakesOnly = false,
+    quick = false,
   ) {
     setBusy(true);
     setError("");
@@ -317,9 +320,9 @@ export function StudentAcademy({ view = "tracks" }: { view?: string }) {
       const r = await academyApi("/attempts", "POST", {
         trackId,
         lessonId,
-        mode,
-        count,
-        ...(mode !== "untimed" ? { timeLimitSec: minutes * 60 } : {}),
+        mode: quick ? "untimed" : mode,
+        count: quick ? 5 : count,
+        ...(!quick && mode !== "untimed" ? { timeLimitSec: minutes * 60 } : {}),
         mistakesOnly,
       });
       setLesson(null);
@@ -395,14 +398,14 @@ export function StudentAcademy({ view = "tracks" }: { view?: string }) {
               <h2>مهاراتك في التأسيس</h2>
               <p>تحليل تدريبات LootBot الأصلية، منفصل عن نتائج المفكر.</p>
               {analytics.data?.skills?.map((s: Row) => (
-                <div key={s.skill || s.id} className="edu-row">
+                <div key={s.skill || s.id} className="ws-skill-card" data-level={s.accuracy>=80?"mastered":s.accuracy>=50?"developing":"priority"}>
                   <div>
                     <b>{s.skill || s.title}</b>
                     <small>
                       {n(s.answered)} إجابة · {pct(s.accuracy)} دقة
                     </small>
                   </div>
-                  <span>{n(s.correct)} صحيحة</span>
+                  <span>{n(s.correct)} صحيحة · {s.accuracy>=80?"متقن":s.accuracy>=50?"قيد التطور":"أولوية قصوى"}</span><progress max={100} value={s.accuracy} aria-label={`إتقان ${s.skill}`}/>{s.accuracy<80&&(()=>{const track=tracks.find(t=>t.lessons.some((l:Row)=>l.skill===s.skill));const lesson=track?.lessons.find((l:Row)=>l.skill===s.skill);return track&&lesson?<button className="edu-button secondary" disabled={busy} onClick={()=>void start(track.id,lesson.id,false,true)}>تدرّب على هذه المهارة الآن ({Math.min(5,lesson.questionCount)} أسئلة متاحة)</button>:null;})()}
                 </div>
               ))}
               {!analytics.data?.skills?.length && (
@@ -681,6 +684,9 @@ function AcademyAttempt({ id, close }: { id: string; close: () => void }) {
     [filter, setFilter] = useState("all"),
     [confirmSubmit, setConfirmSubmit] = useState(false);
   const loaded = useRef("");
+  const surface=useRef<HTMLDivElement>(null),[mapFilter,setMapFilter]=useState("all"),[flags,setFlags]=useState<string[]>(()=>{try{return JSON.parse(sessionStorage.getItem("academy-flags:"+id)||"[]");}catch{return [];}}),[scratchOpen,setScratchOpen]=useState(false),[scratch,setScratch]=useState("");
+  useEffect(()=>{try{sessionStorage.setItem("academy-flags:"+id,JSON.stringify(flags));}catch{/* Review flags remain available in this tab. */}},[flags,id]);
+  useEffect(()=>{try{setScratch(sessionStorage.getItem("academy-pad:"+id+":"+index)||"");}catch{setScratch("");}},[id,index]);
   useEffect(() => {
     if (q.data && loaded.current !== id) {
       loaded.current = id;
@@ -749,12 +755,14 @@ function AcademyAttempt({ id, close }: { id: string; close: () => void }) {
       setBusy(false);
     }
   }
+  const toggleFlag=()=>{if(question)setFlags(ids=>ids.includes(question.id)?ids.filter(v=>v!==question.id):[...ids,question.id]);};
+  useExamShortcuts({enabled:data?.status==="active"&&!busy&&!confirmSubmit&&left!==0,choose:i=>{if(i<(question?.options.length??0))void choose(i);},previous:()=>{if(index>0)setIndex(index-1);},next:()=>{if(index<questions.length-1)setIndex(index+1);},flag:toggleFlag,scratch:()=>setScratchOpen(v=>!v)});
   useEffect(() => {
     if (left === 0 && data?.status === "active" && !busy) void q.refetch();
   }, [left, data?.status, busy]);
   return (
-    <div className="sa-workspace">
-      <Dialog open={confirmSubmit} onOpenChange={setConfirmSubmit}>
+    <div className="sa-workspace" ref={surface}>
+      <ExamZenMode target={surface} enabled={data?.status==="active"}/><Dialog open={confirmSubmit} onOpenChange={setConfirmSubmit}>
         <DialogContent dir="rtl">
           <DialogTitle>تسليم التدريب؟</DialogTitle>
           <DialogDescription>
@@ -945,17 +953,19 @@ function AcademyAttempt({ id, close }: { id: string; close: () => void }) {
                     </button>
                   </div>
                 </section>
-                <nav className="sa-question-map" aria-label="خريطة الأسئلة">
-                  {questions.map((r, i) => (
+                <div className="edu-actions"><button className="edu-button secondary" aria-pressed={flags.includes(question.id)} disabled={busy} onClick={toggleFlag}>{flags.includes(question.id)?"إزالة علامة المراجعة":"علّم للمراجعة"}</button><button className="edu-button secondary" aria-expanded={scratchOpen} onClick={()=>setScratchOpen(v=>!v)}>مسودة الحل</button></div>{scratchOpen&&<label className="edu-card">مسودة خاصة على هذا الجهاز<textarea aria-label="مسودة الحل" value={scratch} onChange={e=>{setScratch(e.target.value);try{sessionStorage.setItem("academy-pad:"+id+":"+index,e.target.value);}catch{/* Text remains in this tab until navigating. */}}}/></label>}<QuestionMapFilter value={mapFilter} onChange={setMapFilter}/><nav className="sa-question-map" aria-label="خريطة الأسئلة">
+                  {questions.map((r, i) => (mapFilter==="all"||(mapFilter==="unanswered"?answers[r.id]==null:flags.includes(r.id)))? (
                     <button
                       key={r.id}
                       aria-current={i === index ? "step" : undefined}
-                      className={answers[r.id] != null ? "answered" : ""}
+                      className={(answers[r.id] != null ? "answered" : "")+(flags.includes(r.id)?" flagged":"")}
+                      disabled={busy}
+                      aria-label={`السؤال ${i+1}${flags.includes(r.id)?"؛ للمراجعة":""}`}
                       onClick={() => setIndex(i)}
                     >
-                      {n(i + 1)}
+                      {n(i + 1)}{flags.includes(r.id)?" ⚑":""}
                     </button>
-                  ))}
+                  ):null)}
                 </nav>
                 <button
                   className="edu-button"
@@ -975,6 +985,7 @@ function AcademyAttempt({ id, close }: { id: string; close: () => void }) {
   );
 }
 export function AcademyMistakes() {
+  const [cards,setCards]=useState(false);
   const q = useAcademy("/mistakes"),
     [error, setError] = useState(""),
     [only, setOnly] = useState(true),
@@ -1003,6 +1014,7 @@ export function AcademyMistakes() {
       setBusy(false);
     }
   }
+  if(cards)return <><button className="edu-button secondary" onClick={()=>setCards(false)}>العودة لقائمة الأخطاء</button><MistakeFlashcardsView initialSource="academy"/></>;
   if (attempt)
     return (
       <AcademyAttempt
@@ -1026,7 +1038,7 @@ export function AcademyMistakes() {
     <StudentLoading query={q}>
       <section className="edu-card">
         <div className="sa-section-head">
-          <h2>أخطاء التأسيس</h2>
+          <h2>أخطاء التأسيس</h2><button className="edu-button secondary" onClick={()=>setCards(true)}>بطاقات المراجعة السريعة (Flashcards)</button>
           <span className="sa-pill">تُحفظ تلقائيًا بعد التسليم</span>
         </div>
         <div className="edu-form">

@@ -1,0 +1,45 @@
+{
+  "results": [
+    {
+      "name": "blueprint UI saves immutable sources and produces A/B/C",
+      "passed": true
+    },
+    {
+      "name": "rubric UI edits criteria and calculates without changing grades",
+      "passed": true
+    },
+    {
+      "name": "differentiated worksheets reuse source and separate student sheets from answer keys",
+      "passed": true
+    },
+    {
+      "name": "exit ticket control creates a reviewable draft using the immutable source",
+      "passed": true
+    },
+    {
+      "name": "documents persist, A4 PDF is one clean page, sharing can be revoked",
+      "passed": true
+    },
+    {
+      "name": "calendar, weekly copy and frozen roster work through controls",
+      "passed": true
+    },
+    {
+      "name": "grade grid supports keyboard, undo, statuses, feedback and responsive themes",
+      "passed": true
+    },
+    {
+      "name": "grade CSV validates before saving and exports status/weights with original marks",
+      "passed": true
+    },
+    {
+      "name": "chemistry predicts, shows actual atom counts and rejects partial combinations",
+      "passed": true
+    },
+    {
+      "name": "personal print template is saved in profile and creates an independent editable exam",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

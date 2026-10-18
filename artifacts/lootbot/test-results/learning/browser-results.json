@@ -1,0 +1,25 @@
+{
+  "results": [
+    {
+      "name": "teacher authors three steps, previews, publishes and assigns",
+      "passed": true
+    },
+    {
+      "name": "present mode follows RTL keyboard and records no events",
+      "passed": true
+    },
+    {
+      "name": "student codes, 375px attempt limit, help, resume and completion",
+      "passed": true
+    },
+    {
+      "name": "teacher results and phone/tablet/desktop contain no horizontal overflow",
+      "passed": true
+    },
+    {
+      "name": "student chemistry exploration resumes submitted coefficients and recovers after connection loss",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

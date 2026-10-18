@@ -1,0 +1,65 @@
+{
+  "results": [
+    {
+      "name": "teacher login, real active roster, class period and separate projector",
+      "passed": true
+    },
+    {
+      "name": "early small-screen check covers every tool and a rotated name wheel",
+      "passed": true
+    },
+    {
+      "name": "hot seat authored hint is private, guessing, skip, time and reward replay",
+      "passed": true
+    },
+    {
+      "name": "car five bumps, backward floor, reveal only after judging and victory",
+      "passed": true
+    },
+    {
+      "name": "ladder real distinct players, lower bound, five steps, automatic reward once",
+      "passed": true
+    },
+    {
+      "name": "named vote uses actual roster and retains voters after skip; anonymous custom vote",
+      "passed": true
+    },
+    {
+      "name": "directions create, hide, complete, show and delete in projector",
+      "passed": true
+    },
+    {
+      "name": "quiet meter manual fallback, loud pause, quiet accumulation and goal",
+      "passed": true
+    },
+    {
+      "name": "timer pause, plus 30, reload persistence and actual finish synchronize",
+      "passed": true
+    },
+    {
+      "name": "wheel no-repeat actual names, points persist and explicit grade import is repeat-safe",
+      "passed": true
+    },
+    {
+      "name": "question basket routes selected teacher questions to car game; lesson link already verified",
+      "passed": true
+    },
+    {
+      "name": "team quiz first five wins and rejects additional scoring",
+      "passed": true
+    },
+    {
+      "name": "quick tools stay on page, overlays close, all three themes and five widths fit",
+      "passed": true
+    },
+    {
+      "name": "storage events synchronize two windows when BroadcastChannel is unavailable",
+      "passed": true
+    },
+    {
+      "name": "projector requires a teacher session and owned class; no page exceptions",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

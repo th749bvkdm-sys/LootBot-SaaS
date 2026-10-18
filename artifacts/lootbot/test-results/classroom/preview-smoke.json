@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "errors": [],
+  "base": "http://127.0.0.1:5191",
+  "classId": "1a42064c-76ed-4e9a-b6ff-ec3a8b13686f",
+  "teacher": "http://127.0.0.1:5191/__preview/teacher",
+  "classroom": "http://127.0.0.1:5191/teacher/classroom?class=1a42064c-76ed-4e9a-b6ff-ec3a8b13686f",
+  "student": "http://127.0.0.1:5191/__preview/student",
+  "data": "fictional local disposable data"
+}

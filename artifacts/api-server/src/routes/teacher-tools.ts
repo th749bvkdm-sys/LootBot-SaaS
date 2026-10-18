@@ -894,6 +894,8 @@ teacherToolsRouter.get(
       "teacher_activity_events",
       "teacher_question_versions",
       "teacher_roster_snapshots",
+      "teacher_classroom_events",
+      "teacher_classroom_days",
     ]) {
       const r = await pool.query(`SELECT * FROM ${table} WHERE owner_id=$1`, [
         owner,
@@ -930,6 +932,8 @@ teacherToolsRouter.post(
         "teacher_activities",
         "teacher_template_shares",
         "teacher_roster_snapshots",
+        "teacher_classroom_events",
+        "teacher_classroom_days",
         "teacher_question_versions",
         "teacher_records",
         "teacher_exams",

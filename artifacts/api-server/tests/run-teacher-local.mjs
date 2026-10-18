@@ -51,7 +51,7 @@ try {
   await localDb.exec(quantMigration);await localDb.exec(quantMigration);
   const quantFiguresMigration=await readFile('../../lib/db/migrations/0017_quant_private_figures.sql','utf8');
   await localDb.exec(quantFiguresMigration);await localDb.exec(quantFiguresMigration);
-  for (const file of ['0018_student_study.sql','0019_student_academy.sql']) {
+  for (const file of ['0018_student_study.sql','0019_student_academy.sql','0020_quant_figure_blobs.sql','0021_teacher_classroom.sql']) {
     const migration = await readFile('../../lib/db/migrations/'+file,'utf8');
     await localDb.exec(migration);await localDb.exec(migration);
   }

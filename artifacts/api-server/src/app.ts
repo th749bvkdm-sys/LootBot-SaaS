@@ -57,7 +57,9 @@ app.use(express.static(publicDirectory, { index: false, maxAge: "1h" }));
 app.get("/{*path}", (req, res, next) => {
   // All non-API GET routes are SPA entry points. Some browser bridges send
   // malformed Accept tokens; content negotiation must not break navigation.
-  res.sendFile(path.join(publicDirectory, "index.html"), (error) => {
+  // The fixed SPA entry may live under a dot directory in a local checkout.
+  // No request path is used here; private dotfiles remain blocked by express.static.
+  res.sendFile(path.join(publicDirectory, "index.html"), { dotfiles: "allow" }, (error) => {
     if (error) next(error);
   });
 });

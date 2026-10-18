@@ -1,0 +1,56 @@
+[
+  {
+    "script": "teacher-integration",
+    "passed": true,
+    "tests": 12,
+    "status": 0
+  },
+  {
+    "script": "teacher-tools-integration",
+    "passed": true,
+    "tests": 9,
+    "status": 0
+  },
+  {
+    "script": "learning-integration",
+    "passed": true,
+    "tests": 12,
+    "status": 0
+  },
+  {
+    "script": "student-academy-integration",
+    "passed": true,
+    "tests": 9,
+    "status": 0
+  },
+  {
+    "script": "student-study-integration",
+    "passed": true,
+    "tests": 8,
+    "status": 0
+  },
+  {
+    "script": "quant-notebook-integration",
+    "passed": true,
+    "tests": 11,
+    "status": 0
+  },
+  {
+    "script": "education-integration",
+    "passed": true,
+    "tests": 6,
+    "status": 0
+  },
+  {
+    "script": "auth-integration",
+    "passed": true,
+    "tests": 9,
+    "status": 0
+  },
+  {
+    "script": "classroom-integration",
+    "passed": true,
+    "tests": 8,
+    "status": 0
+  }
+]

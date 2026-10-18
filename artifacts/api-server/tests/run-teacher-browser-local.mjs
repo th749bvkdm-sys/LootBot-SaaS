@@ -2,7 +2,7 @@
 import {spawn} from 'node:child_process';
 import path from 'node:path';
 const scripts=process.argv.slice(2);
-const allowed=['learning-browser.mjs','teacher-tools-browser.mjs','teacher-browser-acceptance.mjs','teacher-exam-browser.mjs','storefront-browser.mjs'];
+const allowed=['learning-browser.mjs','teacher-tools-browser.mjs','teacher-browser-acceptance.mjs','teacher-exam-browser.mjs','storefront-browser.mjs','classroom-browser.mjs','classroom-microphone-browser.mjs'];
 if(!scripts.length || scripts.some(s=>!allowed.includes(s)))throw Error('Choose an allowed local browser test.');
 const root=path.resolve('../..');
 for(const script of scripts){

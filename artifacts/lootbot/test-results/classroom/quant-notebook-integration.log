@@ -1,0 +1,21 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ automatic mistake notebook keeps source, reveal, ownership and current-version gates
+  ✔ setup authentic memberships and source-reviewed original fixtures (512.0835ms)
+  ✔ empty history stays empty and role/CSRF validation is enforced (58.3336ms)
+  ✔ active, never-reveal, future-deadline and active after-each results never enter the notebook (398.0967ms)
+  ✔ submission automatically adds wrong/unanswered questions without unsupported explanation (68.8323ms)
+  ✔ search, skill, status and personal ownership filters work (147.7409ms)
+  ✔ retry deduplicates selected questions and hides answer keys in the active attempt (98.7123ms)
+  ✔ retry uses a fresh approved version and refuses an unreviewed current revision (219.0922ms)
+  ✔ a later revealed correct answer automatically marks the prior mistake as mastered (77.9554ms)
+  ✔ source revocation immediately removes notebook content and blocks new retry (97.9565ms)
+  ✔ review withdrawal, category visibility and membership revocation remove access (92.2645ms)
+✔ automatic mistake notebook keeps source, reveal, ownership and current-version gates (1816.694ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2586.9294

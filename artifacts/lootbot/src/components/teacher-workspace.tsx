@@ -13,7 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import {
   ArrowLeft,
   Archive,
@@ -31,6 +31,7 @@ import {
   FileQuestion,
   FileText,
   GraduationCap,
+  Gamepad2,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -67,6 +68,11 @@ import {
   type TeacherTask,
   type TeacherStudent,
 } from "../lib/teacher-api";
+import {
+  TeacherClassroomHub,
+  QuickClassroomDock,
+  ClassroomLaunchCard,
+} from "./teacher-classroom-hub";
 import { BrandMark } from "./brand-mark";
 import { teacherExtraCopy as extra } from "../lib/teacher-extra-copy";
 import { PlanResourcePicker } from "./teacher-plan-resources";
@@ -79,6 +85,26 @@ import {
   rosterImportPreview,
 } from "./teacher-roster-utils";
 import "./teacher-workspace.css";
+import "./workspace-shell.css";
+import {
+  ActiveTeacherClassProvider,
+  ActiveClassContextBar,
+  TeacherGroupedNavigation,
+  TeacherContextTabs,
+  TeacherCommandPalette,
+  TeacherMobileBottomNav,
+  SidebarCollapseButton,
+  useActiveTeacherClass,
+  useClassChangeGuard,
+  teacherClassPath,
+} from "./teacher-navigation-shell";
+import {
+  LiveClassroomCockpit,
+  AtRiskRadarCard,
+  ClassMasteryHeatmap,
+  QuestionBasketBar,
+  Student360Summary,
+} from "./teacher-live-cockpit";
 
 const TeacherExams = lazy(() =>
   import("./teacher-exam-editor").then((module) => ({
@@ -100,8 +126,16 @@ const TeacherChemistry = lazy(() =>
     default: module.TeacherChemistry,
   })),
 );
-const TeacherEducation = lazy(() => import('./education-workspace').then(module=>({default:module.TeacherEducation})));
-const TeacherEducationSummary = lazy(() => import('./education-workspace').then(module=>({default:module.TeacherEducationSummary})));
+const TeacherEducation = lazy(() =>
+  import("./education-workspace").then((module) => ({
+    default: module.TeacherEducation,
+  })),
+);
+const TeacherEducationSummary = lazy(() =>
+  import("./education-workspace").then((module) => ({
+    default: module.TeacherEducationSummary,
+  })),
+);
 type Icon = typeof Users;
 const modules: {
   key: string;
@@ -116,12 +150,31 @@ const modules: {
     description: "نظرة واضحة على يومك وبياناتك المحفوظة.",
   },
   {
+    key: "classroom",
+    label: "أدوات الحصة والألعاب",
+    icon: Gamepad2,
+    description:
+      "مركز الحصة والبروجكتر: ألعاب وإدارة صفية من كشف الفصل وبنك المعلم.",
+  },
+  {
+    key: "live",
+    label: "الحصة المباشرة",
+    icon: Zap,
+    description: "مؤقت الحصة والحضور والمشاركة والدرس في مساحة واحدة.",
+  },
+  {
     key: "classes",
     label: "فصولي",
     icon: GraduationCap,
     description: "نظّم الفصول والمواد والفصل الدراسي.",
   },
-  { key:'education', label:'القدرات والربط المدرسي', icon:Target, description:'طلبات الانضمام ومجموعات تدريب ومتابعة طلاب الفصل من محاولاتهم الفعلية.' },
+  {
+    key: "education",
+    label: "القدرات والربط المدرسي",
+    icon: Target,
+    description:
+      "طلبات الانضمام ومجموعات تدريب ومتابعة طلاب الفصل من محاولاتهم الفعلية.",
+  },
   {
     key: "students",
     label: "كشوف الطلاب",
@@ -497,11 +550,13 @@ export function AccountSelection() {
     if (account.data?.role === "SUPERADMIN") navigate("/admin");
     else if (account.data?.accountType)
       navigate(
-        account.data.accountType === 'student' ? '/student' : account.data.accountType === "teacher"
-          ? account.data.profileComplete
-            ? "/teacher"
-            : "/teacher/onboarding"
-          : "/dashboard",
+        account.data.accountType === "student"
+          ? "/student"
+          : account.data.accountType === "teacher"
+            ? account.data.profileComplete
+              ? "/teacher"
+              : "/teacher/onboarding"
+            : "/dashboard",
       );
   }, [account.data, navigate]);
   const choose = async (accountType: "merchant" | "teacher" | "student") => {
@@ -512,7 +567,13 @@ export function AccountSelection() {
     if (!okay) return;
     await qc.invalidateQueries({ queryKey: ["account-workspace"] });
     await qc.invalidateQueries({ queryKey: ["teacher-account"] });
-    navigate(accountType === 'student' ? '/student' : accountType === "teacher" ? "/teacher/onboarding" : "/dashboard");
+    navigate(
+      accountType === "student"
+        ? "/student"
+        : accountType === "teacher"
+          ? "/teacher/onboarding"
+          : "/dashboard",
+    );
   };
   if (
     account.isLoading ||
@@ -555,7 +616,18 @@ export function AccountSelection() {
         </p>
         <Messages action={action} />
         <div className="tw-choice-grid">
-          <button className="tw-choice" disabled={action.busy} onClick={()=>void choose('student')}><Users/><strong>طالب</strong><p>ربط بالمدرسة، أنشطة الفصل، القدرات وخطة تعلم خاصة.</p><span>الدخول إلى غرفة الطلاب <ArrowLeft size={16}/></span></button>
+          <button
+            className="tw-choice"
+            disabled={action.busy}
+            onClick={() => void choose("student")}
+          >
+            <Users />
+            <strong>طالب</strong>
+            <p>ربط بالمدرسة، أنشطة الفصل، القدرات وخطة تعلم خاصة.</p>
+            <span>
+              الدخول إلى غرفة الطلاب <ArrowLeft size={16} />
+            </span>
+          </button>
           <button
             className="tw-choice"
             disabled={action.busy}
@@ -982,8 +1054,10 @@ export function TeacherOnboarding() {
   );
 }
 
-export function TeacherWorkspace({ section }: { section?: string } = {}) {
+function TeacherWorkspaceBody({ section }: { section?: string } = {}) {
   const [path, navigate] = useLocation();
+  const [collapsed, setCollapsed] = useState(false),
+    [globalProfileId, setGlobalProfileId] = useState("");
   const key = section ?? path.replace(/^\/teacher\/?/, "").split("/")[0];
   const current = modules.find((module) => module.key === key),
     [menu, setMenu] = useState(false),
@@ -1046,7 +1120,10 @@ export function TeacherWorkspace({ section }: { section?: string } = {}) {
     }
   };
   return (
-    <div className="teacher-room" dir="rtl">
+    <div
+      className={`teacher-room${collapsed ? " ws-sidebar-collapsed" : ""}`}
+      dir="rtl"
+    >
       <a href="#teacher-content" className="sr-only focus:not-sr-only">
         انتقل إلى المحتوى
       </a>
@@ -1077,17 +1154,12 @@ export function TeacherWorkspace({ section }: { section?: string } = {}) {
           >
             <X size={18} />
           </button>
+          <SidebarCollapseButton
+            collapsed={collapsed}
+            toggle={() => setCollapsed((v) => !v)}
+          />
           <nav className="tw-nav">
-            {modules.map((module) => (
-              <Link
-                key={module.key}
-                href={teacherPath(module.key)}
-                aria-current={module.key === key ? "page" : undefined}
-              >
-                <module.icon size={17} />
-                <span>{module.label}</span>
-              </Link>
-            ))}
+            <TeacherGroupedNavigation modules={modules} current={key} />
           </nav>
           <div className="tw-sidebar-bottom">
             <p className="tw-muted tw-small" style={{ padding: "0 12px 10px" }}>
@@ -1105,7 +1177,7 @@ export function TeacherWorkspace({ section }: { section?: string } = {}) {
           </div>
         </aside>
         <main id="teacher-content" className="tw-content">
-          <header className="tw-topbar" style={{ position: "relative" }}>
+          <header className="tw-topbar ws-sticky-topbar">
             <AppThemeToggle />
             <button
               className="tw-button tw-icon-button tw-menu-button"
@@ -1115,34 +1187,11 @@ export function TeacherWorkspace({ section }: { section?: string } = {}) {
             >
               <Menu size={21} />
             </button>
-            <div className="tw-search">
-              <Search size={16} />
-              <input
-                aria-label="البحث عن أداة في غرفة المعلم"
-                placeholder="ابحث عن أداة…"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") setSearch("");
-                }}
-              />
-            </div>
-            {search && (
-              <div className="tw-module-search">
-                {modules
-                  .filter((module) => module.label.includes(search))
-                  .map((module) => (
-                    <Link href={teacherPath(module.key)} key={module.key}>
-                      {module.label}
-                    </Link>
-                  ))}
-                {!modules.some((module) => module.label.includes(search)) && (
-                  <p className="tw-muted" style={{ padding: 12 }}>
-                    لا توجد أداة بهذا الاسم.
-                  </p>
-                )}
-              </div>
-            )}
+            <QuickClassroomDock />
+            <TeacherCommandPalette
+              modules={modules}
+              onStudent={setGlobalProfileId}
+            />
             <Link
               href="/teacher/automations"
               className="tw-button tw-icon-button"
@@ -1168,8 +1217,30 @@ export function TeacherWorkspace({ section }: { section?: string } = {}) {
             </div>
           </header>
           <Messages action={action} />
+          <TeacherContextTabs modules={modules} current={key} />
+          {[
+            "students",
+            "attendance",
+            "grades",
+            "tasks",
+            "reports",
+            "education",
+            "lessons",
+            "activities",
+            "live",
+            "classroom",
+            "questions",
+          ].includes(key) && <ActiveClassContextBar />}
+          {globalProfileId && (
+            <StudentProfile
+              studentId={globalProfileId}
+              close={() => setGlobalProfileId("")}
+            />
+          )}
           <div className={`tw-page${key === "" ? " tw-dashboard-page" : ""}`}>
-            <header className={`tw-heading${key === "" ? " tw-dashboard-hero" : ""}`}>
+            <header
+              className={`tw-heading${key === "" ? " tw-dashboard-hero" : ""}`}
+            >
               <div>
                 <p className="tw-eyebrow">
                   غرفة المعلم / {current?.label ?? "صفحة غير موجودة"}
@@ -1200,10 +1271,16 @@ export function TeacherWorkspace({ section }: { section?: string } = {}) {
             </header>
             {key === "" ? (
               <Dashboard />
+            ) : key === "classroom" ? (
+              <TeacherClassroomHub />
+            ) : key === "live" ? (
+              <LiveClassroomCockpit />
             ) : key === "classes" ? (
               <Classes />
-            ) : key === 'education' ? (
-              <Suspense fallback={<Loading/>}><TeacherEducation/></Suspense>
+            ) : key === "education" ? (
+              <Suspense fallback={<Loading />}>
+                <TeacherEducation />
+              </Suspense>
             ) : key === "students" ? (
               <Students />
             ) : key === "attendance" ? (
@@ -1250,6 +1327,7 @@ export function TeacherWorkspace({ section }: { section?: string } = {}) {
             )}
           </div>
         </main>
+        <TeacherMobileBottomNav current={key} onMore={() => setMenu(true)} />
       </div>
     </div>
   );
@@ -1294,8 +1372,12 @@ function Dashboard() {
           </section>
         ))}
       </div>
+      <ClassroomLaunchCard />
+      <AtRiskRadarCard />
       <TeacherTodayExtras />
-      <Suspense fallback={null}><TeacherEducationSummary/></Suspense>
+      <Suspense fallback={null}>
+        <TeacherEducationSummary />
+      </Suspense>
       <div className="tw-quick-actions">
         <Link href="/teacher/classes">
           <Plus size={20} />
@@ -1758,9 +1840,7 @@ function Classes() {
 function Students() {
   const classes = useTeacherData<TeacherClass[]>("classes"),
     action = useTeacherAction();
-  const [classId, setClassId] = useState(
-      () => new URLSearchParams(window.location.search).get("class") ?? "",
-    ),
+  const [classId, setClassId] = useActiveTeacherClass(),
     [search, setSearch] = useState(""),
     [archived, setArchived] = useState(false),
     [page, setPage] = useState(1),
@@ -2544,35 +2624,10 @@ function StudentProfile({
         query.data && (
           <>
             <h2>{query.data.student.name}</h2>
+            <Student360Summary data={query.data} />
             <p className="tw-muted">
               الرقم الداخلي: {query.data.student.internalId || "غير محدد"}
             </p>
-            <div className="tw-kpis tw-spaced">
-              <div className="tw-card tw-kpi">
-                <strong>
-                  {number(
-                    query.data.attendance.filter(
-                      (item) => item.status === "absent",
-                    ).length,
-                  )}
-                </strong>
-                <p>أيام غياب</p>
-              </div>
-              <div className="tw-card tw-kpi">
-                <strong>{number(query.data.grades.length)}</strong>
-                <p>تقييمات</p>
-              </div>
-              <div className="tw-card tw-kpi">
-                <strong>
-                  {number(
-                    query.data.assignments.filter((task) =>
-                      task.studentCompletion.includes(studentId),
-                    ).length,
-                  )}
-                </strong>
-                <p>واجبات مكتملة</p>
-              </div>
-            </div>
             <section className="tw-card">
               <h2>ملاحظات خاصة</h2>
               <p
@@ -2662,10 +2717,11 @@ const attendanceLabels = {
 function Attendance() {
   const classes = useTeacherData<TeacherClass[]>("classes"),
     action = useTeacherAction();
-  const [classId, setClassId] = useState(""),
+  const [classId, setClassId] = useActiveTeacherClass(),
     [date, setDate] = useState(today()),
     [entries, setEntries] = useState<Record<string, AttendanceEntry>>({}),
     [dirty, setDirty] = useState(false);
+  useClassChangeGuard(dirty);
   const students = useTeacherData<TeacherStudent[]>(
       "students",
       `?classId=${encodeURIComponent(classId)}&archived=false`,
@@ -2718,15 +2774,7 @@ function Attendance() {
           <ClassSelect
             classes={classes.data ?? []}
             value={classId}
-            setValue={(value) => {
-              if (
-                !dirty ||
-                window.confirm("توجد تغييرات غير محفوظة. الانتقال إلى فصل آخر؟")
-              ) {
-                setClassId(value);
-                setDirty(false);
-              }
-            }}
+            setValue={setClassId}
           />
         </Field>
         <Field label="التاريخ">
@@ -2899,7 +2947,7 @@ function Attendance() {
 function Grades() {
   const classes = useTeacherData<TeacherClass[]>("classes"),
     action = useTeacherAction();
-  const [classId, setClassId] = useState(""),
+  const [classId, setClassId] = useActiveTeacherClass(),
     [title, setTitle] = useState(""),
     [totalMarks, setTotalMarks] = useState(20),
     [date, setDate] = useState(today()),
@@ -2915,6 +2963,27 @@ function Grades() {
       `?classId=${encodeURIComponent(classId)}`,
       !!classId,
     );
+  const savedGrades =
+    grades.data?.filter((g) => g.title === title.trim() && g.date === date) ??
+    [];
+  const dirtyGrade =
+    (!!title.trim() &&
+      (!savedGrades.length ||
+        savedGrades.some((g) => g.totalMarks !== totalMarks))) ||
+    Object.entries(marks).some(([id, value]) => {
+      const original =
+        savedGrades.find((g) => g.studentId === id)?.marks ?? null;
+      return (
+        (value.trim() === "" ? null : Number(normalizeTeacherDigits(value))) !==
+        original
+      );
+    });
+  useClassChangeGuard(dirtyGrade);
+  useEffect(() => {
+    setAssessment("");
+    setTitle("");
+    setMarks({});
+  }, [classId]);
   const assessments = [
     ...new Map(
       (grades.data ?? []).map((grade) => [
@@ -2979,17 +3048,26 @@ function Grades() {
   };
   return (
     <>
+      <Link
+        className="tw-button"
+        href={
+          teacherClassPath("classroom", classId) +
+          (classId ? "&" : "?") +
+          "tool=honor-board"
+        }
+      >
+        لوحة الشرف وترحيل نقاط الألعاب
+      </Link>
+      <ClassMasteryHeatmap
+        grades={grades.data ?? []}
+        students={students.data ?? []}
+      />
       <div className="tw-toolbar">
         <Field label="الفصل">
           <ClassSelect
             classes={classes.data ?? []}
             value={classId}
-            setValue={(value) => {
-              setClassId(value);
-              setAssessment("");
-              setTitle("");
-              setMarks({});
-            }}
+            setValue={setClassId}
           />
         </Field>
         <Field label="تقييم محفوظ">
@@ -3152,6 +3230,7 @@ function Grades() {
 }
 
 function Tasks() {
+  const [activeClassId] = useActiveTeacherClass();
   const query = useTeacherData<TeacherTask[]>("tasks"),
     classes = useTeacherData<TeacherClass[]>("classes"),
     action = useTeacherAction();
@@ -3165,7 +3244,10 @@ function Tasks() {
   );
   const list =
     query.data?.filter(
-      (task) => !task.archived && (status === "all" || task.status === status),
+      (task) =>
+        !task.archived &&
+        (!activeClassId || !task.classId || task.classId === activeClassId) &&
+        (status === "all" || task.status === status),
     ) ?? [];
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -3189,7 +3271,7 @@ function Tasks() {
           onClick={() =>
             setEditing({
               title: "",
-              classId: null,
+              classId: activeClassId || null,
               kind: "assignment",
               dueAt: null,
               status: "pending",
@@ -3490,7 +3572,7 @@ function Lessons() {
     profile = useTeacherData<TeacherProfile>("profile"),
     action = useTeacherAction();
   const [editing, setEditing] = useState<Partial<TeacherLesson> | null>(null),
-    [classId, setClassId] = useState(""),
+    [classId, setClassId] = useActiveTeacherClass(),
     [printLesson, setPrintLesson] = useState<TeacherLesson | null>(null);
   const list =
     query.data?.filter(
@@ -3606,6 +3688,18 @@ function Lessons() {
                 {lesson.objectives || "لم تُضف أهداف الدرس."}
               </p>
               <div className="tw-toolbar tw-spaced">
+                <Link
+                  className="tw-button"
+                  href={
+                    "/teacher/classroom?tool=hot-seat&lesson=" +
+                    encodeURIComponent(lesson.id) +
+                    (lesson.classId
+                      ? "&class=" + encodeURIComponent(lesson.classId)
+                      : "")
+                  }
+                >
+                  🔥 أضف مفردات الدرس للكرسي الساخن
+                </Link>
                 <button
                   className="tw-button"
                   onClick={() => setEditing(lesson)}
@@ -3849,6 +3943,9 @@ function QuestionBank() {
     [subject, setSubject] = useState(""),
     [favorites, setFavorites] = useState(false),
     [difficulty, setDifficulty] = useState("");
+  const [basket, setBasket] = useState<string[]>([]),
+    questionLocation = useSearch();
+  const requestedQuestion = useRef("");
   const list =
     query.data?.filter(
       (item) =>
@@ -3867,6 +3964,14 @@ function QuestionBank() {
           .join(" ")
           .includes(search),
     ) ?? [];
+  useEffect(() => {
+    const id = new URLSearchParams(location.search).get("question");
+    const found = query.data?.find((q) => q.id === id);
+    if (found && requestedQuestion.current !== id) {
+      requestedQuestion.current = id!;
+      setEditing(found);
+    }
+  }, [query.data, questionLocation]);
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (
@@ -3891,6 +3996,10 @@ function QuestionBank() {
   };
   return (
     <>
+      <QuestionBasketBar
+        questions={(query.data ?? []).filter((q) => basket.includes(q.id))}
+        clear={() => setBasket([])}
+      />
       <div className="tw-toolbar">
         <div className="tw-search">
           <Search size={16} />
@@ -3963,6 +4072,21 @@ function QuestionBank() {
         <div className="tw-grid">
           {list.map((question) => (
             <section className="tw-card" key={question.id}>
+              <label className="ws-question-select">
+                <input
+                  type="checkbox"
+                  aria-label={`تحديد السؤال ${question.text}`}
+                  checked={basket.includes(question.id)}
+                  onChange={(e) =>
+                    setBasket((ids) =>
+                      e.target.checked
+                        ? [...ids, question.id]
+                        : ids.filter((id) => id !== question.id),
+                    )
+                  }
+                />{" "}
+                تحديد للسلة
+              </label>
               <div className="tw-toolbar">
                 <span className="tw-status">
                   {question.subject || "مادة غير محددة"}
@@ -4241,9 +4365,7 @@ function QuestionBank() {
 function Reports() {
   const classes = useTeacherData<TeacherClass[]>("classes"),
     profile = useTeacherData<TeacherProfile>("profile");
-  const [classId, setClassId] = useState(
-      () => new URLSearchParams(window.location.search).get("class") ?? "",
-    ),
+  const [classId, setClassId] = useActiveTeacherClass(),
     [type, setType] = useState(
       () => new URLSearchParams(window.location.search).get("type") ?? "roster",
     ),
@@ -4350,6 +4472,12 @@ function Reports() {
   }, []);
   return (
     <>
+      {type === "grades" && (
+        <ClassMasteryHeatmap
+          grades={grades.data ?? []}
+          students={students.data ?? []}
+        />
+      )}
       <div className="tw-toolbar">
         <Field label="نوع التقرير">
           <select
@@ -4930,5 +5058,13 @@ function Automations() {
         </Modal>
       )}
     </>
+  );
+}
+
+export function TeacherWorkspace(props: { section?: string }) {
+  return (
+    <ActiveTeacherClassProvider>
+      <TeacherWorkspaceBody {...props} />
+    </ActiveTeacherClassProvider>
   );
 }

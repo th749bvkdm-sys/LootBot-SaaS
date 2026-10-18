@@ -26,6 +26,7 @@ import {
   type Simulation,
   type ChemistryResult,
 } from "./chemistry-lab";
+import {useActiveTeacherClass} from "./teacher-navigation-shell";
 const base = "/teacher/learning";
 function containTab(e: React.KeyboardEvent<HTMLElement>) {
   if (e.key !== "Tab") return;
@@ -111,7 +112,7 @@ export function TeacherLearning() {
     [preview, setPreview] = useState(false),
     [present, setPresent] = useState(false),
     [resultId, setResultId] = useState(""),
-    [classId, setClassId] = useState("");
+    [classId, setClassId] = useActiveTeacherClass();
   const bank = useQuery({
     queryKey: ["question-versions"],
     queryFn: () =>
@@ -1371,9 +1372,14 @@ async function studentApi<T>(
     throw new TeacherApiError(result.error || c.offline, response.status);
   return result as T;
 }
-export function StudentLearning() {
-  const [, params] = useRoute("/learn/:id");
-  const [, navigate] = useLocation();
+export function StudentLearning({embedded=false,assignmentId='',onExit}:{embedded?:boolean;assignmentId?:string;onExit?:()=>void}={}) {
+  const [, routeParams] = useRoute("/learn/:id");
+  const [, navigatePage] = useLocation();
+  const [embeddedId,setEmbeddedId]=useState(assignmentId);
+  useEffect(()=>setEmbeddedId(assignmentId),[assignmentId]);
+  const params=embedded?(embeddedId?{id:embeddedId}:null):routeParams;
+  const Surface=embedded?'section':'main';
+  const navigate=(to:string)=>{if(!embedded){navigatePage(to);return;}const match=/^\/learn\/([^?]+)/.exec(to);setEmbeddedId(match?decodeURIComponent(match[1]):'');if(!match)onExit?.();};
   const [authenticated, setAuthenticated] = useState<boolean | null>(null),
     [error, setError] = useState<unknown>(),
     [busy, setBusy] = useState(false),
@@ -1467,7 +1473,7 @@ export function StudentLearning() {
   }
   const s = view?.step;
   return (
-    <main className="tl tl-student" dir="rtl">
+    <Surface className="tl tl-student" dir="rtl">
       <h1>{view?.assignment.title || c.entry}</h1>
       <ErrorMessage error={error} />
       {Boolean(error) && !pending.current && (
@@ -1508,7 +1514,7 @@ export function StudentLearning() {
       ) : (
         <>
           <div className="tl-toolbar">
-            <Link href="/learn">{c.back}</Link>
+            {embedded?<button onClick={()=>navigate('/learn')}>{c.back}</button>:<Link href="/learn">{c.back}</Link>}
             <button
               disabled={busy}
               onClick={() => {
@@ -1535,9 +1541,7 @@ export function StudentLearning() {
                   <h2>{a.title}</h2>
                   <p>{a.objective}</p>
                   <p>{a.mode === "learn" ? c.learn : c.assessed}</p>
-                  <Link href={"/learn/" + a.id}>
-                    {a.completedAt ? c.finish : c.start}
-                  </Link>
+                  {embedded?<button onClick={()=>navigate('/learn/'+a.id)}>{a.completedAt?c.finish:c.start}</button>:<Link href={"/learn/" + a.id}>{a.completedAt ? c.finish : c.start}</Link>}
                 </article>
               ))}
             </div>
@@ -1557,7 +1561,7 @@ export function StudentLearning() {
               <button disabled={busy} onClick={() => void act("restart")}>
                 {c.restart}
               </button>
-              <Link href="/learn">{c.back}</Link>
+              {embedded?<button onClick={()=>navigate('/learn')}>{c.back}</button>:<Link href="/learn">{c.back}</Link>}
             </article>
           ) : (
             s && (
@@ -1710,6 +1714,6 @@ export function StudentLearning() {
           )}
         </>
       )}
-    </main>
+    </Surface>
   );
 }

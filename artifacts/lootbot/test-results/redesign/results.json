@@ -1,0 +1,58 @@
+{
+  "localOnly": true,
+  "results": [
+    {
+      "name": "shared class persists across attendance, grades, tasks, reports and education",
+      "passed": true
+    },
+    {
+      "name": "live attendance, unique random picker, saved participation and real lesson presenter",
+      "passed": true
+    },
+    {
+      "name": "question basket creates editable exam and valid exit ticket",
+      "passed": true
+    },
+    {
+      "name": "Ctrl+K searches real students and opens private profile",
+      "passed": true
+    },
+    {
+      "name": "teacher routes, three themes and five viewport widths",
+      "passed": true
+    },
+    {
+      "name": "student hubs, quick labels, four KPIs and browser back/forward",
+      "passed": true
+    },
+    {
+      "name": "persistent server focus timer survives navigation and cannot complete early",
+      "passed": true
+    },
+    {
+      "name": "academy zen, keyboard choices/flags/scratch, map filtering and guarded typing",
+      "passed": true
+    },
+    {
+      "name": "interactive weak skill training, flashcards and saved original explanation only",
+      "passed": true
+    },
+    {
+      "name": "quant keyboard uses real saved answers, review flags, scratch and return policy",
+      "passed": true
+    },
+    {
+      "name": "assigned teacher activity stays inside student room, with real enrollment auth",
+      "passed": true
+    },
+    {
+      "name": "all student routes, five widths, three themes and no page errors",
+      "passed": true
+    },
+    {
+      "name": "all themes at each requested width and touch navigation",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

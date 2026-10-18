@@ -1,0 +1,19 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ private teacher tools persist, version questions, generate audited forms and isolate exports/deletion
+  ✔ questions create immutable versions automatically, including edits (150.8114ms)
+  ✔ blueprints validate totals before audited A/B/C generation (81.8225ms)
+  ✔ rubrics, feedback, resource refs and calendar save with validation and conflict detection (124.5827ms)
+  ✔ planner copies without overwriting and roster snapshots remain fixed (106.0547ms)
+  ✔ grade evidence is transparent and chemistry is curated rather than invented (74.0424ms)
+  ✔ worksheets reuse an immutable question and private plan resources preserve ownership (209.3991ms)
+  ✔ private packets reuse saved plans; template import makes a sanitized revocable copy; feedback keeps marks (169.1647ms)
+  ✔ export is private and excludes access/session secrets; deletion touches only teacher-owned data (103.927ms)
+✔ private teacher tools persist, version questions, generate audited forms and isolate exports/deletion (1064.9522ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1644.2888

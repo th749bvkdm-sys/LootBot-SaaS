@@ -1,0 +1,19 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ original academy: real HTTP, privacy, versioned answers and server-side grading
+  ✔ original content has five tracks, 25 lessons and 100 well-formed unique questions (1.6571ms)
+  ✔ authentication, real student enrollment, feature switch, CSRF, offline privacy (232.6879ms)
+  ✔ attempts expose no answers, clamp lesson count and reject cross-account or invalid selections (175.1001ms)
+  ✔ answers persist with compare-and-swap; server grade, mistakes and idempotent finish (206.8426ms)
+  ✔ personal review and retry are owned; later correct answer resolves the automatic mistake (149.5695ms)
+  ✔ full lesson success unlocks progress and learner data remains private (112.253ms)
+  ✔ lazy expiry follows event chronology and cannot undo a later correct or wrong answer (306.4576ms)
+  ✔ server time expires simulation and prevents late score rewriting (74.4465ms)
+✔ original academy: real HTTP, privacy, versioned answers and server-side grading (1380.4675ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2781.8612

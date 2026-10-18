@@ -33,6 +33,7 @@ import {
 } from "./teacher-roster-utils";
 import "./teacher-learning.css";
 import "./teacher-tools.css";
+import {useActiveTeacherClass} from "./teacher-navigation-shell";
 type Kind =
   | "blueprints"
   | "rubrics"
@@ -1511,7 +1512,7 @@ function GradeAnalysis() {
     queryKey: ["teacher", "classes"],
     queryFn: () => teacherApi<TeacherClass[]>("/teacher/classes"),
   });
-  const [classId, setClassId] = useState("");
+  const [classId, setClassId] = useActiveTeacherClass();
   const selected = classId || classes.data?.[0]?.id || "";
   const q = useQuery({
     queryKey: ["grade-summary", selected],
@@ -2249,7 +2250,7 @@ function SchoolPackets() {
       queryKey: ["teacher", "classes"],
       queryFn: () => teacherApi<TeacherClass[]>("/teacher/classes"),
     });
-  const [classId, setClassId] = useState(""),
+  const [classId, setClassId] = useActiveTeacherClass(),
     [studentId, setStudentId] = useState(""),
     [type, setType] = useState("absence_pack"),
     [from, setFrom] = useState(today()),
@@ -2360,7 +2361,7 @@ export function RosterSnapshots() {
           }[]
         >("/teacher/tools/roster-snapshots"),
     });
-  const [classId, setClassId] = useState(""),
+  const [classId, setClassId] = useActiveTeacherClass(),
     [term, setTerm] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);

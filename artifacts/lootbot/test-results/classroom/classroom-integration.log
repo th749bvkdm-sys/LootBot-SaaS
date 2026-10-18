@@ -1,0 +1,18 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ classroom rewards, roster, ownership, CSRF, streaks and privacy
+  ✔ authentication, teacher role, ownership and CSRF are required (144.3122ms)
+  ✔ only the active owned roster is returned without access secrets (132.3255ms)
+  ✔ rewards persist once across replays and concurrent submissions (84.9815ms)
+  ✔ rejects foreign, removed, archived or repeated students and malformed point values (131.2706ms)
+  ✔ class points are separate; calendar streaks are server-dated and idempotent (86.8324ms)
+  ✔ grade import is explicit, assessment-scoped and repeat-safe (90.549ms)
+  ✔ private export includes classroom history, deletion is owner-scoped (73.4002ms)
+✔ classroom rewards, roster, ownership, CSRF, streaks and privacy (796.2217ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1580.6609

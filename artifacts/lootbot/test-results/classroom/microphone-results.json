@@ -1,0 +1,22 @@
+{
+  "results": [
+    {
+      "name": "microphone requires an explicit click and consumes actual analyser samples in background",
+      "passed": true
+    },
+    {
+      "name": "stopping, changing tool and reloading release or pause microphone measurement",
+      "passed": true
+    },
+    {
+      "name": "permission denial leaves the manual fallback usable at mobile sizes",
+      "passed": true
+    },
+    {
+      "name": "a delayed permission response is discarded after leaving the microphone tool",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "hardware": "simulated Web Audio only"
+}

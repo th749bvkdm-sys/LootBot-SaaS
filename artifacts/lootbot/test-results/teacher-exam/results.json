@@ -1,5 +1,5 @@
 {
-  "passed": 9,
+  "passed": 10,
   "results": [
     {
       "name": "editable content and persisted autosave",
@@ -27,6 +27,10 @@
     },
     {
       "name": "responsive RTL desktop, iPad and mobile; keyboard and reduced motion",
+      "passed": true
+    },
+    {
+      "name": "student, key, teacher and reusable template outputs stay separate",
       "passed": true
     },
     {

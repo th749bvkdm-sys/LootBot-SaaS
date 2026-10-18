@@ -105,6 +105,7 @@ await pool.query(
     people.teacher,
     "الثالث أ • فصل العرض",
     JSON.stringify({
+      name: "الثالث أ • فصل العرض",
       grade: "الثالث",
       stage: "ثانوي",
       subject: "القدرات",
@@ -121,7 +122,7 @@ await pool.query(
 // Reproduce student code issuance on a teacher-owned class without a school link.
 await pool.query(
   "INSERT INTO teacher_classes(id,owner_id,name,data) VALUES($1,$2,$3,$4::jsonb)",
-  [randomUUID(), people.teacher, "فصل مستقل • تجربة الرموز المحلية", JSON.stringify({ grade: "الثالث", stage: "ثانوي", subject: "القدرات" })],
+  [randomUUID(), people.teacher, "فصل مستقل • تجربة الرموز المحلية", JSON.stringify({ name: "فصل مستقل • تجربة الرموز المحلية", grade: "الثالث", stage: "ثانوي", subject: "القدرات" })],
 );
 for (const name of ["student", "pending"] as const) {
   const roster = randomUUID();
@@ -331,7 +332,7 @@ await pool.query(
 );
 for (const [position, version] of originalPackVersions.entries())
   await pool.query("INSERT INTO quant_test_items(test_id,version_id,position) VALUES($1,$2,$3)", [originalPackTest, version.id, position]);
-console.log("LICENSED_QUANT_LOCAL_PREVIEW", JSON.stringify(await seedLicensedQuantPreview(people.admin, school, classId)));
+console.log("LICENSED_QUANT_LOCAL_PREVIEW", JSON.stringify(process.env.WORKSPACE_REDESIGN_QA === "1" ? {skipped:true,reason:"SYNTHETIC_QA_ONLY"} : await seedLicensedQuantPreview(people.admin, school, classId)));
 await pool.query(
   "INSERT INTO education_assignments(id,class_id,owner_id,title,question_ids,due_at) VALUES($1,$2,$3,$4,$5::jsonb,now()+interval '7 days')",
   [
@@ -418,6 +419,14 @@ await pool.query(
     "published",
   ],
 );
+// Synthetic UI test identities, matching quant-notebook-integration.ts. This flag
+// runs only in the disposable schema checked above. No PDF content is imported.
+if(process.env.WORKSPACE_REDESIGN_QA==='1'){
+  const syntheticSource=(await pool.query('SELECT id FROM quant_sources WHERE file_hash=$1',['3d7c9c2034b8e326d7242b0ffea44e08b58d7f5b40db765a4697f3adeea35c2b'])).rows[0].id;
+  await pool.query("UPDATE quant_sources SET title='هوية مصدر اصطناعية لاختبار الواجهة فقط',license_status='verified',license_note='أسئلة أصلية لاختبار محلي مؤقت؛ ليست أسئلة ناشر ولا اعتمادًا لمحتوى إنتاجي.',attribution='محتوى أصلي لاختبار واجهة محلية فقط' WHERE id=$1",[syntheticSource]);
+  await pool.query('UPDATE quant_question_reviews SET source_id=$1 WHERE question_id=ANY($2::text[])',[syntheticSource,questions]);
+  await pool.query("UPDATE quant_tests SET title='اختبار واجهة آلي أصلي — '||title,status='published',allow_return=(mode='timed') WHERE id IN (SELECT test_id FROM quant_test_items WHERE version_id=ANY($1::text[]))",[quantVersions.map(v=>v.id)]);
+}
 const preview = express();
 let failQuantWrites = false;
 // Local QA only: simulate a failed save without disabling the user's real network connection.

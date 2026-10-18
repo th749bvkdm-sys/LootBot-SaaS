@@ -1,0 +1,105 @@
+{
+  "date": "2026-10-18",
+  "typecheck": "pass",
+  "apiBuild": "pass",
+  "uiBuild": "pass",
+  "unitTests": 24,
+  "httpTests": 84,
+  "browserScenarios": 70,
+  "browser": [
+    {
+      "file": "teacher/results.json",
+      "passed": true,
+      "scenarios": 13
+    },
+    {
+      "file": "teacher-exam/results.json",
+      "passed": true,
+      "scenarios": 10
+    },
+    {
+      "file": "teacher-tools/browser-results.json",
+      "passed": true,
+      "scenarios": 10
+    },
+    {
+      "file": "learning/browser-results.json",
+      "passed": true,
+      "scenarios": 5
+    },
+    {
+      "file": "redesign/results.json",
+      "passed": true,
+      "scenarios": 13
+    },
+    {
+      "file": "classroom/browser-results.json",
+      "passed": true,
+      "scenarios": 15
+    },
+    {
+      "file": "classroom/microphone-results.json",
+      "passed": true,
+      "scenarios": 4
+    }
+  ],
+  "http": [
+    {
+      "script": "teacher-integration",
+      "passed": true,
+      "tests": 12,
+      "status": 0
+    },
+    {
+      "script": "teacher-tools-integration",
+      "passed": true,
+      "tests": 9,
+      "status": 0
+    },
+    {
+      "script": "learning-integration",
+      "passed": true,
+      "tests": 12,
+      "status": 0
+    },
+    {
+      "script": "student-academy-integration",
+      "passed": true,
+      "tests": 9,
+      "status": 0
+    },
+    {
+      "script": "student-study-integration",
+      "passed": true,
+      "tests": 8,
+      "status": 0
+    },
+    {
+      "script": "quant-notebook-integration",
+      "passed": true,
+      "tests": 11,
+      "status": 0
+    },
+    {
+      "script": "education-integration",
+      "passed": true,
+      "tests": 6,
+      "status": 0
+    },
+    {
+      "script": "auth-integration",
+      "passed": true,
+      "tests": 9,
+      "status": 0
+    },
+    {
+      "script": "classroom-integration",
+      "passed": true,
+      "tests": 8,
+      "status": 0
+    }
+  ],
+  "productionChanged": false,
+  "microphoneHardware": "not tested; simulated Web Audio lifecycle only",
+  "devices": "Edge Chromium viewport simulation, not Safari or actual iOS devices"
+}

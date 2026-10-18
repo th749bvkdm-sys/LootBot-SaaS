@@ -1,0 +1,18 @@
+LOCAL_MIGRATION_PASS applied twice; legacy merchant preserved; teacher ownership constraints installed.
+▶ private student study tools: authenticated HTTP, persistence, server timing and scoped challenge grading
+  ✔ students only, real enrollment, feature policy, CSRF and no-store (344.7143ms)
+  ✔ persisted private planner, validation, idempotent completion and removal (232.9399ms)
+  ✔ focus uses server elapsed time, single active session and exactly-once credit (214.0264ms)
+  ✔ invite rooms hash codes, constrain schools/capacity and expose no identities or contacts (292.1503ms)
+  ✔ identical pinned room challenge, hidden answers, ownership, deadline and server grading (454.8926ms)
+  ✔ presence expiration, leave, host closure and revoked enrollment (213.0806ms)
+  ✔ failed invite guesses are rate limited and cannot bypass persisted limits (242.8867ms)
+✔ private student study tools: authenticated HTTP, persistence, server timing and scoped challenge grading (2086.1828ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2715.3641
