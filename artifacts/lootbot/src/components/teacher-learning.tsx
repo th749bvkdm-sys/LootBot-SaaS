@@ -1373,6 +1373,7 @@ async function studentApi<T>(
   return result as T;
 }
 export function StudentLearning({embedded=false,assignmentId='',onExit}:{embedded?:boolean;assignmentId?:string;onExit?:()=>void}={}) {
+  const sessionCache = useQueryClient();
   const [, routeParams] = useRoute("/learn/:id");
   const [, navigatePage] = useLocation();
   const [embeddedId,setEmbeddedId]=useState(assignmentId);
@@ -1524,7 +1525,8 @@ export function StudentLearning({embedded=false,assignmentId='',onExit}:{embedde
                     studentCsrf = "";
                     setAuthenticated(false);
                     setView(null);
-                    navigate("/learn");
+                    sessionCache.clear();
+                    window.location.replace("/learn");
                   })
                   .catch(setError)
                   .finally(() => setBusy(false));

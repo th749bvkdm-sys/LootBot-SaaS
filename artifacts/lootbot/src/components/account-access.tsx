@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useGetCurrentUser } from '@workspace/api-client-react';
 import { Link, useLocation } from 'wouter';
 import { BrandMark } from './brand-mark';
+import {AccountLogoutButton} from './account-logout';
 import { teacherApi, type AccountWorkspace } from '../lib/teacher-api';
 
 export function workspaceDestination(account: AccountWorkspace) {
@@ -27,7 +28,7 @@ export function AccountAccess({ kind, children }: { kind: 'continue' | 'merchant
           : kind === 'teacher' && !data.profileComplete ? '/teacher/onboarding' : null : null;
   useEffect(() => { if (target) navigate(target, { replace: true }); }, [target, navigate]);
   if (user.isError) return <main dir="rtl" className="glass-app grid min-h-dvh place-items-center p-5"><section className="glass-panel text-center"><BrandMark className="mx-auto"/><h1 className="mt-4 text-xl">{kind==='student'?'ادخل برمز الطالب للمتابعة':'سجّل الدخول للمتابعة'}</h1><Link className="brand-action mt-5 inline-block rounded-xl px-5 py-3" href={kind==='student'?'/student-entry':'/login'}>{kind==='student'?'التسجيل كطالب':'تسجيل الدخول'}</Link></section></main>;
-  if (account.isError) return <main dir="rtl" className="glass-app grid min-h-dvh place-items-center p-5"><section className="glass-panel"><p role="alert">تعذر تحميل نوع الحساب.</p><button className="mt-4 rounded-xl border px-4 py-2" onClick={() => void account.refetch()}>إعادة المحاولة</button></section></main>;
+  if (account.isError) return <main dir="rtl" className="glass-app grid min-h-dvh place-items-center p-5"><section className="glass-panel"><p role="alert">تعذر تحميل نوع الحساب.</p><button className="mt-4 rounded-xl border px-4 py-2" onClick={() => void account.refetch()}>إعادة المحاولة</button>{user.data&&<AccountLogoutButton/>}</section></main>;
   if (user.isLoading || account.isLoading || target || !data) return <main className="glass-app grid min-h-dvh place-items-center" dir="rtl"><div role="status" className="text-center"><BrandMark className="mx-auto"/><p className="mt-4 glass-muted">جار فتح مساحة العمل…</p></div></main>;
   return <>{children}</>;
 }

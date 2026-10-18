@@ -33,7 +33,6 @@ import {
   GraduationCap,
   Gamepad2,
   LayoutDashboard,
-  LogOut,
   Menu,
   MoreHorizontal,
   Pencil,
@@ -74,6 +73,7 @@ import {
   ClassroomLaunchCard,
 } from "./teacher-classroom-hub";
 import { BrandMark } from "./brand-mark";
+import { AccountLogoutButton } from "./account-logout";
 import { teacherExtraCopy as extra } from "../lib/teacher-extra-copy";
 import { PlanResourcePicker } from "./teacher-plan-resources";
 import { AppThemeToggle } from "./app-theme-toggle";
@@ -607,6 +607,7 @@ export function AccountSelection() {
             <small>مساحة عملك، كما تحتاجها</small>
           </div>
         </div>
+        <AccountLogoutButton />
         <p className="tw-eyebrow">ابدأ بخيار يناسب عملك</p>
         <h1 style={{ fontSize: "clamp(26px,4vw,38px)", fontWeight: 600 }}>
           كيف ترغب في استخدام LootBot SaaS؟
@@ -1047,6 +1048,7 @@ export function TeacherOnboarding() {
             <h1>لنجهّز غرفة المعلم</h1>
             <p>ثلاث خطوات قصيرة، مع إمكانية حفظ التقدم والعودة لاحقًا.</p>
           </div>
+          <AccountLogoutButton />
         </header>
         <ProfileForm onboarding />
       </div>
@@ -1109,16 +1111,6 @@ function TeacherWorkspaceBody({ section }: { section?: string } = {}) {
     document.documentElement.dir = "rtl";
     document.title = `${current?.label ?? "غرفة المعلم"} | LootBot`;
   }, [path, current?.label]);
-  const logout = async () => {
-    if (
-      await action.run(
-        () => teacherApi("/auth/logout", "POST", {}),
-        "تم تسجيل الخروج.",
-      )
-    ) {
-      window.location.assign("/login");
-    }
-  };
   return (
     <div
       className={`teacher-room${collapsed ? " ws-sidebar-collapsed" : ""}`}
@@ -1165,20 +1157,13 @@ function TeacherWorkspaceBody({ section }: { section?: string } = {}) {
             <p className="tw-muted tw-small" style={{ padding: "0 12px 10px" }}>
               مساحة خاصة للتعليم والتنظيم
             </p>
-            <button
-              className="tw-button ghost"
-              style={{ width: "100%", justifyContent: "flex-start" }}
-              disabled={action.busy}
-              onClick={() => void logout()}
-            >
-              <LogOut size={16} />
-              تسجيل الخروج
-            </button>
+            <AccountLogoutButton disabled={action.busy} />
           </div>
         </aside>
         <main id="teacher-content" className="tw-content">
           <header className="tw-topbar ws-sticky-topbar">
             <AppThemeToggle />
+            <AccountLogoutButton disabled={action.busy} />
             <button
               className="tw-button tw-icon-button tw-menu-button"
               aria-label="فتح القائمة"

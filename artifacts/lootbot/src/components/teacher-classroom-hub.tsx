@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
+import {AccountLogoutButton} from "./account-logout";
 import {
   Presentation,
   Timer,
@@ -2569,6 +2570,7 @@ export function ProjectorDisplay({
           {fullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
         </button>
       )}
+      {standalone && <AccountLogoutButton className="account-logout--projector"/>}
       <div className="cr-projector-content">
         {s.mode === "idle" && (
           <section className="cr-idle">

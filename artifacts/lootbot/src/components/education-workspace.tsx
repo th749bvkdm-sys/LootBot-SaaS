@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { BrandMark } from "./brand-mark";
 import { AppThemeToggle } from "./app-theme-toggle";
+import { AccountLogoutButton } from "./account-logout";
 import { teacherApi } from "../lib/teacher-api";
 import {
   Dialog,
@@ -588,6 +589,7 @@ export function EducationWorkspace() {
       <h1>اعتماد ونشر أقسام المفكر</h1>
       <p role="alert">الحساب الحالي لا يملك الوصول إلى إدارة الكمي. تحتاج إلى الدخول بحساب المسؤول الأعلى أو مسؤول محتوى مخوّل.</p>
       <button className="edu-button" disabled>اعتماد ونشر الكل — يحتاج حسابًا مخوّلًا</button>
+      <AccountLogoutButton />
       <p className="edu-note">فتح الرابط لا يمنح صلاحيات إضافية، ولم يُعتمد أو يُنشر أي اختبار.</p>
       <a className="edu-button secondary" href="/education">العودة إلى غرفة التعليم</a>
     </section></main>;
@@ -651,6 +653,7 @@ export function EducationWorkspace() {
               />
             </div>
             <AppThemeToggle label="مظهر مساحة التعليم" />
+            <AccountLogoutButton />
             <span className="edu-tag">
               {student
                 ? "التعلم يبدأ بخطوة"

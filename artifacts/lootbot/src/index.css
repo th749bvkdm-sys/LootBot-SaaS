@@ -512,6 +512,18 @@
 }
 html { min-height: 100%; background: hsl(var(--background)); }
 body { min-height: 100dvh; font-family: var(--app-font-sans); }
+.account-logout { display: flex; align-items: center; flex-wrap: wrap; flex: 0 0 auto; gap: 8px; max-width: 100%; }
+.account-logout > button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 9px 12px; border: 1px solid currentColor; border-radius: 12px; background: transparent; color: inherit; font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.account-logout > button:disabled { opacity: .6; cursor: wait; }
+.account-logout > button:focus-visible { outline: 3px solid #a48bff; outline-offset: 3px; }
+.account-logout-error { max-width: 240px; color: var(--ws-danger, #ec839b); font-size: 12px; line-height: 1.6; }
+.account-logout--projector { position: fixed; bottom: max(16px, env(safe-area-inset-bottom)); left: max(16px, env(safe-area-inset-left)); z-index: 45; padding: 6px; border-radius: 14px; color: #eff3ff; background: #111a2de8; }
+.console-topbar { height: auto; min-height: 70px; flex-wrap: wrap; padding-block: 10px; }
+.console-topbar > :first-child { flex: 1 1 120px; }
+.console-topbar > :last-child { flex-wrap: wrap; justify-content: flex-end; }
+.console-sidebar .account-logout { flex-basis: 100%; }
+.console-sidebar .account-logout > button { width: 100%; }
+@media print { .account-logout { display: none !important; } }
 button, input, select, textarea { font: inherit; }
 ::selection { background: hsl(160 65% 48% / .28); }
 .fade-up { animation: rise-in .48s cubic-bezier(.2,.75,.25,1) both; }
