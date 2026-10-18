@@ -4,6 +4,7 @@ import { pool, type PoolClient } from '@workspace/db';
 import { requireAuth, requireCsrf } from '../lib/auth-middleware';
 import { actor, audit, authorize, EducationError, transaction, type Query } from '../lib/education';
 import { createId } from '../lib/security';
+import {mufakirSourceHash, prepareMufakirPublication, applyMufakirPublication} from '../lib/quant-bulk-publish';
 import {
   QuantError, quantFail, quantStudent, visibleScope, versionQuery, approvedVersion, snapshotItem, pinnedItems, createQuantAttempt,
   ownedQuantAttempt, checkpointQuant, closedQuantError, quantAttemptPayload, publicResponse, quantResult, quantGrade, quantRevealed,
@@ -44,7 +45,6 @@ const testsQuery = `SELECT t.*,coalesce((SELECT jsonb_agg(i.version_id ORDER BY 
  (SELECT count(*)::int FROM quant_test_items i WHERE i.test_id=t.id) AS item_count FROM quant_tests t`;
 // Identify the authorized publisher by its registered file identity, never by a test title.
 // This limits new student offerings without removing questions or historical attempts.
-const mufakirSourceHash = '3d7c9c2034b8e326d7242b0ffea44e08b58d7f5b40db765a4697f3adeea35c2b';
 const mufakirTestPredicate = `EXISTS (SELECT 1 FROM quant_test_items i WHERE i.test_id=t.id)
  AND NOT EXISTS (SELECT 1 FROM quant_test_items i
  LEFT JOIN quant_question_reviews r ON r.version_id=i.version_id LEFT JOIN quant_sources s ON s.id=r.source_id
@@ -92,6 +92,21 @@ async function saveTest(req: Request, input: unknown, existing?: string, partial
 quantRouter.get('/quant/admin/tests', route(async (req, res) => {
   await authorize(req, 'quant.tests.write');
   res.json((await pool.query(testsQuery + ' ORDER BY t.updated_at DESC LIMIT 300')).rows.map(testPublic));
+}));
+quantRouter.get('/quant/admin/tests/bulk-publish', route(async (req, res) => {
+  res.json((await prepareMufakirPublication(req, pool)).preview);
+}));
+quantRouter.post('/quant/admin/tests/bulk-publish', route(async (req, res) => {
+  const input = z.object({fingerprint:z.string().regex(/^[a-f0-9]{64}$/),humanReviewed:z.literal(true),
+    reviewNote:z.string().trim().min(20).max(2000)}).strict().parse(req.body);
+  const result = await transaction(async q => {
+    const plan = await prepareMufakirPublication(req,q,true);
+    if (plan.preview.fingerprint !== input.fingerprint)
+      quantFail(409,'PUBLICATION_PREVIEW_CHANGED','تغيّر المحتوى أو حالة المراجعة؛ حدّث المعاينة قبل النشر.');
+    if (!plan.ready.length) quantFail(409,'NO_READY_SECTIONS','لا توجد أقسام جاهزة للنشر. راجع الأسباب المعروضة.');
+    return applyMufakirPublication(req,q,plan,input.reviewNote);
+  });
+  res.json(result);
 }));
 quantRouter.get('/quant/admin/tests/:id', route(async (req, res) => {
   await authorize(req, 'quant.tests.write');
