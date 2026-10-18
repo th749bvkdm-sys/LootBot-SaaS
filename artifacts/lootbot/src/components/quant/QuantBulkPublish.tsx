@@ -32,25 +32,41 @@ type Result = {
 type Action = {
   busy: boolean;
   error: string;
+  can: (permission: string) => boolean;
   run: (fn: () => Promise<unknown>, message?: string) => Promise<unknown>;
 };
 
 export function QuantBulkPublish({ action }: { action: Action }) {
-  const [open, setOpen] = useState(false),
+  const missingPermissions = [
+    ["quant.questions.approve", "اعتماد أسئلة الكمي"],
+    ["quant.tests.write", "إدارة اختبارات الكمي"],
+    ["quant.tests.publish", "نشر اختبارات الكمي"],
+  ].filter(([permission]) => !action.can(permission));
+  const canPublish = missingPermissions.length === 0;
+  const [open, setOpen] = useState(
+      () =>
+        new URLSearchParams(window.location.search).get("quantPublish") === "1",
+    ),
     [reviewedFingerprint, setReviewedFingerprint] = useState(""),
     [note, setNote] = useState(""),
     [result, setResult] = useState<Result | null>(null);
   const preview = useQuery<Preview>({
     queryKey: ["quant", "bulk-publication-preview"],
-    enabled: open,
+    enabled: open && canPublish,
     queryFn: () => quantApi<Preview>("/admin/tests/bulk-publish"),
     retry: false,
     staleTime: 0,
   });
-  const data = preview.data;
+  const data = canPublish ? preview.data : undefined;
   const reviewed = !!data && reviewedFingerprint === data.fingerprint;
   async function submit() {
-    if (!data || !reviewed || note.trim().length < 20 || !data.readyCount)
+    if (
+      !canPublish ||
+      !data ||
+      !reviewed ||
+      note.trim().length < 20 ||
+      !data.readyCount
+    )
       return;
     const saved = await action.run(
       () =>
@@ -86,6 +102,12 @@ export function QuantBulkPublish({ action }: { action: Action }) {
         >
           اعتماد ونشر الكل
         </button>
+        {!canPublish && (
+          <p className="edu-note">
+            حسابك الحالي يحتاج صلاحيات إضافية لتنفيذ الاعتماد والنشر. اضغط الزر
+            لمعرفة الصلاحيات المطلوبة.
+          </p>
+        )}
       </section>
       <Dialog
         open={open}
@@ -104,6 +126,20 @@ export function QuantBulkPublish({ action }: { action: Action }) {
             والمرحلة. لا تُعاد إتاحة الأقسام المخفية عمدًا، ولا تُغيّر المحاولات
             السابقة.
           </DialogDescription>
+          {!canPublish && (
+            <div className="edu-notice edu-error" role="alert">
+              <p>
+                الحساب الحالي لا يملك كل الصلاحيات المطلوبة. ادخل بحساب المسؤول
+                الأعلى، أو اطلب منه منح الصلاحيات التالية لحسابك:
+              </p>
+              <ul>
+                {missingPermissions.map(([key, label]) => (
+                  <li key={key}>{label}</li>
+                ))}
+              </ul>
+              <p>لم تُغيّر صلاحيات حسابك، ولم يُعتمد أو يُنشر أي اختبار.</p>
+            </div>
+          )}
           {preview.isFetching && <p role="status">جار فحص الأقسام والأسئلة…</p>}
           {preview.isError && (
             <p className="edu-notice edu-error" role="alert">

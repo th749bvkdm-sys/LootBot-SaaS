@@ -493,6 +493,7 @@ const sectionCapabilities: Record<string, string> = {
 export function EducationWorkspace() {
   const me = useData<Me>("/me"),
     [section, setSection] = useState(
+      new URLSearchParams(window.location.search).get("adminSection") ||
       new URLSearchParams(window.location.search).get("studentTab") ||
         (new URLSearchParams(window.location.search).has("academyAttempt")
           ? "academy"
@@ -582,6 +583,15 @@ export function EducationWorkspace() {
     document.documentElement.dir = "rtl";
     document.title = title + " | LootBot";
   }, [title]);
+  if (me.data && section === "quant-content" && (student || !allowed.some(([key]) => key === "quant-content"))) {
+    return <main className="edu-room" dir="rtl"><section className="edu-card">
+      <h1>اعتماد ونشر أقسام المفكر</h1>
+      <p role="alert">الحساب الحالي لا يملك الوصول إلى إدارة الكمي. تحتاج إلى الدخول بحساب المسؤول الأعلى أو مسؤول محتوى مخوّل.</p>
+      <button className="edu-button" disabled>اعتماد ونشر الكل — يحتاج حسابًا مخوّلًا</button>
+      <p className="edu-note">فتح الرابط لا يمنح صلاحيات إضافية، ولم يُعتمد أو يُنشر أي اختبار.</p>
+      <a className="edu-button secondary" href="/education">العودة إلى غرفة التعليم</a>
+    </section></main>;
+  }
   return (
     <main className={"edu-room" + (student ? "" : " edu-admin")} dir="rtl">
       <div className="edu-shell">

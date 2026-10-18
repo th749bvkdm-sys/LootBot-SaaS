@@ -16,3 +16,7 @@
 - No new automated tests were added or run for this follow-up. No authenticated production bulk approval was executed, and no claim is made that source questions have been reviewed or that all sections are currently eligible.
 - No migration, new credential, account, role grant or production content mutation is required for deploying the control and layout fix. An authorized administrator must use the new control to approve/publish eligible content.
 - Deployment is to the existing GitHub main / Railway service authorized in the preceding publication workflow. Public deployment success must be independently verified after the push.
+
+## Visibility follow-up
+
+The bulk control remains visible inside quant administration when one of its required permissions is absent. Opening it lists the missing permissions and does not request publication data or allow submission. Server authorization is unchanged. A dedicated adminSection=quant-content URL with quantPublish=1 opens the review dialog directly for eligible accounts; an ineligible account sees an explicit access explanation instead of silently landing on another section. No role or grant was modified and no production question was approved by this follow-up. Web TypeScript/build checks are required before publication; no new automated tests were added or run.
