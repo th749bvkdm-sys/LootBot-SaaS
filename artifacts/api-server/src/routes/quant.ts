@@ -2,7 +2,7 @@ import { Router, type Request, type RequestHandler } from 'express';
 import { z } from 'zod';
 import { pool, type PoolClient } from '@workspace/db';
 import { requireAuth, requireCsrf } from '../lib/auth-middleware';
-import { actor, audit, authorize, EducationError, transaction, type Query } from '../lib/education';
+import { actor, root, audit, authorize, EducationError, transaction, type Query } from '../lib/education';
 import { createId } from '../lib/security';
 import {mufakirSourceHash, prepareMufakirPublication, applyMufakirPublication} from '../lib/quant-bulk-publish';
 import {
@@ -103,7 +103,6 @@ quantRouter.post('/quant/admin/tests/bulk-publish', route(async (req, res) => {
     const plan = await prepareMufakirPublication(req,q,true);
     if (plan.preview.fingerprint !== input.fingerprint)
       quantFail(409,'PUBLICATION_PREVIEW_CHANGED','تغيّر المحتوى أو حالة المراجعة؛ حدّث المعاينة قبل النشر.');
-    if (!plan.ready.length) quantFail(409,'NO_READY_SECTIONS','لا توجد أقسام جاهزة للنشر. راجع الأسباب المعروضة.');
     return applyMufakirPublication(req,q,plan,input.reviewNote);
   });
   res.json(result);
@@ -118,7 +117,20 @@ quantRouter.get('/quant/admin/tests/:id', route(async (req, res) => {
 }));
 quantRouter.post('/quant/admin/tests', route(async (req, res) => { res.status(201).json(await saveTest(req, req.body)); }));
 quantRouter.put('/quant/admin/tests/:id', route(async (req, res) => { res.json(await saveTest(req, req.body, id.parse(req.params.id))); }));
-quantRouter.patch('/quant/admin/tests/:id', route(async (req, res) => { res.json(await saveTest(req, req.body, id.parse(req.params.id), true)); }));
+quantRouter.patch('/quant/admin/tests/:id', route(async (req, res) => {
+  const testId=id.parse(req.params.id);
+  if(root(req) && req.body?.status==='published' && Object.keys(req.body).length===1) {
+    const published=await transaction(async q=>{
+      const plan=await prepareMufakirPublication(req,q,true,testId);
+      if(!plan.preview.sections.length)return null;
+      const blocked=plan.preview.sections.find(section=>!section.ready);
+      if(blocked)quantFail(409,'SECTION_PUBLICATION_BLOCKED',blocked.title+': '+blocked.reasons.join(' '));
+      return {id:testId,...await applyMufakirPublication(req,q,plan,'اعتمد المسؤول الأعلى مراجعة أسئلة هذا القسم بطلب نشر الاختبار.')};
+    });
+    if(published){res.json(published);return;}
+  }
+  res.json(await saveTest(req,req.body,testId,true));
+}));
 
 quantRouter.get('/quant/meta', route(async (req, res) => {
   const members = await quantStudent(req);

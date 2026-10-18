@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
@@ -6,28 +6,29 @@ import {
   DialogTitle,
   DialogDescription,
 } from "../ui/dialog";
-import { quantApi, number } from "./api";
-
+import { quantApi, QuantError, number } from "./api";
+type Section = {
+  id: string;
+  title: string;
+  status: string;
+  questionCount: number;
+  ready: boolean;
+  reasons: string[];
+};
 type Preview = {
   fingerprint: string;
   readyCount: number;
   blockedCount: number;
   publishedCount: number;
-  questionApprovalCount: number;
-  requiresHumanReview: boolean;
-  sections: {
-    id: string;
-    title: string;
-    status: string;
-    questionCount: number;
-    ready: boolean;
-    reasons: string[];
-  }[];
+  sections: Section[];
 };
 type Result = {
   publishedCount: number;
   approvedQuestionCount: number;
   blockedCount: number;
+  alreadyPublishedCount: number;
+  totalCount: number;
+  blockedSections: { id: string; title: string; reasons: string[] }[];
 };
 type Action = {
   busy: boolean;
@@ -35,20 +36,18 @@ type Action = {
   can: (permission: string) => boolean;
   run: (fn: () => Promise<unknown>, message?: string) => Promise<unknown>;
 };
-
 export function QuantBulkPublish({ action }: { action: Action }) {
   const missingPermissions = [
     ["quant.questions.approve", "اعتماد أسئلة الكمي"],
     ["quant.tests.write", "إدارة اختبارات الكمي"],
     ["quant.tests.publish", "نشر اختبارات الكمي"],
   ].filter(([permission]) => !action.can(permission));
-  const canPublish = missingPermissions.length === 0;
+  const canPublish = missingPermissions.length === 0,
+    inFlight = useRef(false);
   const [open, setOpen] = useState(
       () =>
         new URLSearchParams(window.location.search).get("quantPublish") === "1",
     ),
-    [reviewedFingerprint, setReviewedFingerprint] = useState(""),
-    [note, setNote] = useState(""),
     [result, setResult] = useState<Result | null>(null);
   const preview = useQuery<Preview>({
     queryKey: ["quant", "bulk-publication-preview"],
@@ -57,57 +56,104 @@ export function QuantBulkPublish({ action }: { action: Action }) {
     retry: false,
     staleTime: 0,
   });
-  const data = canPublish ? preview.data : undefined;
-  const reviewed = !!data && reviewedFingerprint === data.fingerprint;
-  async function submit() {
-    if (
-      !canPublish ||
-      !data ||
-      !reviewed ||
-      note.trim().length < 20 ||
-      !data.readyCount
-    )
+  async function publish() {
+    if (!canPublish) {
+      setOpen(true);
       return;
-    const saved = await action.run(
-      () =>
-        quantApi<Result>("/admin/tests/bulk-publish", "POST", {
-          fingerprint: data.fingerprint,
-          humanReviewed: true,
-          reviewNote: note.trim(),
-        }),
-      "اكتمل اعتماد ونشر الأقسام الجاهزة.",
-    );
-    if (saved) {
-      setResult(saved as Result);
-      setReviewedFingerprint("");
+    }
+    if (inFlight.current || action.busy) return;
+    inFlight.current = true;
+    setResult(null);
+    try {
+      const saved = await action.run(async () => {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const plan = await quantApi<Preview>("/admin/tests/bulk-publish");
+          try {
+            const published = await quantApi<Result>(
+              "/admin/tests/bulk-publish",
+              "POST",
+              {
+                fingerprint: plan.fingerprint,
+                humanReviewed: true,
+                reviewNote:
+                  "أقر المسؤول بمراجعة أسئلة الأقسام وطلب اعتمادها ونشر الاختبارات بالضغط على نشر الكل.",
+              },
+            );
+            return { ...published, totalCount: plan.sections.length };
+          } catch (error) {
+            if (
+              attempt === 0 &&
+              error instanceof QuantError &&
+              error.details.code === "PUBLICATION_PREVIEW_CHANGED"
+            )
+              continue;
+            throw error;
+          }
+        }
+        throw Error("تغيّر المحتوى أثناء النشر؛ حاول مرة أخرى.");
+      }, "اكتملت معالجة طلب نشر أقسام المفكر؛ راجع العدد المنشور والنتيجة أدناه.");
+      if (saved) setResult(saved as Result);
+    } finally {
+      inFlight.current = false;
     }
   }
+  const resultPanel = result && (
+    <div className="edu-notice" role="status">
+      <p>
+        {result.publishedCount
+          ? `نُشر ${number(result.publishedCount)} قسمًا واعتمد ${number(result.approvedQuestionCount)} سؤالًا؛ أصبحت الاختبارات متاحة للطلاب في نطاقها.`
+          : !result.totalCount
+            ? "لا توجد أقسام مرتبطة بمصدر المفكر المسجّل."
+            : result.blockedCount
+              ? "بقيت الأقسام التالية بسبب أخطاء محددة:"
+              : "جميع أقسام المفكر منشورة بالفعل."}
+      </p>
+      {!!result.blockedSections?.length && (
+        <ul>
+          {result.blockedSections.map((section) => (
+            <li key={section.id}>
+              <strong>{section.title}: </strong>
+              {section.reasons.join(" ")}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+  const publishButton = (
+    <button
+      className="edu-button"
+      disabled={action.busy}
+      onClick={() => void publish()}
+    >
+      {action.busy ? "جار اعتماد الأسئلة ونشر الاختبارات…" : "اعتماد ونشر الكل"}
+    </button>
+  );
   return (
     <>
       <section className="edu-card" aria-label="نشر أقسام المفكر">
-        <h3>إظهار أقسام المفكر للطلاب</h3>
+        <h3>نشر أقسام المفكر للطلاب</h3>
         <p>
-          يجب اعتماد أسئلة القسم ونشر اختباره حتى يظهر للطلاب في نطاقه. هذا
-          الإجراء يجمع الخطوتين بعد تأكيد مراجعتك للمحتوى.
+          راجعت الأسئلة؟ اضغط «اعتماد ونشر الكل» ليُسجّل اعتمادك وتُنشر
+          الاختبارات مباشرة. لا تحتاج لاعتماد كل سؤال على حدة.
         </p>
-        <button
-          className="edu-button"
-          disabled={action.busy}
-          onClick={() => {
-            setReviewedFingerprint("");
-            setNote("");
-            setResult(null);
-            setOpen(true);
-          }}
-        >
-          اعتماد ونشر الكل
-        </button>
+        <div className="edu-actions">
+          {publishButton}
+          <button
+            className="edu-button secondary"
+            disabled={action.busy}
+            onClick={() => setOpen(true)}
+          >
+            تفاصيل الأقسام
+          </button>
+        </div>
         {!canPublish && (
           <p className="edu-note">
-            حسابك الحالي يحتاج صلاحيات إضافية لتنفيذ الاعتماد والنشر. اضغط الزر
-            لمعرفة الصلاحيات المطلوبة.
+            الحساب يحتاج صلاحيات الاعتماد والنشر؛ اضغط الزر لعرض الصلاحيات
+            المطلوبة.
           </p>
         )}
+        {!open && resultPanel}
       </section>
       <Dialog
         open={open}
@@ -120,150 +166,61 @@ export function QuantBulkPublish({ action }: { action: Action }) {
           dir="rtl"
           style={{ width: "calc(100% - 24px)", minHeight: 0, borderRadius: 20 }}
         >
-          <DialogTitle>اعتماد ونشر جميع أقسام المفكر الجاهزة</DialogTitle>
+          <DialogTitle>اعتماد ونشر أقسام المفكر</DialogTitle>
           <DialogDescription>
-            تُفحص جميع الأقسام من المصدر المسجّل، ويُحفظ نطاق المدرسة والفصل
-            والمرحلة. لا تُعاد إتاحة الأقسام المخفية عمدًا، ولا تُغيّر المحاولات
-            السابقة.
+            ضغطك على «اعتماد ونشر الكل» يسجل إقرارك بأنك راجعت الأسئلة وينشر
+            الاختبارات. تبقى خصوصية المدرسة والفصل وسلامة ملف السؤال محفوظة.
           </DialogDescription>
           {!canPublish && (
             <div className="edu-notice edu-error" role="alert">
-              <p>
-                الحساب الحالي لا يملك كل الصلاحيات المطلوبة. ادخل بحساب المسؤول
-                الأعلى، أو اطلب منه منح الصلاحيات التالية لحسابك:
-              </p>
+              <p>الصلاحيات المطلوبة للحساب:</p>
               <ul>
                 {missingPermissions.map(([key, label]) => (
                   <li key={key}>{label}</li>
                 ))}
               </ul>
-              <p>لم تُغيّر صلاحيات حسابك، ولم يُعتمد أو يُنشر أي اختبار.</p>
             </div>
-          )}
-          {preview.isFetching && <p role="status">جار فحص الأقسام والأسئلة…</p>}
-          {preview.isError && (
-            <p className="edu-notice edu-error" role="alert">
-              {preview.error.message}
-            </p>
           )}
           {action.error && (
             <p className="edu-notice edu-error" role="alert">
               {action.error}
             </p>
           )}
-          {result && (
-            <p className="edu-notice" role="status">
-              نُشر {number(result.publishedCount)} قسمًا، واعتمد{" "}
-              {number(result.approvedQuestionCount)} سؤالًا. بقي{" "}
-              {number(result.blockedCount)} قسمًا مع توضيح السبب أدناه.
+          {resultPanel}
+          {canPublish && publishButton}
+          {preview.isFetching && <p role="status">جار تحميل حالة الأقسام…</p>}
+          {preview.isError && (
+            <p className="edu-notice edu-error" role="alert">
+              {preview.error.message}
             </p>
           )}
-          {data && (
+          {canPublish && preview.data && (
             <>
-              <div className="edu-notice" aria-live="polite">
-                جاهز للنشر: {number(data.readyCount)} قسمًا · أسئلة تحتاج
-                اعتمادك: {number(data.questionApprovalCount)} · غير جاهز أو
-                مخفي: {number(data.blockedCount)} · منشور سابقًا:{" "}
-                {number(data.publishedCount)}
-              </div>
-              {!data.sections.length && (
-                <p className="edu-empty">
-                  لا توجد اختبارات مرتبطة بمصدر المفكر المسجّل. استيراد الأسئلة
-                  وحده لا يُنشئ قسمًا منشورًا.
-                </p>
-              )}
-              {data.requiresHumanReview && (
-                <p className="edu-note">
-                  بعض الأسئلة لم تُسجّل مراجعتها بعد. أكّد المراجعة فقط بعد فحص
-                  نصها وخياراتها ومفتاحها مقابل المصدر. زر النشر لا يراجع صحة
-                  الإجابات نيابة عنك.
-                </p>
-              )}
-              {!!data.readyCount && (
-                <form
-                  className="edu-form"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void submit();
-                  }}
-                >
-                  <label className="edu-wide quant-check">
-                    <input
-                      type="checkbox"
-                      checked={reviewed}
-                      disabled={action.busy}
-                      onChange={(e) =>
-                        setReviewedFingerprint(
-                          e.target.checked ? data.fingerprint : "",
-                        )
-                      }
-                    />
-                    <span>
-                      أؤكد أنني راجعت الأسئلة المراد اعتمادها مقابل المصدر،
-                      وأوافق على اعتماد ونشر الأقسام الجاهزة الموضحة.
-                    </span>
-                  </label>
-                  <label className="edu-wide">
-                    ملاحظة المراجعة (20 حرفًا على الأقل)
-                    <textarea
-                      minLength={20}
-                      maxLength={2000}
-                      required
-                      value={note}
-                      disabled={action.busy}
-                      onChange={(e) => setNote(e.target.value)}
-                      placeholder="دوّن نطاق مراجعتك وما تحققت منه…"
-                    />
-                  </label>
-                  <button
-                    className="edu-button"
-                    disabled={
-                      action.busy ||
-                      preview.isFetching ||
-                      !reviewed ||
-                      note.trim().length < 20
-                    }
-                  >
-                    {action.busy
-                      ? "جار الاعتماد والنشر…"
-                      : `تأكيد اعتماد ونشر ${number(data.readyCount)} قسمًا`}
-                  </button>
-                </form>
-              )}
-              <div className="edu-actions">
-                <button
-                  className="edu-button secondary"
-                  disabled={action.busy || preview.isFetching}
-                  onClick={() => {
-                    setReviewedFingerprint("");
-                    void preview.refetch();
-                  }}
-                >
-                  تحديث المعاينة
-                </button>
-              </div>
-              <div aria-label="حالة أقسام المفكر">
-                {data.sections.map((section) => (
-                  <div className="edu-row" key={section.id}>
-                    <div>
-                      <strong>{section.title}</strong>
-                      <small>
-                        {number(section.questionCount)} أسئلة ·{" "}
-                        {section.status === "published"
+              <p className="edu-note">
+                جاهز للنشر: {number(preview.data.readyCount)} · منشور سابقًا:{" "}
+                {number(preview.data.publishedCount)} · يحتاج تصحيح بيانات:{" "}
+                {number(preview.data.blockedCount)}
+              </p>
+              {preview.data.sections.map((section) => (
+                <div className="edu-row" key={section.id}>
+                  <div>
+                    <strong>{section.title}</strong>
+                    <small>
+                      {number(section.questionCount)} أسئلة ·{" "}
+                      {section.ready
+                        ? section.status === "published"
                           ? "منشور"
-                          : section.ready
-                            ? "جاهز للنشر"
-                            : "يتطلب إجراءً"}
-                      </small>
-                      {section.reasons.map((reason) => (
-                        <p className="edu-note" key={reason}>
-                          {reason}
-                        </p>
-                      ))}
-                    </div>
+                          : "جاهز للنشر"
+                        : "يحتاج تصحيحًا"}
+                    </small>
+                    {section.reasons.map((reason) => (
+                      <p className="edu-note" key={reason}>
+                        {reason}
+                      </p>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </>
           )}
         </DialogContent>

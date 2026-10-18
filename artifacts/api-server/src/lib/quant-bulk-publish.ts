@@ -1,6 +1,6 @@
 import type { Request } from "express";
 import { createHash } from "node:crypto";
-import { actor, authorize, settings, type Query } from "./education";
+import { actor, root, authorize, settings, type Query } from "./education";
 import { createId } from "./security";
 import {
   approvedVersion,
@@ -35,9 +35,10 @@ export async function prepareMufakirPublication(
   req: Request,
   q: Query,
   lock = false,
+  testId?: string,
 ) {
   await bulkPublishAccess(req, q);
-  if (lock)
+  if (lock && !testId)
     await q.query(
       "SELECT pg_advisory_xact_lock(hashtext('quant-mufakir-bulk-publication'))",
     );
@@ -46,8 +47,9 @@ export async function prepareMufakirPublication(
       `SELECT t.* FROM quant_tests t WHERE EXISTS (
     SELECT 1 FROM quant_test_items i JOIN quant_question_reviews r ON r.version_id=i.version_id
     JOIN quant_sources s ON s.id=r.source_id WHERE i.test_id=t.id AND s.file_hash=$1)
+    AND ($2::text IS NULL OR t.id=$2)
     ORDER BY t.id ${lock ? "FOR UPDATE OF t" : ""}`,
-      [mufakirSourceHash],
+      [mufakirSourceHash, testId || null],
     )
   ).rows;
   const items: TestRow[] = tests.length
@@ -89,6 +91,8 @@ export async function prepareMufakirPublication(
     }
   }
   const secondReviewer = (await settings("", q)).contentReview;
+  // The owner explicitly authorizes the Super Admin's publication click as their review approval.
+  const administratorReview = root(req);
   const byId = new Map(rows.map((r) => [r.version_id, r]));
   const scopes: TestRow[] = (
     await q.query(
@@ -107,8 +111,8 @@ export async function prepareMufakirPublication(
     const list = items.filter((i) => i.test_id === t.id),
       reasons = new Set<string>(),
       seen = new Set<string>();
-    // Hidden sections are an intentional choice; a bulk operation must not unhide them.
-    if (t.status === "hidden")
+    // Explicit Super Admin publication includes hidden sections; other roles preserve the hidden state.
+    if (t.status === "hidden" && !administratorReview)
       reasons.add("القسم مخفي عمدًا؛ أعد نشره منفردًا عند الرغبة.");
     if (!list.length || list.length > 100)
       reasons.add("عدد الأسئلة يجب أن يكون بين 1 و100.");
@@ -156,19 +160,22 @@ export async function prepareMufakirPublication(
           "needs_review",
           "reviewed",
           "approved",
-        ].includes(row.review_status)
+        ].includes(row.review_status) &&
+        !administratorReview
       )
         reasons.add("يوجد سؤال مرفوض؛ راجعه منفردًا.");
       if (
         row.review_status !== "approved" &&
         secondReviewer &&
+        !administratorReview &&
         row.author_id === actor(req)
       )
         reasons.add("اعتماد هذه الأسئلة يحتاج مراجعًا مخوّلًا غير مؤلفها.");
       if (
         Array.isArray(row.snapshot?.content?.extractionUncertainties) &&
         row.snapshot.content.extractionUncertainties.length &&
-        row.review_status !== "approved"
+        row.review_status !== "approved" &&
+        !administratorReview
       )
         reasons.add("يوجد سؤال عليه ملاحظة استخراج؛ عالجها وراجعه منفردًا.");
       if (
@@ -193,7 +200,16 @@ export async function prepareMufakirPublication(
       reasons: [...reasons],
     };
   });
-  const ready = sections.filter((s) => s.ready && s.status !== "published");
+  const ready = sections.filter(
+    (s) =>
+      s.ready &&
+      (s.status !== "published" ||
+        items.some(
+          (i) =>
+            i.test_id === s.id &&
+            byId.get(i.version_id)?.review_status !== "approved",
+        )),
+  );
   const readyIds = new Set(ready.map((s) => s.id));
   const approvedIds = new Set(
     items.filter((i) => readyIds.has(i.test_id)).map((i) => i.version_id),
@@ -231,53 +247,69 @@ export async function prepareMufakirPublication(
   };
 }
 
-/** Caller holds one transaction and has checked the exact preview fingerprint and human attestation. */
+/** Review approval and test publication share one transaction; audit rows are inserted in batches. */
 export async function applyMufakirPublication(
   req: Request,
   q: Query,
   plan: Awaited<ReturnType<typeof prepareMufakirPublication>>,
   reviewNote: string,
 ) {
-  const record = async (action: string, resource: string, details: unknown) =>
-    q.query(
-      "INSERT INTO audit_logs(id,user_id,action,summary,details) VALUES($1,$2,$3,$4,$5::jsonb)",
-      [
-        createId(),
-        actor(req),
-        "education." + action,
-        "اعتماد ونشر أقسام المفكر",
-        JSON.stringify({ resource, ...(details as object) }),
-      ],
-    );
-  for (const row of plan.toApprove) {
+  const ids = plan.toApprove.map((row) => row.version_id);
+  if (ids.length) {
     await q.query(
-      "UPDATE quant_question_reviews SET review_status='approved',review_note=$2,reviewed_by=$3,updated_at=now() WHERE version_id=$1",
-      [row.version_id, reviewNote, actor(req)],
+      "UPDATE quant_question_reviews SET review_status='approved',review_note=$2,reviewed_by=$3,updated_at=now() WHERE version_id=ANY($1::text[])",
+      [ids, reviewNote, actor(req)],
     );
     await q.query(
-      `UPDATE education_questions SET status='published',reviewed_by=$2,updated_at=now()
-      WHERE id=$1 AND revision=$3`,
-      [row.question_id, actor(req), row.number],
+      `UPDATE education_questions question SET status='published',reviewed_by=$2,updated_at=now()
+      FROM education_question_versions version WHERE version.id=ANY($1::text[]) AND question.id=version.question_id AND question.revision=version.number`,
+      [ids, actor(req)],
     );
-    await record("quant.question.bulk-approved", row.question_id, {
-      versionId: row.version_id,
-      previousStatus: row.review_status,
-      reviewNote,
-      humanReviewed: true,
-    });
   }
-  for (const section of plan.ready) {
+  const readyIds = plan.ready.map((section) => section.id);
+  if (readyIds.length)
     await q.query(
-      "UPDATE quant_tests SET status='published',updated_at=now() WHERE id=$1",
-      [section.id],
+      "UPDATE quant_tests SET status='published',updated_at=now() WHERE id=ANY($1::text[])",
+      [readyIds],
     );
-    await record("quant.test.bulk-published", section.id, {
-      title: section.title,
-    });
-  }
+  const events = [
+    ...plan.toApprove.map((row) => ({
+      id: createId(),
+      action: "education.quant.question.bulk-approved",
+      details: {
+        resource: row.question_id,
+        versionId: row.version_id,
+        previousStatus: row.review_status,
+        reviewNote,
+        humanReviewed: true,
+        administratorReview: root(req),
+      },
+    })),
+    ...plan.ready.map((section) => ({
+      id: createId(),
+      action: "education.quant.test.bulk-published",
+      details: {
+        resource: section.id,
+        title: section.title,
+        previousStatus: section.status,
+        administratorReview: root(req),
+      },
+    })),
+  ];
+  if (events.length)
+    await q.query(
+      `INSERT INTO audit_logs(id,user_id,action,summary,details)
+    SELECT event->>'id',$1,event->>'action','اعتماد ونشر أقسام المفكر',event->'details'
+    FROM jsonb_array_elements($2::jsonb) AS event`,
+      [actor(req), JSON.stringify(events)],
+    );
   return {
     publishedCount: plan.ready.length,
     approvedQuestionCount: plan.toApprove.length,
     blockedCount: plan.preview.blockedCount,
+    alreadyPublishedCount: plan.preview.publishedCount,
+    blockedSections: plan.preview.sections
+      .filter((section) => !section.ready)
+      .map(({ id, title, reasons }) => ({ id, title, reasons })),
   };
 }
